@@ -1,8 +1,10 @@
 #include "types.h"
 
+#include <regex.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/types.h>
 
 BOOLEAN is_atom_expression(char *expression)
 {
@@ -12,8 +14,28 @@ BOOLEAN is_atom_expression(char *expression)
 	return FALSE;
 }
 
-enum ATOM_TYPE type_of(char *expression)
+BOOLEAN is_string_token(char *token)
 {
+    return '"' == token[0] && '"' == token[strlen(token) - 1];
+}
+
+BOOLEAN is_integer(char *token)
+{
+    const char *pattern = "[1-9][0-9]*";
+    int cflags = REG_EXTENDED;
+    regex_t preg;
+    regmatch_t pmatch[1];
+
+    regcomp(&preg, pattern, cflags);
+
+    return regexec(&preg, token, 1, pmatch, REG_NOTBOL) == 0 ? TRUE : FALSE;
+}
+
+enum ATOM_TYPE type_of(char *token)
+{
+    if (is_string_token(token)) return STRING;
+    if (is_integer(token)) return INTEGER;
+
     return SYMBOL;
 }
 
@@ -37,7 +59,16 @@ struct LispObject *lookup_symbol_fn(ENVIRONMENT *env, char *symbol_name)
 
     result = lookup_symbol(env, symbol_name);
 
-    return result != NULL ? result->function : NULL;
+    return result != NULL ? ENTRY_VALUE(result) : NULL;
+}
+
+struct LispObject *lookup_symbol_value(ENVIRONMENT *env, char *symbol_name)
+{
+    struct LookupEntry *result;
+
+    result = lookup_symbol(env, symbol_name);
+
+    return result != NULL ? result->value : NULL;
 }
 
 void add_new_symbol(ENVIRONMENT *env, char *symbol_name, struct LispObject *symbol_object) /* When calling this function, the caller must ensure that  */
@@ -53,12 +84,53 @@ void add_new_symbol(ENVIRONMENT *env, char *symbol_name, struct LispObject *symb
     head_node->next = entry;
 }
 
-struct LispObject *make_atom(char *expression, ENVIRONMENT *env)
+char *get_next_token(char *expression)
+{
+    char *token;
+    int i;
+
+    i = 0;
+    switch (expression[0]) {
+    case '"':
+	i++;
+	while (expression[i] != '"' && expression[i] != '\0')
+	    i++;
+	i++;
+	break;
+    default :
+	while (expression[i] != ' ' &&
+	       expression[i] != '(' &&
+	       expression[i] != ')' &&
+	       expression[i] != '\0' &&
+	       expression[i] != '\n')
+	    i++;
+    }
+
+    token = malloc(sizeof(i + 1) * sizeof(char));
+    strncpy(token, expression, i);
+    token[i] = '\0';
+
+    return token;
+}
+
+struct LispObject *make_atom_core(char *expression, ENVIRONMENT *env)
 {
     struct LispObject *atom;
     struct LookupEntry *entry;
 
     switch (type_of(expression)) {
+    case INTEGER:
+	atom = malloc(sizeof(struct LispObject));
+	atom->type = ATOM;
+	atom->atom_type = INTEGER;
+	INTEGER(atom) = atoi(expression);
+	break;
+    case STRING:
+	atom = malloc(sizeof(struct LispObject));
+	atom->type = ATOM;
+	atom->atom_type = STRING;
+	STRING(atom) = expression;
+	break;
     case SYMBOL:
 	entry = lookup_symbol(env, expression);
 	if (entry != NULL)
@@ -79,6 +151,11 @@ struct LispObject *make_atom(char *expression, ENVIRONMENT *env)
     return atom;
 }
 
+struct LispObject *make_atom(char *expression, ENVIRONMENT *env)
+{
+    return make_atom_core(get_next_token(expression), env);
+}
+
 char *get_cons_content(char *expression)
 {
     char *content;
@@ -97,34 +174,6 @@ char *get_cons_content(char *expression)
     content[i - 1] = '\0';
 
     return content;
-}
-
-char *get_next_token(char *expression)
-{
-    char *token;
-    int i;
-
-    i = 0;
-    switch (expression[0]) {
-    case '"':
-	i++;
-	while (expression[i] != '"' && expression[i] != '\0')
-	    i++;
-	i++;
-	break;
-    default :
-	while (expression[i] != ' ' &&
-	       expression[i] != '(' &&
-	       expression[i] != ')' &&
-	       expression[i] != '\0')
-	    i++;
-    }
-
-    token = malloc(sizeof(i + 1) * sizeof(char));
-    strncpy(token, expression, i);
-    token[i] = '\0';
-
-    return token;
 }
 
 struct LispObject *make_cons_core(char *expression, ENVIRONMENT *env)
@@ -150,6 +199,8 @@ struct LispObject *make_cons_core(char *expression, ENVIRONMENT *env)
 	    step = 0;
 	    break;
 	case ' ':
+	case '\n':
+	case '\t':
 	    step = 1;
 	    break;
 	default :
@@ -161,7 +212,10 @@ struct LispObject *make_cons_core(char *expression, ENVIRONMENT *env)
 	    cur->cdr = NULL;
 	    step = strlen(token);
 	}
-	if (expression[i] != ' ' && expression[i] != ')') {
+	if (expression[i] != ' ' &&
+	    expression[i] != ')' &&
+	    expression[i] != '\n' &&
+	    expression[i] != '\t') {
 	    pre->cdr = cur;
 	    pre = cur;
 	}

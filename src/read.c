@@ -10,7 +10,7 @@ struct StringPart {
     struct StringPart *next;
 };
 
-char *read_line(FILE *fp, int *length)
+char *read_line(FILE *fp, int *length) /* This function preserve the last '\n' character in the string returned. */
 {
     char c, *line;
     int i, len;
@@ -23,11 +23,12 @@ char *read_line(FILE *fp, int *length)
 	    len += 80;
 	    line = realloc(line, len * sizeof(char));
 	}
+	line[i++] = c;
 	if ('\n' == c) {
+	    line = realloc(line, (i + 1) * sizeof(char));
 	    line[i] = '\0';
 	    break;
 	}
-	line[i++] = c;
 	c = fgetc(fp);
     }
     if (line != NULL && EOF == c)

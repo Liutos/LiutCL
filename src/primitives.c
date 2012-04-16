@@ -1,6 +1,9 @@
+#include "eval.h"
 #include "model.h"
+#include "print.h"
 #include "types.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <strings.h>
 
@@ -55,40 +58,9 @@ PHEAD(lt_eq)
     return arg1 == arg2 ? &lt_t : &lt_nil;
 }
 
-void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
+PHEAD(lt_quote)
 {
-    struct LookupEntry *head_node;
-
-    head_node = env->head_node;
-    entry->next = head_node->next;
-    head_node->next = entry;
-}
-
-void register_primitive(ENVIRONMENT *env, char *symbol_name, PRIMITIVE fn)
-{
-    struct LispObject *symbol_object, *function;
-    struct LookupEntry *entry, *head_node;
-
-    head_node = env->head_node;
-
-    symbol_object = malloc(sizeof(struct LispObject));
-    symbol_object->type = ATOM;
-    symbol_object->atom_type = SYMBOL;
-    symbol_object->name = symbol_name;
-
-    function = malloc(sizeof(struct LispObject));
-    function->type = ATOM;
-    function->atom_type = FUNCTION;
-    function->func_expr = fn;
-
-    entry = malloc(sizeof(struct LookupEntry));
-    entry->symbol_name = symbol_name;
-    entry->symbol_object = symbol_object;
-    entry->function = function;
-    entry->next = NULL;
-    /* entry->next = head_node->next; */
-    /* head_node->next = entry; */
-    add_lookup_entry(env, entry); /* Abstract the operators above as a function alone is better when changing the inner structure of the argument env */
+    return CAR(arg_list);
 }
 
 void set_symbol_value(ENVIRONMENT *env, char *symbol_name,
@@ -102,7 +74,200 @@ void set_symbol_value(ENVIRONMENT *env, char *symbol_name,
 	    first_node->value = value;
 	    break;
 	}
+	first_node = first_node->next;
     }
+}
+
+PHEAD(lt_set)
+{
+    struct LispObject *symbol_object, *value;
+
+    symbol_object = CAR(arg_list);
+    value = CADR(arg_list);
+    set_symbol_value(env, SYMBOL_NAME(symbol_object), value);
+
+    return value;
+}
+
+void set_symbol_function(ENVIRONMENT *env, char *symbol_name,
+			 struct LispObject *function)
+{
+    struct LookupEntry *result;
+
+    result = lookup_symbol(env, symbol_name);
+    if (result != NULL)
+	ENTRY_VALUE(result) = function;
+}
+
+PHEAD(lt_set_fn)
+{
+    struct LispObject *symbol_object, *function;
+
+    symbol_object = CAR(arg_list);
+    function = CADR(arg_list);
+    set_symbol_function(env, SYMBOL_NAME(symbol_object), function);
+
+    return function;
+}
+
+PHEAD(lt_if)
+{
+    struct LispObject *test, *then_part, *else_part;
+
+    test = CAR(arg_list);
+    then_part = CADR(arg_list);
+    else_part = CADDR(arg_list);
+
+    if (&lt_t == eval_expression(test, env))
+	return eval_expression(then_part, env);
+    else
+	return eval_expression(else_part, env);
+}
+
+PHEAD(lt_dump_env)		/* The wrapper function for printting the information when needed */
+{
+    print_object(env);
+
+    return NULL;
+}
+
+PHEAD(lt_binary_plus)
+{
+    struct LispObject *arg1, *arg2, *result;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+    result = malloc(sizeof(struct LispObject));
+    result->type = ATOM;
+    result->atom_type = INTEGER;
+    result->integer = INTEGER(arg1) + INTEGER(arg2);
+
+    return result;
+}
+
+PHEAD(lt_binary_mul)
+{
+    struct LispObject *arg1, *arg2, *result;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+    result = malloc(sizeof(struct LispObject));
+    result->type = ATOM;
+    result->atom_type = INTEGER;
+    INTEGER(result) = INTEGER(arg1) * INTEGER(arg2);
+
+    return result;
+}
+
+int cons_length(struct LispObject *cons)
+{
+    int length = 0;
+
+    while (cons != NULL) {
+	length++;
+	cons = CDR(cons);
+    }
+
+    return length;
+}
+
+ENVIRONMENT *make_closure_env(struct LispObject *argv, ENVIRONMENT *env)
+{
+    ENVIRONMENT *closure_env;
+
+    closure_env = malloc(sizeof(ENVIRONMENT));
+    closure_env->type = ATOM;
+    closure_env->atom_type = LOOKUP_TABLE;
+    closure_env->head_node = malloc(sizeof(struct LookupEntry));
+    while (argv != NULL) {
+	add_new_symbol(closure_env, SYMBOL_NAME(CAR(argv)), NULL);
+	argv = CDR(argv);
+    }
+    closure_env->next_env = env;
+
+    return closure_env;
+}
+
+PHEAD(lt_lambda)
+{
+    struct LispObject *argv, *body, *closure, *progn;
+
+    argv = CAR(arg_list);
+    body = CDR(arg_list);
+    closure = malloc(sizeof(struct LispObject));
+    closure->type = ATOM;
+    closure->atom_type = FUNCTION;
+    EXPR_TYPE(closure) = INTERPRET; /* Run as interpreted */
+    FUNC_TYPE(closure) = REGULAR;   /* Evaluate the arguments */
+    progn = make_atom("progn", env);
+    FUNC_EXPR(closure) = cons_two_objects(progn, body);	    /* The code for evaluating when call this closure */
+    closure->arg_num = cons_length(argv);
+    closure->func_env = make_closure_env(argv, env); /* Lexical environment */
+
+    return closure;
+}
+
+PHEAD(lt_progn)
+{
+    struct LispObject *body;
+
+    body = arg_list;
+    while (body != NULL && CDR(body) != NULL) {
+	eval_expression(CAR(body), env);
+	body = CDR(body);
+    }
+    if (body != NULL)
+	return eval_expression(CAR(body), env);
+    else
+	return NULL;
+}
+
+void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
+{
+    struct LookupEntry *head_node;
+
+    head_node = env->head_node;
+    entry->next = head_node->next;
+    head_node->next = entry;
+}
+
+void register_primitive(ENVIRONMENT *env,
+			char *symbol_name,
+			PRIMITIVE fn,
+			enum FUNC_TYPE func_type,
+			int arg_num)
+{
+    struct LispObject *symbol_object, *function;
+    struct LookupEntry *entry, *head_node;
+
+    head_node = env->head_node;
+    /* The symbol_object slot initialization */
+    symbol_object = malloc(sizeof(struct LispObject));
+    symbol_object->type = ATOM;
+    symbol_object->atom_type = SYMBOL;
+    symbol_object->name = symbol_name;
+    /* The function slot initialization */
+    function = malloc(sizeof(struct LispObject));
+    function->type = ATOM;
+    function->atom_type = FUNCTION;
+    /* function->func_expr = fn;	/\* Original code *\/ */
+    function->expr_type = COMPILE;
+    FUNC_CODE(function) = fn;
+    FUNC_TYPE(function) = func_type;
+    FUNC_ARGC(function) = arg_num;
+    /* The entry contains the symbol_object and the function above */
+    entry = malloc(sizeof(struct LookupEntry));
+    entry->symbol_name = symbol_name;
+    entry->symbol_object = symbol_object;
+    ENTRY_VALUE(entry) = function;
+    entry->next = NULL;
+    /* entry->next = head_node->next; */
+    /* head_node->next = entry; */
+    add_lookup_entry(env, entry); /* Abstract the operators above as a function alone is better when changing the inner structure of the argument env */
 }
 
 void init_primitives(ENVIRONMENT *env)
@@ -119,9 +284,18 @@ void init_primitives(ENVIRONMENT *env)
     add_new_symbol(env, "nil", &lt_nil);
     set_symbol_value(env, "nil", &lt_nil);
 
-    register_primitive(env, "quit", lt_quit);
-    register_primitive(env, "car", lt_car);
-    register_primitive(env, "cdr", lt_cdr);
-    register_primitive(env, "cons", lt_cons);
-    register_primitive(env, "eq", lt_eq);
+    register_primitive(env, "quit", lt_quit, REGULAR, 0);
+    register_primitive(env, "car", lt_car, REGULAR, 1);
+    register_primitive(env, "cdr", lt_cdr, REGULAR, 1);
+    register_primitive(env, "cons", lt_cons, REGULAR, 2);
+    register_primitive(env, "eq", lt_eq, REGULAR, 2);
+    register_primitive(env, "quote", lt_quote, SPECIAL, 1);
+    register_primitive(env, "set", lt_set, REGULAR, 2);
+    register_primitive(env, "if", lt_if, SPECIAL, 3);
+    register_primitive(env, "lt-dump-env", lt_dump_env, SPECIAL, 0);
+    register_primitive(env, "b+", lt_binary_plus, REGULAR, 2);
+    register_primitive(env, "b*", lt_binary_mul, REGULAR, 2);
+    register_primitive(env, "lt-lambda", lt_lambda, SPECIAL, 2);
+    register_primitive(env, "lt-set-fn", lt_set_fn, REGULAR, 2);
+    register_primitive(env, "progn", lt_progn, SPECIAL, 0);
 }
