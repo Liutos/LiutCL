@@ -9,5 +9,6 @@ extern struct LispObject *lookup_symbol_fn(ENVIRONMENT *, char *);
 extern void add_new_symbol(ENVIRONMENT *, char *, struct LispObject *);
 extern struct LispObject *lookup_symbol_value(ENVIRONMENT *, char *);
 extern struct LispObject *make_atom(char *, ENVIRONMENT *);
+extern char *get_next_token(char *);
 
 #endif

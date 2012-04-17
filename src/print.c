@@ -34,6 +34,8 @@ void print_atom(struct LispObject *atom_object)
 	    print_object(first_node->value);
 	    first_node = first_node->next;
 	}
+	if (atom_object->next_env != NULL)
+	    print_atom(atom_object->next_env);
 	printf("END");
 	break;
     case STRING:

@@ -59,7 +59,7 @@ struct LispObject {
 	    struct LookupEntry *head_node;			/* LOOKUP_TABLE */
 	    ENVIRONMENT *next_env;				/* Pointer to the outer environment */
 	};
-	char *string;
+	char *string;		/* STRING */
 	char *name;		/* SYMBOL */
     };
 };

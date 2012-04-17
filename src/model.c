@@ -1,11 +1,11 @@
+#include "print.h"
 #include "types.h"
 
 #include <ctype.h>
-#include <regex.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/types.h>
 
 BOOLEAN is_atom_expression(char *expression)
 {
@@ -15,21 +15,13 @@ BOOLEAN is_atom_expression(char *expression)
 	return FALSE;
 }
 
-BOOLEAN is_string_token(char *token)
+BOOLEAN is_string_token(const char *token)
 {
     return '"' == token[0] && '"' == token[strlen(token) - 1];
 }
 
-BOOLEAN is_integer(char *token)
+BOOLEAN is_integer(const char *token)
 {
-    /* const char *pattern = "[1-9][0-9]*"; */
-    /* int cflags = REG_EXTENDED; */
-    /* regex_t preg; */
-    /* regmatch_t pmatch[1]; */
-
-    /* regcomp(&preg, pattern, cflags); */
-
-    /* return regexec(&preg, token, 1, pmatch, REG_NOTBOL) == 0 ? TRUE : FALSE; */
     int i;
     BOOLEAN result = TRUE;
 
@@ -50,28 +42,22 @@ enum ATOM_TYPE type_of(char *token)
     return SYMBOL;
 }
 
-struct LookupEntry *lookup_symbol(ENVIRONMENT *env, char *symbol_name)
+struct LookupEntry *lookup_symbol(ENVIRONMENT *env, char *name)
 {
     struct LookupEntry *first_node;
 
-    first_node = env->head_node->next;
-    while (first_node != NULL) {
-	if (strcasecmp(symbol_name, first_node->symbol_name) == 0)
-	    return first_node;
-	first_node = first_node->next;
+    while (env != NULL) {
+	first_node = HEAD_NODE(env)->next;
+	while (first_node != NULL) {
+	    if (strcasecmp(name, first_node->symbol_name) == 0)
+		return first_node;
+	    first_node = first_node->next;
+	}
+	env = env->next_env;
     }
 
     return NULL;
 }
-
-/* struct LispObject *lookup_symbol_fn(ENVIRONMENT *env, char *symbol_name) */
-/* { */
-/*     struct LookupEntry *result; */
-
-/*     result = lookup_symbol(env, symbol_name); */
-
-/*     return result != NULL ? ENTRY_VALUE(result) : NULL; */
-/* } */
 
 struct LispObject *lookup_symbol_value(ENVIRONMENT *env, char *symbol_name)
 {
@@ -103,7 +89,7 @@ char *get_next_token(char *expression)
     i = 0;
     switch (expression[0]) {
     case '"':
-	i++;
+	i = 1;
 	while (expression[i] != '"' && expression[i] != '\0')
 	    i++;
 	i++;
@@ -116,7 +102,6 @@ char *get_next_token(char *expression)
 	       expression[i] != '\n')
 	    i++;
     }
-
     token = malloc(sizeof(i + 1) * sizeof(char));
     strncpy(token, expression, i);
     token[i] = '\0';
@@ -140,7 +125,7 @@ struct LispObject *make_atom_core(char *expression, ENVIRONMENT *env)
 	atom = malloc(sizeof(struct LispObject));
 	atom->type = ATOM;
 	atom->atom_type = STRING;
-	STRING(atom) = expression;
+	atom->string = expression;
 	break;
     case SYMBOL:
 	entry = lookup_symbol(env, expression);
@@ -164,7 +149,9 @@ struct LispObject *make_atom_core(char *expression, ENVIRONMENT *env)
 
 struct LispObject *make_atom(char *expression, ENVIRONMENT *env)
 {
-    return make_atom_core(get_next_token(expression), env);
+    char *token = get_next_token(expression);
+
+    return make_atom_core(token, env);
 }
 
 char *get_cons_content(char *expression)
@@ -243,8 +230,14 @@ struct LispObject *make_cons(char *expression, ENVIRONMENT *env)
 
 struct LispObject *make_object(char *raw_expression, ENVIRONMENT *env)
 {
-    if (is_atom_expression(raw_expression))
-	return make_atom(raw_expression, env);
+    struct LispObject *value;
+
+    if (is_atom_expression(raw_expression)) {
+	value = make_atom(raw_expression, env);
+	printf("In function make_object:\n");
+	print_object(value);
+	return value;
+    }
     else
 	return make_cons(raw_expression, env);
 }

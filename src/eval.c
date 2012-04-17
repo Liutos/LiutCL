@@ -39,13 +39,15 @@ struct LispObject *eval_cons(struct LispObject *cons,
     struct LispObject *eval_expression(struct LispObject *, ENVIRONMENT *);
     struct LispObject *arg_list, *op, *operator, *tmp;
 
+    if (NULL == cons) return NULL;
     operator = CAR(cons);
     assert(SYMBOL == operator->atom_type);
     arg_list = CDR(cons);
-    op = lookup_symbol_value(env, operator->name);
+    /* op = lookup_symbol_value(env, operator->name); */
+    op = eval_expression(operator, env);
     if (NULL == op) {
 	printf("There is not a corresponding function with symbol %s\n", operator->name);
-	exit(1);
+	return NULL;
     }
     if (REGULAR == FUNC_TYPE(op)) {
 	tmp = arg_list;
@@ -59,8 +61,9 @@ struct LispObject *eval_cons(struct LispObject *cons,
     else if (COMPILE == EXPR_TYPE(op))
 	return (*FUNC_CODE(op))(env, arg_list);
     else {
-	printf("Closure environment after assignment\n");
-	print_object(op->func_env = set_closure_env(op->func_env, arg_list));
+	/* printf("Closure environment after assignment\n"); */
+	/* print_object(op->func_env = set_closure_env(op->func_env, arg_list)); */
+	op->func_env = set_closure_env(op->func_env, arg_list);
 	return eval_expression(FUNC_EXPR(op),
 			       op->func_env); /* If something wrong, it must be occured here! */
     }
