@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 struct LispObject *eval_atom(struct LispObject *atom_object,
 			     ENVIRONMENT *env)
@@ -21,12 +22,12 @@ ENVIRONMENT *set_closure_env(ENVIRONMENT *closure_env, struct LispObject *arg_li
     struct LispObject *arg_tmp;
     struct LookupEntry *env_tmp;
 
-    env_tmp = closure_env->head_node->next;
+    env_tmp = HEAD_NODE(closure_env)->next;
     arg_tmp = arg_list;
     while (env_tmp != NULL) {
-	env_tmp->value = CAR(arg_list);
+	env_tmp->value = CAR(arg_tmp);
 	env_tmp = env_tmp->next;
-	arg_tmp = CDR(arg_list);
+	arg_tmp = CDR(arg_tmp);
     }
 
     return closure_env;
@@ -41,13 +42,14 @@ struct LispObject *eval_cons(struct LispObject *cons,
     operator = CAR(cons);
     assert(SYMBOL == operator->atom_type);
     arg_list = CDR(cons);
-    op = lookup_symbol_fn(env, operator->name);
+    op = lookup_symbol_value(env, operator->name);
+    if (NULL == op) {
+	printf("There is not a corresponding function with symbol %s\n", operator->name);
+	exit(1);
+    }
     if (REGULAR == FUNC_TYPE(op)) {
 	tmp = arg_list;
 	while (tmp != NULL) {
-	    /* CAR(tmp) = (ATOM == CAR(tmp)->type ? */
-	    /* 		eval_atom(CAR(tmp), env) : */
-	    /* 		eval_cons(CAR(tmp), env)); /\* Avoiding the declaration of function eval_expression() below. *\/ */
 	    CAR(tmp) = eval_expression(CAR(tmp), env);
 	    tmp = CDR(tmp);
 	}
@@ -57,9 +59,10 @@ struct LispObject *eval_cons(struct LispObject *cons,
     else if (COMPILE == EXPR_TYPE(op))
 	return (*FUNC_CODE(op))(env, arg_list);
     else {
-	print_object(FUNC_EXPR(op));
+	printf("Closure environment after assignment\n");
+	print_object(op->func_env = set_closure_env(op->func_env, arg_list));
 	return eval_expression(FUNC_EXPR(op),
-			       set_closure_env(op->func_env, arg_list)); /* If something wrong, it must be occured here! */
+			       op->func_env); /* If something wrong, it must be occured here! */
     }
 }
 

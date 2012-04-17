@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- *
+ * The interpreter for a Lisp dialect named LiutCL
  *
  * Copyright (C) 2012-04-15 liutos
  */

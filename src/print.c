@@ -1,3 +1,4 @@
+#include "print.h"
 #include "types.h"
 
 #include <stdio.h>
@@ -25,12 +26,12 @@ void print_atom(struct LispObject *atom_object)
 	break;
     case LOOKUP_TABLE:
 	first_node = atom_object->head_node->next;
-	printf("NAME\tOBJECT  \tVALUE   \t\n");
+	printf("NAME\t\tOBJECT\t\tVALUE\n");
 	while (first_node != NULL) {
-	    printf("%s\t%p\t%p   \t\n",
+	    printf("%-16s%-16p",
 		   first_node->symbol_name,
-		   first_node->symbol_object,
-		   first_node->value);
+		   first_node->symbol_object);
+	    print_object(first_node->value);
 	    first_node = first_node->next;
 	}
 	printf("END");

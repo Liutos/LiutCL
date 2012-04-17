@@ -99,17 +99,6 @@ void set_symbol_function(ENVIRONMENT *env, char *symbol_name,
 	ENTRY_VALUE(result) = function;
 }
 
-PHEAD(lt_set_fn)
-{
-    struct LispObject *symbol_object, *function;
-
-    symbol_object = CAR(arg_list);
-    function = CADR(arg_list);
-    set_symbol_function(env, SYMBOL_NAME(symbol_object), function);
-
-    return function;
-}
-
 PHEAD(lt_if)
 {
     struct LispObject *test, *then_part, *else_part;
@@ -192,9 +181,14 @@ ENVIRONMENT *make_closure_env(struct LispObject *argv, ENVIRONMENT *env)
     return closure_env;
 }
 
+struct LispObject *with_progn(struct LispObject *expression, ENVIRONMENT *env)
+{
+    return cons_two_objects(make_atom("progn", env), expression);
+}
+
 PHEAD(lt_lambda)
 {
-    struct LispObject *argv, *body, *closure, *progn;
+    struct LispObject *argv, *body, *closure;
 
     argv = CAR(arg_list);
     body = CDR(arg_list);
@@ -203,8 +197,7 @@ PHEAD(lt_lambda)
     closure->atom_type = FUNCTION;
     EXPR_TYPE(closure) = INTERPRET; /* Run as interpreted */
     FUNC_TYPE(closure) = REGULAR;   /* Evaluate the arguments */
-    progn = make_atom("progn", env);
-    FUNC_EXPR(closure) = cons_two_objects(progn, body);	    /* The code for evaluating when call this closure */
+    FUNC_EXPR(closure) = with_progn(body, env);
     closure->arg_num = cons_length(argv);
     closure->func_env = make_closure_env(argv, env); /* Lexical environment */
 
@@ -224,6 +217,25 @@ PHEAD(lt_progn)
 	return eval_expression(CAR(body), env);
     else
 	return NULL;
+}
+
+PHEAD(lt_eval)
+{
+    struct LispObject *expr;
+
+    expr = CAR(arg_list);
+
+    return eval_expression(expr, env);
+}
+
+PHEAD(lt_print)
+{
+    struct LispObject *object;
+
+    object = CAR(arg_list);
+    print_object(object);
+
+    return &lt_nil;
 }
 
 void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
@@ -293,9 +305,10 @@ void init_primitives(ENVIRONMENT *env)
     register_primitive(env, "set", lt_set, REGULAR, 2);
     register_primitive(env, "if", lt_if, SPECIAL, 3);
     register_primitive(env, "lt-dump-env", lt_dump_env, SPECIAL, 0);
-    register_primitive(env, "b+", lt_binary_plus, REGULAR, 2);
-    register_primitive(env, "b*", lt_binary_mul, REGULAR, 2);
-    register_primitive(env, "lt-lambda", lt_lambda, SPECIAL, 2);
-    register_primitive(env, "lt-set-fn", lt_set_fn, REGULAR, 2);
+    register_primitive(env, "+", lt_binary_plus, REGULAR, 2);
+    register_primitive(env, "*", lt_binary_mul, REGULAR, 2);
+    register_primitive(env, "lambda", lt_lambda, SPECIAL, 2);
     register_primitive(env, "progn", lt_progn, SPECIAL, 0);
+    register_primitive(env, "eval", lt_eval, REGULAR, 1);
+    register_primitive(env, "print", lt_print, REGULAR, 1);
 }

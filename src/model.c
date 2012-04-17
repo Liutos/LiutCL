@@ -1,5 +1,6 @@
 #include "types.h"
 
+#include <ctype.h>
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,14 +22,24 @@ BOOLEAN is_string_token(char *token)
 
 BOOLEAN is_integer(char *token)
 {
-    const char *pattern = "[1-9][0-9]*";
-    int cflags = REG_EXTENDED;
-    regex_t preg;
-    regmatch_t pmatch[1];
+    /* const char *pattern = "[1-9][0-9]*"; */
+    /* int cflags = REG_EXTENDED; */
+    /* regex_t preg; */
+    /* regmatch_t pmatch[1]; */
 
-    regcomp(&preg, pattern, cflags);
+    /* regcomp(&preg, pattern, cflags); */
 
-    return regexec(&preg, token, 1, pmatch, REG_NOTBOL) == 0 ? TRUE : FALSE;
+    /* return regexec(&preg, token, 1, pmatch, REG_NOTBOL) == 0 ? TRUE : FALSE; */
+    int i;
+    BOOLEAN result = TRUE;
+
+    for (i = 0; token[i] != '\0'; i++)
+	if (isdigit(token[i]) == 0) {
+	    result = FALSE;
+	    break;
+	}
+
+    return result;
 }
 
 enum ATOM_TYPE type_of(char *token)
@@ -53,14 +64,14 @@ struct LookupEntry *lookup_symbol(ENVIRONMENT *env, char *symbol_name)
     return NULL;
 }
 
-struct LispObject *lookup_symbol_fn(ENVIRONMENT *env, char *symbol_name)
-{
-    struct LookupEntry *result;
+/* struct LispObject *lookup_symbol_fn(ENVIRONMENT *env, char *symbol_name) */
+/* { */
+/*     struct LookupEntry *result; */
 
-    result = lookup_symbol(env, symbol_name);
+/*     result = lookup_symbol(env, symbol_name); */
 
-    return result != NULL ? ENTRY_VALUE(result) : NULL;
-}
+/*     return result != NULL ? ENTRY_VALUE(result) : NULL; */
+/* } */
 
 struct LispObject *lookup_symbol_value(ENVIRONMENT *env, char *symbol_name)
 {
@@ -68,7 +79,7 @@ struct LispObject *lookup_symbol_value(ENVIRONMENT *env, char *symbol_name)
 
     result = lookup_symbol(env, symbol_name);
 
-    return result != NULL ? result->value : NULL;
+    return result != NULL ? ENTRY_VALUE(result) : NULL;
 }
 
 void add_new_symbol(ENVIRONMENT *env, char *symbol_name, struct LispObject *symbol_object) /* When calling this function, the caller must ensure that  */

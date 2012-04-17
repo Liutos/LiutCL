@@ -85,6 +85,8 @@ typedef int BOOLEAN;
 
 #define SYMBOL_NAME(symbol_object) ((symbol_object)->name)
 
+#define HEAD_NODE(env) ((env)->head_node)
+
 #define PHEAD(func_name) struct LispObject *func_name(ENVIRONMENT *env, struct LispObject *arg_list)
 
 #endif
