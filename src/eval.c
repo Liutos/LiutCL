@@ -64,10 +64,7 @@ struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
     assert(SYMBOL == operator->atom_type);
     arg_list = CDR(cons);
     op = eval_expression(operator, env);
-    if (NULL == op) {
-	printf("There is not a corresponding function with symbol %s\n", operator->name);
-	return NULL;
-    }
+    assert(op != NULL);
     if (REGULAR == FUNC_TYPE(op)) {
 	arg_list = eval_args(arg_list, env); /* You could not modify the original argument list */
     }
