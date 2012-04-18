@@ -241,7 +241,6 @@ PHEAD(lt_lambda)
     EXEC_TYPE(closure) = INTERPRET; /* Run as interpreted */
     FUNC_TYPE(closure) = REGULAR;   /* Evaluate the arguments */
     FUNC_EXPR(closure) = with_progn(body, env);
-    print_object(FUNC_EXPR(closure));
     closure->arg_num = cons_length(argv);
     closure->func_env = concatenate_env(make_closure_env(argv), env); /* Lexical environment */
 
@@ -270,6 +269,24 @@ PHEAD(lt_eval)
     expr = CAR(arg_list);
 
     return eval_expression(expr, env);
+}
+
+PHEAD(lt_macro)
+{
+    struct LispObject *argv, *body, *macro;
+
+    argv = CAR(arg_list);
+    body = CDR(arg_list);
+    macro = malloc(sizeof(struct LispObject));
+    macro->type = ATOM;
+    macro->atom_type = FUNCTION;
+    EXEC_TYPE(macro) = INTERPRET; /* Run as interpreted */
+    FUNC_TYPE(macro) = MACRO;	/* Don't evaluate the arguments */
+    FUNC_EXPR(macro) = with_progn(body, env);
+    macro->arg_num = cons_length(argv);
+    macro->func_env = concatenate_env(make_closure_env(argv), env);
+
+    return macro;
 }
 
 PHEAD(lt_print)
@@ -386,4 +403,5 @@ void init_primitives(ENVIRONMENT *env)
     register_primitive(env, "<", lt_numeric_lt, REGULAR, 2);
     register_primitive(env, "lt-clz-env", lt_closure_env, REGULAR, 1);
     register_primitive(env, "lt-dump-env", lt_dump_env, SPECIAL, 0);
+    register_primitive(env, "lt-macro", lt_macro, SPECIAL, 2);
 }

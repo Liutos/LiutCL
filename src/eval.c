@@ -57,7 +57,7 @@ struct LispObject *eval_args(struct LispObject *arg_list, ENVIRONMENT *env)
 
 struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
 {
-    struct LispObject *arg_list, *op, *operator;
+    struct LispObject *arg_list, *op, *operator, *expand_value;
 
     if (NULL == cons) return NULL;
     operator = CAR(cons);
@@ -71,14 +71,16 @@ struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
     if (REGULAR == FUNC_TYPE(op)) {
 	arg_list = eval_args(arg_list, env); /* You could not modify the original argument list */
     }
-    if (MACRO == FUNC_TYPE(op))
-	return eval_expression((*FUNC_CODE(op))(env, arg_list), env);
-    else if (COMPILE == EXEC_TYPE(op)) {
+    if (MACRO == FUNC_TYPE(op)) {
+	op->func_env = set_closure_env(op->func_env, arg_list);
+	expand_value = eval_expression(FUNC_EXPR(op), op->func_env); /* The value of macro expanding */
+	return eval_expression(expand_value, env);
+    } else if (COMPILE == EXEC_TYPE(op)) {
 	return (*FUNC_CODE(op))(env, arg_list);
     } else {
 	op->func_env = set_closure_env(op->func_env, arg_list);
-	print_env(op->func_env, FALSE);
-	print_object(FUNC_EXPR(op));
+	/* print_env(op->func_env, FALSE); */
+	/* print_object(FUNC_EXPR(op)); */
 	return eval_expression(FUNC_EXPR(op), op->func_env);
     }
 }
