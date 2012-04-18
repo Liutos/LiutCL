@@ -1,3 +1,12 @@
 cscope.in.out
 cscope.out
 cscope.po.out
+eval.o
+init.c
+init.o
+lt
+main.o
+model.o
+primitives.o
+print.o
+read.o
