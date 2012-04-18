@@ -9,6 +9,7 @@
 
 struct LispObject lt_t;
 struct LispObject lt_nil;
+struct LispObject lt_null;
 
 PHEAD(lt_quit)
 {
@@ -164,21 +165,28 @@ int cons_length(struct LispObject *cons)
     return length;
 }
 
-ENVIRONMENT *make_closure_env(struct LispObject *argv, ENVIRONMENT *env)
+ENVIRONMENT *make_closure_env(struct LispObject *argv)
 {
     ENVIRONMENT *closure_env;
 
     closure_env = malloc(sizeof(ENVIRONMENT));
     closure_env->type = ATOM;
     closure_env->atom_type = LOOKUP_TABLE;
+    closure_env->env_name = "closure";
     closure_env->head_node = malloc(sizeof(struct LookupEntry));
     while (argv != NULL) {
 	add_new_symbol(closure_env, SYMBOL_NAME(CAR(argv)), NULL);
 	argv = CDR(argv);
     }
-    closure_env->next_env = env;
 
     return closure_env;
+}
+
+ENVIRONMENT *concatenate_env(ENVIRONMENT *env1, ENVIRONMENT *env2)
+{
+    env1->next_env = env2;
+
+    return env1;
 }
 
 struct LispObject *with_progn(struct LispObject *expression, ENVIRONMENT *env)
@@ -198,8 +206,9 @@ PHEAD(lt_lambda)
     EXPR_TYPE(closure) = INTERPRET; /* Run as interpreted */
     FUNC_TYPE(closure) = REGULAR;   /* Evaluate the arguments */
     FUNC_EXPR(closure) = with_progn(body, env);
+    print_object(FUNC_EXPR(closure));
     closure->arg_num = cons_length(argv);
-    closure->func_env = make_closure_env(argv, env); /* Lexical environment */
+    closure->func_env = concatenate_env(make_closure_env(argv), env); /* Lexical environment */
 
     return closure;
 }
@@ -236,6 +245,18 @@ PHEAD(lt_print)
     print_object(object);
 
     return &lt_nil;
+}
+
+PHEAD(lt_closure_env)
+{
+    struct LispObject *clz;
+
+    clz = CAR(arg_list);
+    assert(ATOM == clz->type &&
+	   FUNCTION == clz->atom_type &&
+	   INTERPRET == clz->expr_type);
+
+    return clz->func_env;
 }
 
 void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
@@ -296,6 +317,10 @@ void init_primitives(ENVIRONMENT *env)
     add_new_symbol(env, "nil", &lt_nil);
     set_symbol_value(env, "nil", &lt_nil);
 
+    lt_null.type = CONS;
+    lt_null.atom_type = DO_NOT_MIND;
+    lt_null.car = lt_null.cdr = NULL;
+
     register_primitive(env, "quit", lt_quit, REGULAR, 0);
     register_primitive(env, "car", lt_car, REGULAR, 1);
     register_primitive(env, "cdr", lt_cdr, REGULAR, 1);
@@ -311,4 +336,5 @@ void init_primitives(ENVIRONMENT *env)
     register_primitive(env, "progn", lt_progn, SPECIAL, 0);
     register_primitive(env, "eval", lt_eval, REGULAR, 1);
     register_primitive(env, "print", lt_print, REGULAR, 1);
+    register_primitive(env, "lt-clz-env", lt_closure_env, REGULAR, 1);
 }

@@ -3,6 +3,7 @@
 
 #include "types.h"
 
-void print_object(struct LispObject *);
+extern void print_object(struct LispObject *);
+extern void print_env(ENVIRONMENT *, BOOLEAN);
 
 #endif

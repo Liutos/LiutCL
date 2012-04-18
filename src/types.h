@@ -7,6 +7,7 @@ enum TYPE {
 };
 
 enum ATOM_TYPE {
+    DO_NOT_MIND,
     FUNCTION,
     INTEGER,
     LOOKUP_TABLE,
@@ -56,6 +57,7 @@ struct LispObject {
 	    ENVIRONMENT *func_env;
 	};      /* FUNCTION */
 	struct {
+	    char *env_name;
 	    struct LookupEntry *head_node;			/* LOOKUP_TABLE */
 	    ENVIRONMENT *next_env;				/* Pointer to the outer environment */
 	};
@@ -67,6 +69,8 @@ struct LispObject {
 typedef int BOOLEAN;
 #define TRUE 1
 #define FALSE 0
+
+#define NIL NULL
 
 #define CAR(cons_object) ((cons_object)->car)
 #define CDR(cons_object) ((cons_object)->cdr)

@@ -22,6 +22,7 @@ ENVIRONMENT *make_toplevel_env(void)
     env = malloc(sizeof(ENVIRONMENT));
     env->type = ATOM;
     env->atom_type = LOOKUP_TABLE;
+    env->env_name = "Toplevel";
     env->head_node = malloc(sizeof(struct LookupEntry));
     env->head_node->symbol_name = NULL;
     env->head_node->symbol_object = NULL;

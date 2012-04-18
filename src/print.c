@@ -1,15 +1,40 @@
-#include "print.h"
 #include "types.h"
 
 #include <stdio.h>
 #include <ctype.h>
+
+extern struct LispObject lt_null;
+
+void print_env(ENVIRONMENT *env, BOOLEAN is_recursive)
+{
+    void print_atom(struct LispObject *);
+    struct LookupEntry *first_node;
+
+    first_node = HEAD_NODE(env)->next;
+    printf("Environment Name: %s\nNAME\t\tOBJECT\t\tVALUE\n",
+	   env->env_name);
+    while (first_node != NULL) {
+	printf("%-16s%-16p",
+	       first_node->symbol_name,
+	       first_node->symbol_object);
+	if (ATOM == ENTRY_VALUE(first_node)->type) {
+	    print_atom(ENTRY_VALUE(first_node));
+	    putchar('\n');
+	} else
+	    printf("%p\n", ENTRY_VALUE(first_node));
+	first_node = first_node->next;
+    }
+    if (TRUE == is_recursive)
+	if (env->next_env != NULL)
+	    print_env(env->next_env, TRUE);
+}
 
 void print_atom(struct LispObject *atom_object)
 {
     void print_cons(struct LispObject *);
     char *name;
     int i;
-    struct LookupEntry *first_node;
+    /* struct LookupEntry *first_node; */
 
     switch (atom_object->atom_type) {
     case FUNCTION:
@@ -25,21 +50,10 @@ void print_atom(struct LispObject *atom_object)
 	printf("%d", INTEGER(atom_object));
 	break;
     case LOOKUP_TABLE:
-	first_node = atom_object->head_node->next;
-	printf("NAME\t\tOBJECT\t\tVALUE\n");
-	while (first_node != NULL) {
-	    printf("%-16s%-16p",
-		   first_node->symbol_name,
-		   first_node->symbol_object);
-	    print_object(first_node->value);
-	    first_node = first_node->next;
-	}
-	if (atom_object->next_env != NULL)
-	    print_atom(atom_object->next_env);
-	printf("END");
+	print_env(atom_object, FALSE);
 	break;
     case STRING:
-	printf("%s", atom_object->string);
+	printf("\"%s\"", atom_object->string);
 	break;
     case SYMBOL:
 	i = 0;

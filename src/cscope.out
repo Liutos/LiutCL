@@ -1,4 +1,4 @@
-cscope 15 $HOME/src/c/lispInterpreter/liutCL/src               0000335491
+cscope 15 $HOME/src/c/lispInterpreter/liutCL/src               0000335724
 	@eval.c
 
 1 
@@ -325,7 +325,7 @@ COMPILE
 ¬g_li¡
 );
 
-66 
+64 
 Ý
 ->
 func_’v
@@ -335,25 +335,21 @@ func_’v
 ¬g_li¡
 );
 
-67  
+65  
 	`ev®_ex´essiÚ
 (
 	`FUNC_EXPR
 (
 Ý
-),
-
-68 
-Ý
-->
+), op->
 func_’v
 );
 
-70 
+67 
 	}
 }
 
-72 
+69 
 Li¥Objeù
  *
 	$ev®_ex´essiÚ
@@ -363,13 +359,13 @@ Li¥Objeù
 ex´essiÚ
 ,
 
-73 
+70 
 ENVIRONMENT
  *
 ’v
 )
 
-75 ià(
+72 ià(
 ATOM
  =ð
 ex´essiÚ
@@ -377,7 +373,7 @@ ex´essiÚ
 ty³
 )
 
-76  
+73  
 	`ev®_©om
 (
 ex´essiÚ
@@ -385,7 +381,7 @@ ex´essiÚ
 ’v
 );
 
-78  
+75  
 	`ev®_cÚs
 (
 ex´essiÚ
@@ -393,7 +389,7 @@ ex´essiÚ
 ’v
 );
 
-79 
+76 
 	}
 }
 
@@ -608,12 +604,6 @@ ex´essiÚ
 );
 
 47 
-	`´št_objeù
-(
-objeù
-);
-
-48 
 v®ue
  = 
 	`ev®_ex´essiÚ
@@ -623,13 +613,13 @@ objeù
 ’v
 );
 
-49 
+48 
 	`´št_objeù
 (
 v®ue
 );
 
-54 
+52 
 	}
 }
 
@@ -732,10 +722,12 @@ tok’
 [i] != '\0'; i++)
 
 29 ià(
+	`isdig™
+(
 tok’
 [
 i
-] < '0' &&oken[i] > '9') {
+]) == 0) {
 
 30 
 »suÉ
@@ -1050,36 +1042,22 @@ i
 105 
 tok’
  = 
-	`m®loc
-((
-i
- + 1) * ());
-
-106 
-	`¡ºýy
+	`¡ºdup
 (
-tok’
-, 
 ex´essiÚ
 , 
 i
 );
 
-107 
-tok’
-[
-i
-] = '\0';
-
-109  
+107  
 tok’
 ;
 
-110 
+108 
 	}
 }
 
-112 
+110 
 Li¥Objeù
  *
 	$make_©om_cÜe
@@ -1091,29 +1069,29 @@ ENVIRONMENT
 ’v
 )
 
-114 
+112 
 Li¥Objeù
  *
 ©om
 ;
 
-115 
+113 
 LookupEÁry
  *
 ’Œy
 ;
 
-117 
+115 
 	`ty³_of
 (
 ex´essiÚ
 )) {
 
-118 
+116 
 INTEGER
 :
 
-119 
+117 
 ©om
  = 
 	`m®loc
@@ -1121,7 +1099,7 @@ INTEGER
 Li¥Objeù
 ));
 
-120 
+118 
 ©om
 ->
 ty³
@@ -1129,7 +1107,7 @@ ty³
 ATOM
 ;
 
-121 
+119 
 ©om
 ->
 ©om_ty³
@@ -1137,7 +1115,7 @@ ATOM
 INTEGER
 ;
 
-122 
+120 
 	`INTEGER
 (
 ©om
@@ -1147,11 +1125,11 @@ INTEGER
 ex´essiÚ
 );
 
-124 
+122 
 STRING
 :
 
-125 
+123 
 ©om
  = 
 	`m®loc
@@ -1159,7 +1137,7 @@ STRING
 Li¥Objeù
 ));
 
-126 
+124 
 ©om
 ->
 ty³
@@ -1167,7 +1145,7 @@ ty³
 ATOM
 ;
 
-127 
+125 
 ©om
 ->
 ©om_ty³
@@ -1175,7 +1153,7 @@ ATOM
 STRING
 ;
 
-128 
+126 
 ©om
 ->
 ¡ršg
@@ -1183,11 +1161,11 @@ STRING
 ex´essiÚ
 ;
 
-130 
+128 
 SYMBOL
 :
 
-131 
+129 
 ’Œy
  = 
 	`lookup_symbÞ
@@ -1197,19 +1175,19 @@ SYMBOL
 ex´essiÚ
 );
 
-132 ià(
+130 ià(
 ’Œy
  !ð
 NULL
 )
 
-133  
+131  
 ’Œy
 ->
 symbÞ_objeù
 ;
 
-135 
+133 
 ©om
  = 
 	`m®loc
@@ -1217,7 +1195,7 @@ symbÞ_objeù
 Li¥Objeù
 ));
 
-136 
+134 
 ©om
 ->
 ty³
@@ -1225,7 +1203,7 @@ ty³
 ATOM
 ;
 
-137 
+135 
 ©om
 ->
 ©om_ty³
@@ -1233,7 +1211,7 @@ ATOM
 SYMBOL
 ;
 
-138 
+136 
 ©om
 ->
 Çme
@@ -1241,7 +1219,7 @@ SYMBOL
 ex´essiÚ
 ;
 
-140 
+138 
 	`add_Ãw_symbÞ
 (
 ’v
@@ -1251,15 +1229,15 @@ ex´essiÚ
 ©om
 );
 
-147  
+145  
 ©om
 ;
 
-148 
+146 
 	}
 }
 
-150 
+148 
 Li¥Objeù
  *
 	$make_©om
@@ -1271,7 +1249,7 @@ ENVIRONMENT
 ’v
 )
 
-152 *
+150 *
 tok’
  = 
 	`g‘_Ãxt_tok’
@@ -1279,7 +1257,7 @@ tok’
 ex´essiÚ
 );
 
-154  
+152  
 	`make_©om_cÜe
 (
 tok’
@@ -1287,39 +1265,39 @@ tok’
 ’v
 );
 
-155 
+153 
 	}
 }
 
-157 *
+155 *
 	$g‘_cÚs_cÚ‹Á
 (*
 ex´essiÚ
 )
 
-159 *
+157 *
 cÚ‹Á
 ;
 
-160 
+158 
 b®ªû
 , 
 i
 ;
 
-162 
+160 
 b®ªû
  = 0;
 
-163 
+161 
 i
  = -1;
 
-165 
+163 
 i
 ++;
 
-166 ià('(' =ð
+164 ià('(' =ð
 ex´essiÚ
 [
 i
@@ -1327,7 +1305,7 @@ i
 b®ªû
 ++;
 
-167 ià(')' =ð
+165 ià(')' =ð
 ex´essiÚ
 [
 i
@@ -1335,7 +1313,7 @@ i
 b®ªû
 --;
 
-168 } 
+166 } 
 b®ªû
  !ð0 && 
 ex´essiÚ
@@ -1343,63 +1321,51 @@ ex´essiÚ
 i
 ] != '\0');
 
-170 
+167 
 cÚ‹Á
  = 
-	`m®loc
+	`¡ºdup
 (
-i
- * ());
-
-171 
-	`¡ºýy
-(
-cÚ‹Á
-, 
 ex´essiÚ
  + 1, 
 i
  - 1);
 
-172 
-cÚ‹Á
-[
-i
- - 1] = '\0';
-
-174  
+169  
 cÚ‹Á
 ;
 
-175 
+170 
 	}
 }
 
-177 
+172 
 Li¥Objeù
  *
 	$make_cÚs_cÜe
 (*
 ex´essiÚ
+, *
+off£t
 , 
 ENVIRONMENT
  *
 ’v
 )
 
-179 *
-cÚ‹Á
-, *
+174 *
 tok’
 ;
 
-180 
+175 
 i
+, 
+sub_off£t
 , 
 ¡•
 ;
 
-181 
+176 
 Li¥Objeù
  *
 ©om
@@ -1411,11 +1377,11 @@ h—d
 ´e
 ;
 
-183 
+178 
 i
  = 0;
 
-184 
+179 
 h—d
  = 
 	`m®loc
@@ -1423,35 +1389,25 @@ h—d
 Li¥Objeù
 ));
 
-185 
+180 
 ´e
  = 
 h—d
 ;
 
-186 
+181 
 ex´essiÚ
 [
 i
 ] != '\0') {
 
-187 
+182 
 ex´essiÚ
 [
 i
 ]) {
 
-189 
-cÚ‹Á
- = 
-	`g‘_cÚs_cÚ‹Á
-(
-ex´essiÚ
- + 
-i
-);
-
-190 
+185 
 cur
  = 
 	`m®loc
@@ -1459,7 +1415,7 @@ cur
 Li¥Objeù
 ));
 
-191 
+186 
 cur
 ->
 ty³
@@ -1467,19 +1423,23 @@ ty³
 CONS
 ;
 
-192 
+187 
 cur
 ->
 ÿr
  = 
 	`make_cÚs_cÜe
 (
-cÚ‹Á
+ex´essiÚ
+ + 
+i
+ + 1, &
+sub_off£t
 , 
 ’v
 );
 
-193 
+188 
 cur
 ->
 cdr
@@ -1487,23 +1447,29 @@ cdr
 NULL
 ;
 
-194 
+190 
 ¡•
  = 
-	`¡¾’
+sub_off£t
+;
+
+193 *
+off£t
+ = 
+i
+ + 2;
+
+194  
+	`CDR
 (
-cÚ‹Á
-) + 2;
+h—d
+);
 
-197 
-¡•
- = 0;
-
-202 
+199 
 ¡•
  = 1;
 
-205 
+202 
 tok’
  = 
 	`g‘_Ãxt_tok’
@@ -1513,7 +1479,7 @@ ex´essiÚ
 i
 );
 
-206 
+203 
 ©om
  = 
 	`make_©om
@@ -1523,7 +1489,7 @@ tok’
 ’v
 );
 
-207 
+204 
 cur
  = 
 	`m®loc
@@ -1531,7 +1497,7 @@ cur
 Li¥Objeù
 ));
 
-208 
+205 
 cur
 ->
 ty³
@@ -1539,7 +1505,7 @@ ty³
 CONS
 ;
 
-209 
+206 
 cur
 ->
 ÿr
@@ -1547,7 +1513,7 @@ cur
 ©om
 ;
 
-210 
+207 
 cur
 ->
 cdr
@@ -1555,7 +1521,7 @@ cdr
 NULL
 ;
 
-211 
+208 
 ¡•
  = 
 	`¡¾’
@@ -1563,31 +1529,31 @@ NULL
 tok’
 );
 
-213 ià(
+210 ià(
 ex´essiÚ
 [
 i
 ] != ' ' &&
 
-214 
+211 
 ex´essiÚ
 [
 i
 ] != ')' &&
 
-215 
+212 
 ex´essiÚ
 [
 i
 ] != '\n' &&
 
-216 
+213 
 ex´essiÚ
 [
 i
 ] != '\t') {
 
-217 
+214 
 ´e
 ->
 cdr
@@ -1595,29 +1561,29 @@ cdr
 cur
 ;
 
-218 
+215 
 ´e
  = 
 cur
 ;
 
-220 
+217 
 i
  +ð
 ¡•
 ;
 
-223  
+220  
+	`CDR
+(
 h—d
-->
-cdr
-;
+);
 
-224 
+221 
 	}
 }
 
-226 
+223 
 Li¥Objeù
  *
 	$make_cÚs
@@ -1629,13 +1595,17 @@ ENVIRONMENT
 ’v
 )
 
+225 
+off£t
+;
+
 228  
 	`make_cÚs_cÜe
 (
-	`g‘_cÚs_cÚ‹Á
-(
 ex´essiÚ
-), 
+ + 1, &
+off£t
+, 
 ’v
 );
 
@@ -2511,10 +2481,6 @@ ENVIRONMENT
 Li¥Objeù
  *
 ¬gv
-, 
-ENVIRONMENT
- *
-’v
 )
 
 169 
@@ -2583,23 +2549,43 @@ NULL
 	`CDR
 (argv);
 
-179 
-þosu»_’v
-->
-Ãxt_’v
- = 
-’v
-;
-
-181  
+180  
 þosu»_’v
 ;
 
-182 
+181 
 	}
 }
 
-184 
+183 
+ENVIRONMENT
+ *
+	$cÚÿ‹Ç‹_’v
+(
+ENVIRONMENT
+ *
+’v1
+, ENVIRONMENT *
+’v2
+)
+
+185 
+’v1
+->
+Ãxt_’v
+ = 
+’v2
+;
+
+187  
+’v1
+;
+
+188 
+	}
+}
+
+190 
 Li¥Objeù
  *
 	$w™h_´ogn
@@ -2613,7 +2599,7 @@ ENVIRONMENT
 ’v
 )
 
-186  
+192  
 	`cÚs_two_objeùs
 (
 	`make_©om
@@ -2623,17 +2609,17 @@ ENVIRONMENT
 ex´essiÚ
 );
 
-187 
+193 
 	}
 }
 
-189 
+195 
 	$PHEAD
 (
 É_Ïmbda
 )
 
-191 
+197 
 Li¥Objeù
  *
 ¬gv
@@ -2643,7 +2629,7 @@ body
 þosu»
 ;
 
-193 
+199 
 ¬gv
  = 
 	`CAR
@@ -2651,7 +2637,7 @@ body
 ¬g_li¡
 );
 
-194 
+200 
 body
  = 
 	`CDR
@@ -2659,7 +2645,7 @@ body
 ¬g_li¡
 );
 
-195 
+201 
 þosu»
  = 
 	`m®loc
@@ -2667,7 +2653,7 @@ body
 Li¥Objeù
 ));
 
-196 
+202 
 þosu»
 ->
 ty³
@@ -2675,7 +2661,7 @@ ty³
 ATOM
 ;
 
-197 
+203 
 þosu»
 ->
 ©om_ty³
@@ -2683,7 +2669,7 @@ ATOM
 FUNCTION
 ;
 
-198 
+204 
 	`EXPR_TYPE
 (
 þosu»
@@ -2691,7 +2677,7 @@ FUNCTION
 INTERPRET
 ;
 
-199 
+205 
 	`FUNC_TYPE
 (
 þosu»
@@ -2699,7 +2685,7 @@ INTERPRET
 REGULAR
 ;
 
-200 
+206 
 	`FUNC_EXPR
 (
 þosu»
@@ -2711,7 +2697,7 @@ body
 ’v
 );
 
-201 
+207 
 þosu»
 ->
 ¬g_num
@@ -2721,45 +2707,47 @@ body
 ¬gv
 );
 
-202 
+208 
 þosu»
 ->
 func_’v
  = 
+	`cÚÿ‹Ç‹_’v
+(
 	`make_þosu»_’v
 (
 ¬gv
-, 
+), 
 ’v
 );
 
-204  
+210  
 þosu»
 ;
 
-205 
+211 
 	}
 }
 
-207 
+213 
 	$PHEAD
 (
 É_´ogn
 )
 
-209 
+215 
 Li¥Objeù
  *
 body
 ;
 
-211 
+217 
 body
  = 
 ¬g_li¡
 ;
 
-212 
+218 
 body
  !ð
 NULL
@@ -2767,7 +2755,7 @@ NULL
 	`CDR
 (body) != NULL) {
 
-213 
+219 
 	`ev®_ex´essiÚ
 (
 	`CAR
@@ -2777,19 +2765,19 @@ body
 ’v
 );
 
-214 
+220 
 body
  = 
 	`CDR
 (body);
 
-216 ià(
+222 ià(
 body
  !ð
 NULL
 )
 
-217  
+223  
 	`ev®_ex´essiÚ
 (
 	`CAR
@@ -2799,27 +2787,27 @@ body
 ’v
 );
 
-219  
+225  
 NULL
 ;
 
-220 
+226 
 	}
 }
 
-222 
+228 
 	$PHEAD
 (
 É_ev®
 )
 
-224 
+230 
 Li¥Objeù
  *
 ex´
 ;
 
-226 
+232 
 ex´
  = 
 	`CAR
@@ -2827,7 +2815,7 @@ ex´
 ¬g_li¡
 );
 
-228  
+234  
 	`ev®_ex´essiÚ
 (
 ex´
@@ -2835,23 +2823,23 @@ ex´
 ’v
 );
 
-229 
+235 
 	}
 }
 
-231 
+237 
 	$PHEAD
 (
 É_´št
 )
 
-233 
+239 
 Li¥Objeù
  *
 objeù
 ;
 
-235 
+241 
 objeù
  = 
 	`CAR
@@ -2859,21 +2847,77 @@ objeù
 ¬g_li¡
 );
 
-236 
+242 
 	`´št_objeù
 (
 objeù
 );
 
-238  &
+244  &
 É_nž
 ;
 
-239 
+245 
 	}
 }
 
-241 
+247 
+	$PHEAD
+(
+É_þosu»_’v
+)
+
+249 
+Li¥Objeù
+ *
+þz
+;
+
+251 
+þz
+ = 
+	`CAR
+(
+¬g_li¡
+);
+
+252 
+	`as£¹
+(
+ATOM
+ =ð
+þz
+->
+ty³
+ &&
+
+253 
+FUNCTION
+ =ð
+þz
+->
+©om_ty³
+ &&
+
+254 
+INTERPRET
+ =ð
+þz
+->
+ex´_ty³
+);
+
+256  
+þz
+->
+func_’v
+;
+
+257 
+	}
+}
+
+259 
 	$add_lookup_’Œy
 (
 ENVIRONMENT
@@ -2885,19 +2929,19 @@ LookupEÁry
 ’Œy
 )
 
-243 
+261 
 LookupEÁry
  *
 h—d_node
 ;
 
-245 
+263 
 h—d_node
  = 
 ’v
 ->head_node;
 
-246 
+264 
 ’Œy
 ->
 Ãxt
@@ -2905,7 +2949,7 @@ h—d_node
 h—d_node
 ->next;
 
-247 
+265 
 h—d_node
 ->
 Ãxt
@@ -2913,11 +2957,11 @@ h—d_node
 ’Œy
 ;
 
-248 
+266 
 	}
 }
 
-250 
+268 
 	$»gi¡”_´im™ive
 (
 ENVIRONMENT
@@ -2925,27 +2969,27 @@ ENVIRONMENT
 ’v
 ,
 
-251 *
+269 *
 symbÞ_Çme
 ,
 
-252 
+270 
 PRIMITIVE
  
 â
 ,
 
-253 
+271 
 FUNC_TYPE
  
 func_ty³
 ,
 
-254 
+272 
 ¬g_num
 )
 
-256 
+274 
 Li¥Objeù
  *
 symbÞ_objeù
@@ -2953,7 +2997,7 @@ symbÞ_objeù
 funùiÚ
 ;
 
-257 
+275 
 LookupEÁry
  *
 ’Œy
@@ -2961,13 +3005,13 @@ LookupEÁry
 h—d_node
 ;
 
-259 
+277 
 h—d_node
  = 
 ’v
 ->head_node;
 
-261 
+279 
 symbÞ_objeù
  = 
 	`m®loc
@@ -2975,7 +3019,7 @@ symbÞ_objeù
 Li¥Objeù
 ));
 
-262 
+280 
 symbÞ_objeù
 ->
 ty³
@@ -2983,7 +3027,7 @@ ty³
 ATOM
 ;
 
-263 
+281 
 symbÞ_objeù
 ->
 ©om_ty³
@@ -2991,7 +3035,7 @@ symbÞ_objeù
 SYMBOL
 ;
 
-264 
+282 
 symbÞ_objeù
 ->
 Çme
@@ -2999,7 +3043,7 @@ symbÞ_objeù
 symbÞ_Çme
 ;
 
-266 
+284 
 funùiÚ
  = 
 	`m®loc
@@ -3007,7 +3051,7 @@ funùiÚ
 Li¥Objeù
 ));
 
-267 
+285 
 funùiÚ
 ->
 ty³
@@ -3015,7 +3059,7 @@ ty³
 ATOM
 ;
 
-268 
+286 
 funùiÚ
 ->
 ©om_ty³
@@ -3023,7 +3067,7 @@ funùiÚ
 FUNCTION
 ;
 
-270 
+288 
 funùiÚ
 ->
 ex´_ty³
@@ -3031,7 +3075,7 @@ ex´_ty³
 COMPILE
 ;
 
-271 
+289 
 	`FUNC_CODE
 (
 funùiÚ
@@ -3039,7 +3083,7 @@ funùiÚ
 â
 ;
 
-272 
+290 
 	`FUNC_TYPE
 (
 funùiÚ
@@ -3047,7 +3091,7 @@ funùiÚ
 func_ty³
 ;
 
-273 
+291 
 	`FUNC_ARGC
 (
 funùiÚ
@@ -3055,7 +3099,7 @@ funùiÚ
 ¬g_num
 ;
 
-275 
+293 
 ’Œy
  = 
 	`m®loc
@@ -3063,19 +3107,19 @@ funùiÚ
 LookupEÁry
 ));
 
-276 
+294 
 ’Œy
 ->
 symbÞ_Çme
  = symbol_name;
 
-277 
+295 
 ’Œy
 ->
 symbÞ_objeù
  = symbol_object;
 
-278 
+296 
 	`ENTRY_VALUE
 (
 ’Œy
@@ -3083,7 +3127,7 @@ symbÞ_objeù
 funùiÚ
 ;
 
-279 
+297 
 ’Œy
 ->
 Ãxt
@@ -3091,7 +3135,7 @@ funùiÚ
 NULL
 ;
 
-282 
+300 
 	`add_lookup_’Œy
 (
 ’v
@@ -3099,11 +3143,11 @@ NULL
 ’Œy
 );
 
-283 
+301 
 	}
 }
 
-285 
+303 
 	$š™_´im™ives
 (
 ENVIRONMENT
@@ -3111,7 +3155,7 @@ ENVIRONMENT
 ’v
 )
 
-287 
+305 
 É_t
 .
 ty³
@@ -3119,7 +3163,7 @@ ty³
 ATOM
 ;
 
-288 
+306 
 É_t
 .
 ©om_ty³
@@ -3127,13 +3171,13 @@ ATOM
 SYMBOL
 ;
 
-289 
+307 
 É_t
 .
 Çme
  = "t";
 
-290 
+308 
 	`add_Ãw_symbÞ
 (
 ’v
@@ -3141,7 +3185,7 @@ SYMBOL
 É_t
 );
 
-291 
+309 
 	`£t_symbÞ_v®ue
 (
 ’v
@@ -3149,7 +3193,7 @@ SYMBOL
 É_t
 );
 
-293 
+311 
 É_nž
 .
 ty³
@@ -3157,7 +3201,7 @@ ty³
 ATOM
 ;
 
-294 
+312 
 É_nž
 .
 ©om_ty³
@@ -3165,13 +3209,13 @@ ATOM
 SYMBOL
 ;
 
-295 
+313 
 É_nž
 .
 Çme
  = "nil";
 
-296 
+314 
 	`add_Ãw_symbÞ
 (
 ’v
@@ -3179,7 +3223,7 @@ SYMBOL
 É_nž
 );
 
-297 
+315 
 	`£t_symbÞ_v®ue
 (
 ’v
@@ -3187,7 +3231,7 @@ SYMBOL
 É_nž
 );
 
-299 
+317 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3197,7 +3241,7 @@ SYMBOL
 REGULAR
 , 0);
 
-300 
+318 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3207,7 +3251,7 @@ REGULAR
 REGULAR
 , 1);
 
-301 
+319 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3217,7 +3261,7 @@ REGULAR
 REGULAR
 , 1);
 
-302 
+320 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3227,7 +3271,7 @@ REGULAR
 REGULAR
 , 2);
 
-303 
+321 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3237,7 +3281,7 @@ REGULAR
 REGULAR
 , 2);
 
-304 
+322 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3247,7 +3291,7 @@ REGULAR
 SPECIAL
 , 1);
 
-305 
+323 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3257,7 +3301,7 @@ SPECIAL
 REGULAR
 , 2);
 
-306 
+324 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3267,7 +3311,7 @@ REGULAR
 SPECIAL
 , 3);
 
-307 
+325 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3277,7 +3321,7 @@ SPECIAL
 SPECIAL
 , 0);
 
-308 
+326 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3287,7 +3331,7 @@ SPECIAL
 REGULAR
 , 2);
 
-309 
+327 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3297,7 +3341,7 @@ REGULAR
 REGULAR
 , 2);
 
-310 
+328 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3307,7 +3351,7 @@ REGULAR
 SPECIAL
 , 2);
 
-311 
+329 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3317,7 +3361,7 @@ SPECIAL
 SPECIAL
 , 0);
 
-312 
+330 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3327,7 +3371,7 @@ SPECIAL
 REGULAR
 , 1);
 
-313 
+331 
 	`»gi¡”_´im™ive
 (
 ’v
@@ -3337,7 +3381,17 @@ REGULAR
 REGULAR
 , 1);
 
-314 
+332 
+	`»gi¡”_´im™ive
+(
+’v
+, "É-þz-’v", 
+É_þosu»_’v
+, 
+REGULAR
+, 1);
+
+333 
 	}
 }
 
@@ -3537,15 +3591,11 @@ NULL
 Ãxt_’v
 );
 
-39 
-	`´štf
-("END");
-
-41 
+40 
 STRING
 :
 
-42 
+41 
 	`´štf
 ("%s", 
 ©om_objeù
@@ -3553,27 +3603,27 @@ STRING
 ¡ršg
 );
 
-44 
+43 
 SYMBOL
 :
 
-45 
+44 
 i
  = 0;
 
-46 
+45 
 Çme
  = 
 ©om_objeù
 ->name;
 
-47 
+46 
 Çme
 [
 i
 ] != '\0')
 
-48 
+47 
 	`putch¬
 (
 	`touµ”
@@ -3583,11 +3633,11 @@ i
 i
 ++]));
 
-53 
+52 
 	}
 }
 
-55 
+54 
 	$´št_cÚs_cÜe
 (
 Li¥Objeù
@@ -3595,13 +3645,13 @@ Li¥Objeù
 cÚs_objeù
 )
 
-57 
+56 
 cÚs_objeù
  !ð
 NULL
 ) {
 
-58 ià(
+57 ià(
 ATOM
  =ð
 	`CAR
@@ -3611,7 +3661,7 @@ cÚs_objeù
 ty³
 )
 
-59 
+58 
 	`´št_©om
 (
 	`CAR
@@ -3619,11 +3669,11 @@ ty³
 cÚs_objeù
 ));
 
-61 
+60 
 	`putch¬
 ('(');
 
-62 
+61 
 	`´št_cÚs_cÜe
 (
 	`CAR
@@ -3631,11 +3681,11 @@ cÚs_objeù
 cÚs_objeù
 ));
 
-63 
+62 
 	`putch¬
 (')');
 
-65 ià(
+64 ià(
 	`CDR
 (
 cÚs_objeù
@@ -3643,7 +3693,7 @@ cÚs_objeù
 NULL
 ) {
 
-66 ià(
+65 ià(
 ATOM
  =ð
 	`CDR
@@ -3653,11 +3703,11 @@ cÚs_objeù
 ty³
 ) {
 
-67 
+66 
 	`´štf
 (" . ");
 
-68 
+67 
 	`´št_©om
 (
 	`CDR
@@ -3665,33 +3715,33 @@ ty³
 cÚs_objeù
 ));
 
-69 
+68 
 cÚs_objeù
  = 
 NULL
 ;
 
-71 
+70 
 	`putch¬
 (' ');
 
-72 
+71 
 cÚs_objeù
  = 
 	`CDR
 (cons_object);
 
-75 
+74 
 cÚs_objeù
  = 
 NULL
 ;
 
-77 
+76 
 	}
 }
 
-79 
+78 
 	$´št_cÚs
 (
 Li¥Objeù
@@ -3699,25 +3749,25 @@ Li¥Objeù
 cÚs_objeù
 )
 
-81 
+80 
 	`putch¬
 ('(');
 
-82 
+81 
 	`´št_cÚs_cÜe
 (
 cÚs_objeù
 );
 
-83 
+82 
 	`putch¬
 (')');
 
-84 
+83 
 	}
 }
 
-86 
+85 
 	$´št_objeù
 (
 Li¥Objeù
@@ -3725,13 +3775,13 @@ Li¥Objeù
 objeù
 )
 
-88 ià(
+87 ià(
 objeù
  !ð
 NULL
 ) {
 
-89 ià(
+88 ià(
 ATOM
  =ð
 objeù
@@ -3739,27 +3789,27 @@ objeù
 ty³
 )
 
-90 
+89 
 	`´št_©om
 (
 objeù
 );
 
-92 
+91 
 	`´št_cÚs
 (
 objeù
 );
 
-93 
+92 
 	`putch¬
 ('\n');
 
-95 
+94 
 	`´štf
 ("Encounter‡‚ull…ointer\n");
 
-96 
+95 
 	}
 }
 
