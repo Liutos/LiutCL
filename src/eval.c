@@ -61,11 +61,8 @@ struct LispObject *eval_cons(struct LispObject *cons,
     else if (COMPILE == EXPR_TYPE(op))
 	return (*FUNC_CODE(op))(env, arg_list);
     else {
-	/* printf("Closure environment after assignment\n"); */
-	/* print_object(op->func_env = set_closure_env(op->func_env, arg_list)); */
 	op->func_env = set_closure_env(op->func_env, arg_list);
-	return eval_expression(FUNC_EXPR(op),
-			       op->func_env); /* If something wrong, it must be occured here! */
+	return eval_expression(FUNC_EXPR(op), op->func_env);
     }
 }
 

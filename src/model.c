@@ -102,9 +102,10 @@ char *get_next_token(char *expression)
 	       expression[i] != '\n')
 	    i++;
     }
-    token = malloc(sizeof(i + 1) * sizeof(char));
-    strncpy(token, expression, i);
-    token[i] = '\0';
+    /* token = malloc(sizeof(i + 1) * sizeof(char)); */
+    /* strncpy(token, expression, i); */
+    /* token[i] = '\0'; */
+    token = strndup(expression, i);
 
     return token;
 }
@@ -167,9 +168,10 @@ char *get_cons_content(char *expression)
 	if (')' == expression[i]) balance--;
     } while (balance != 0 && expression[i] != '\0');
 
-    content = malloc(i * sizeof(char));
-    strncpy(content, expression + 1, i - 1);
-    content[i - 1] = '\0';
+    /* content = malloc(i * sizeof(char)); */
+    /* strncpy(content, expression + 1, i - 1); */
+    /* content[i - 1] = '\0'; */
+    content = strndup(expression + 1, i - 1);
 
     return content;
 }
