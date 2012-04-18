@@ -1,7 +1,7 @@
 cscope.in.out
 cscope.out
 cscope.po.out
-eval.o
+src/eval.o
 init.c
 init.o
 lt
