@@ -1,3 +1,4 @@
+#include "primitives.h"
 #include "print.h"
 #include "types.h"
 
@@ -24,10 +25,12 @@ BOOLEAN is_string_token(const char *token)
 
 BOOLEAN is_integer(const char *token)
 {
-    int i;
+    int i = 0;
     BOOLEAN result = TRUE;
 
-    for (i = 0; token[i] != '\0'; i++)
+    if (('+' == token[0] || '-' == token[0]) && token[1] != '\0')
+	i++;
+    for (; token[i] != '\0'; i++)
 	if (isdigit(token[i]) == 0) {
 	    result = FALSE;
 	    break;
@@ -102,9 +105,6 @@ char *get_next_token(char *expression)
 		i++;
 	} while (expression[i] != '\0');
 	i++;
-	/* while (expression[i] != '"' && expression[i] != '\0') */
-	/*     i++; */
-	/* i++; */
 	break;
     default :
 	while (expression[i] != ' ' && expression[i] != '(' &&
@@ -133,7 +133,7 @@ struct LispObject *make_atom_core(char *expression, ENVIRONMENT *env)
 	atom = malloc(sizeof(struct LispObject));
 	atom->type = ATOM;
 	atom->atom_type = STRING;
-	atom->string = strndup(expression + 1, strlen(expression) - 2);
+	STRING(atom) = strndup(expression + 1, strlen(expression) - 2);
 	break;
     case SYMBOL:
 	entry = lookup_symbol(env, expression);
@@ -144,7 +144,6 @@ struct LispObject *make_atom_core(char *expression, ENVIRONMENT *env)
 	    atom->type = ATOM;
 	    atom->atom_type = SYMBOL;
 	    atom->name = expression;
-	    /* add_env_symbol(env, expression, atom, NULL, NULL); */
 	    add_new_symbol(env, expression, atom);
 	}
 	break;
@@ -162,44 +161,25 @@ struct LispObject *make_atom(char *expression, ENVIRONMENT *env)
     return make_atom_core(token, env);
 }
 
-/* char *get_cons_content(char *expression) */
-/* { */
-/*     char *content; */
-/*     int balance, i; */
-
-/*     balance = 0; */
-/*     i = -1; */
-/*     do { */
-/* 	i++; */
-/* 	if ('(' == expression[i]) balance++; */
-/* 	if (')' == expression[i]) balance--; */
-/*     } while (balance != 0 && expression[i] != '\0'); */
-/*     content = strndup(expression + 1, i - 1); */
-
-/*     return content; */
-/* } */
-
 struct LispObject *make_cons_core(char *expression, int *offset, ENVIRONMENT *env)
 {
     char *token;
     int i, sub_offset, step;
-    struct LispObject *atom, *cur, *head, *pre;
+    struct LispObject *atom, *cur, *head, *pre, *dot;
 
     i = 0;
     head = malloc(sizeof(struct LispObject));
     head->type = CONS;
     head->atom_type = DO_NOT_MIND;
-    head->car = head->cdr = NULL;
+    head->car = head->cdr = NIL;
     pre = head;
     while (expression[i] != '\0') {
 	switch (expression[i]) {
 	case '(':
-	    /* content = get_cons_content(expression + i); */
 	    cur = malloc(sizeof(struct LispObject));
 	    cur->type = CONS;
-	    cur->car = make_cons_core(expression + i + 1, &sub_offset, env);
-	    cur->cdr = NULL;
-	    /* step = strlen(content) + 2; */
+	    CAR(cur) = make_cons_core(expression + i + 1, &sub_offset, env);
+	    CDR(cur) = NIL;
 	    step = sub_offset;
 	    break;
 	case ')':
@@ -211,18 +191,28 @@ struct LispObject *make_cons_core(char *expression, int *offset, ENVIRONMENT *en
 	case '\t':
 	    step = 1;
 	    break;
+	case '.':
+	    dot = make_cons_core(expression + i + 1, &sub_offset, env);
+	    if (is_null(CDR(dot)))
+		CDR(pre) = CAR(dot);
+	    else
+		CDR(pre) = dot;
+	    *offset = sub_offset;
+	    return CDR(head);
+	    break;
 	default :
 	    token = get_next_token(expression + i);
 	    atom = make_atom(token, env);
 	    cur = malloc(sizeof(struct LispObject));
 	    cur->type = CONS;
+	    cur->atom_type = DO_NOT_MIND;
 	    CAR(cur) = atom;
-	    CDR(cur) = NULL;
+	    CDR(cur) = NIL;
 	    step = strlen(token);
 	}
 	if (expression[i] != ' ' && expression[i] != ')' &&
 	    expression[i] != '\n' && expression[i] != '\t') {
-	    pre->cdr = cur;
+	    CDR(pre) = cur;
 	    pre = cur;
 	}
 	i += step;
@@ -235,7 +225,6 @@ struct LispObject *make_cons(char *expression, ENVIRONMENT *env)
 {
     int offset;
 
-    /* return make_cons_core(get_cons_content(expression), &offset, env); */
     return make_cons_core(expression + 1, &offset, env);
 }
 

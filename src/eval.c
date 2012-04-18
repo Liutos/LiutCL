@@ -1,4 +1,5 @@
 #include "model.h"
+#include "primitives.h"
 #include "print.h"
 #include "types.h"
 
@@ -40,7 +41,7 @@ struct LispObject *eval_args(struct LispObject *arg_list, ENVIRONMENT *env)
 
     head = malloc(sizeof(struct LispObject));
     prev = head;
-    while (arg_list != NULL) {
+    while (is_null(arg_list) == FALSE) {
 	curr = malloc(sizeof(struct LispObject));
 	curr->type = CONS;
 	curr->atom_type = DO_NOT_MIND;
@@ -68,16 +69,11 @@ struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
 	return NULL;
     }
     if (REGULAR == FUNC_TYPE(op)) {
-	/* tmp = arg_list; */
-	/* while (tmp != NULL) { */
-	/*     CAR(tmp) = eval_expression(CAR(tmp), env); */
-	/*     tmp = CDR(tmp); */
-	/* } */
 	arg_list = eval_args(arg_list, env); /* You could not modify the original argument list */
     }
     if (MACRO == FUNC_TYPE(op))
 	return eval_expression((*FUNC_CODE(op))(env, arg_list), env);
-    else if (COMPILE == EXPR_TYPE(op)) {
+    else if (COMPILE == EXEC_TYPE(op)) {
 	return (*FUNC_CODE(op))(env, arg_list);
     } else {
 	op->func_env = set_closure_env(op->func_env, arg_list);
@@ -87,8 +83,7 @@ struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
     }
 }
 
-struct LispObject *eval_expression(struct LispObject *expression,
-				   ENVIRONMENT *env)
+struct LispObject *eval_expression(struct LispObject *expression, ENVIRONMENT *env)
 {
     if (ATOM == expression->type)
 	return eval_atom(expression, env);

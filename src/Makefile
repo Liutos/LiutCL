@@ -1,5 +1,3 @@
-# lt: main.c model.c print.c read.c eval.c primitives.c
-# 	gcc -Wall -g $^ -o $@
 lt: main.o eval.o model.o primitives.o print.o read.o
 	gcc -Wall -g $^ -o $@
 main.o: main.c eval.h model.h primitives.h print.h read.h types.h

@@ -70,7 +70,8 @@ typedef int BOOLEAN;
 #define TRUE 1
 #define FALSE 0
 
-#define NIL NULL
+extern struct LispObject lt_null;
+#define NIL &lt_null
 
 #define CAR(cons_object) ((cons_object)->car)
 #define CDR(cons_object) ((cons_object)->cdr)
@@ -82,9 +83,10 @@ typedef int BOOLEAN;
 #define FUNC_EXPR(function_object) ((function_object)->func_expr)
 #define FUNC_TYPE(function_object) ((function_object)->func_type)
 #define FUNC_ARGC(function_object) ((function_object)->arg_num)
-#define EXPR_TYPE(function_object) ((function_object)->expr_type)
+#define EXEC_TYPE(function_object) ((function_object)->expr_type)
 
 #define INTEGER(atom_object) ((atom_object)->integer)
+#define NUMBER(atom_object) ((atom_object)->integer)
 #define STRING(atom_object) ((atom_object)->string)
 
 #define SYMBOL_NAME(symbol_object) ((symbol_object)->name)

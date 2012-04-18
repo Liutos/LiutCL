@@ -11,14 +11,57 @@ struct LispObject lt_t;
 struct LispObject lt_nil;
 struct LispObject lt_null;
 
-PHEAD(lt_quit)
+PHEAD(lt_binary_add)
 {
-    exit(0);
+    struct LispObject *arg1, *arg2, *result;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+    result = malloc(sizeof(struct LispObject));
+    result->type = ATOM;
+    result->atom_type = INTEGER;
+    result->integer = INTEGER(arg1) + INTEGER(arg2);
+
+    return result;
+}
+
+PHEAD(lt_binary_mul)
+{
+    struct LispObject *arg1, *arg2, *result;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+    result = malloc(sizeof(struct LispObject));
+    result->type = ATOM;
+    result->atom_type = INTEGER;
+    INTEGER(result) = INTEGER(arg1) * INTEGER(arg2);
+
+    return result;
+}
+
+PHEAD(lt_binary_sub)
+{
+    struct LispObject *arg1, *arg2, *result;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+    result = malloc(sizeof(struct LispObject));
+    result->type = ATOM;
+    result->atom_type = INTEGER;
+    INTEGER(result) = INTEGER(arg1) - INTEGER(arg2);
+
+    return result;
 }
 
 PHEAD(lt_car)
 {
-    return CAR(CAR(arg_list));	/* Argument arg_list is a proper list so the first argument is stored in the car of it */
+    return CAR(CAR(arg_list));	/* Argument arg_list is a proper list so the first argument is stored in the car of it. It's better of using the macros defined in the file types.h for extracting the argument in the argument list. */
 }
 
 PHEAD(lt_cdr)
@@ -59,6 +102,61 @@ PHEAD(lt_eq)
     return arg1 == arg2 ? &lt_t : &lt_nil;
 }
 
+PHEAD(lt_if)
+{
+    struct LispObject *test, *then_part, *else_part;
+
+    test = CAR(arg_list);
+    then_part = CADR(arg_list);
+    else_part = CADDR(arg_list);
+
+    if (&lt_t == eval_expression(test, env))
+	return eval_expression(then_part, env);
+    else
+	return eval_expression(else_part, env);
+}
+
+PHEAD(lt_numeric_eq)
+{
+    struct LispObject *arg1, *arg2;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+
+    return INTEGER(arg1) == INTEGER(arg2) ? &lt_t : &lt_nil;
+}
+
+PHEAD(lt_numeric_gt)
+{
+    struct LispObject *arg1, *arg2;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+
+    return INTEGER(arg1) > INTEGER(arg2) ? &lt_t : &lt_nil;
+}
+
+PHEAD(lt_numeric_lt)
+{
+    struct LispObject *arg1, *arg2;
+
+    arg1 = CAR(arg_list);
+    arg2 = CADR(arg_list);
+    assert(INTEGER == arg1->atom_type &&
+	   INTEGER == arg2->atom_type);
+
+    return INTEGER(arg1) < INTEGER(arg2) ? &lt_t : &lt_nil;
+}
+
+PHEAD(lt_quit)
+{
+    exit(0);
+}
+
 PHEAD(lt_quote)
 {
     return CAR(arg_list);
@@ -90,74 +188,11 @@ PHEAD(lt_set)
     return value;
 }
 
-void set_symbol_function(ENVIRONMENT *env, char *symbol_name,
-			 struct LispObject *function)
-{
-    struct LookupEntry *result;
-
-    result = lookup_symbol(env, symbol_name);
-    if (result != NULL)
-	ENTRY_VALUE(result) = function;
-}
-
-PHEAD(lt_if)
-{
-    struct LispObject *test, *then_part, *else_part;
-
-    test = CAR(arg_list);
-    then_part = CADR(arg_list);
-    else_part = CADDR(arg_list);
-
-    if (&lt_t == eval_expression(test, env))
-	return eval_expression(then_part, env);
-    else
-	return eval_expression(else_part, env);
-}
-
-PHEAD(lt_dump_env)		/* The wrapper function for printting the information when needed */
-{
-    print_object(env);
-
-    return NULL;
-}
-
-PHEAD(lt_binary_plus)
-{
-    struct LispObject *arg1, *arg2, *result;
-
-    arg1 = CAR(arg_list);
-    arg2 = CADR(arg_list);
-    assert(INTEGER == arg1->atom_type &&
-	   INTEGER == arg2->atom_type);
-    result = malloc(sizeof(struct LispObject));
-    result->type = ATOM;
-    result->atom_type = INTEGER;
-    result->integer = INTEGER(arg1) + INTEGER(arg2);
-
-    return result;
-}
-
-PHEAD(lt_binary_mul)
-{
-    struct LispObject *arg1, *arg2, *result;
-
-    arg1 = CAR(arg_list);
-    arg2 = CADR(arg_list);
-    assert(INTEGER == arg1->atom_type &&
-	   INTEGER == arg2->atom_type);
-    result = malloc(sizeof(struct LispObject));
-    result->type = ATOM;
-    result->atom_type = INTEGER;
-    INTEGER(result) = INTEGER(arg1) * INTEGER(arg2);
-
-    return result;
-}
-
 int cons_length(struct LispObject *cons)
 {
     int length = 0;
 
-    while (cons != NULL) {
+    while (cons != NIL) {
 	length++;
 	cons = CDR(cons);
     }
@@ -174,7 +209,7 @@ ENVIRONMENT *make_closure_env(struct LispObject *argv)
     closure_env->atom_type = LOOKUP_TABLE;
     closure_env->env_name = "closure";
     closure_env->head_node = malloc(sizeof(struct LookupEntry));
-    while (argv != NULL) {
+    while (argv != NIL) {
 	add_new_symbol(closure_env, SYMBOL_NAME(CAR(argv)), NULL);
 	argv = CDR(argv);
     }
@@ -203,7 +238,7 @@ PHEAD(lt_lambda)
     closure = malloc(sizeof(struct LispObject));
     closure->type = ATOM;
     closure->atom_type = FUNCTION;
-    EXPR_TYPE(closure) = INTERPRET; /* Run as interpreted */
+    EXEC_TYPE(closure) = INTERPRET; /* Run as interpreted */
     FUNC_TYPE(closure) = REGULAR;   /* Evaluate the arguments */
     FUNC_EXPR(closure) = with_progn(body, env);
     print_object(FUNC_EXPR(closure));
@@ -218,14 +253,14 @@ PHEAD(lt_progn)
     struct LispObject *body;
 
     body = arg_list;
-    while (body != NULL && CDR(body) != NULL) {
+    while (body != NIL && CDR(body) != NIL) {
 	eval_expression(CAR(body), env);
 	body = CDR(body);
     }
-    if (body != NULL)
+    if (body != NIL)
 	return eval_expression(CAR(body), env);
     else
-	return NULL;
+	return NIL;
 }
 
 PHEAD(lt_eval)
@@ -259,6 +294,13 @@ PHEAD(lt_closure_env)
     return clz->func_env;
 }
 
+PHEAD(lt_dump_env)		/* The wrapper function for printting the information when needed */
+{
+    print_object(env);
+
+    return NULL;
+}
+
 void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
 {
     struct LookupEntry *head_node;
@@ -266,6 +308,11 @@ void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
     head_node = env->head_node;
     entry->next = head_node->next;
     head_node->next = entry;
+}
+
+BOOLEAN is_null(struct LispObject *object)
+{
+    return object == NIL;
 }
 
 void register_primitive(ENVIRONMENT *env,
@@ -298,8 +345,6 @@ void register_primitive(ENVIRONMENT *env,
     entry->symbol_object = symbol_object;
     ENTRY_VALUE(entry) = function;
     entry->next = NULL;
-    /* entry->next = head_node->next; */
-    /* head_node->next = entry; */
     add_lookup_entry(env, entry); /* Abstract the operators above as a function alone is better when changing the inner structure of the argument env */
 }
 
@@ -319,22 +364,26 @@ void init_primitives(ENVIRONMENT *env)
 
     lt_null.type = CONS;
     lt_null.atom_type = DO_NOT_MIND;
-    lt_null.car = lt_null.cdr = NULL;
+    lt_null.car = lt_null.cdr = NIL;
 
-    register_primitive(env, "quit", lt_quit, REGULAR, 0);
     register_primitive(env, "car", lt_car, REGULAR, 1);
     register_primitive(env, "cdr", lt_cdr, REGULAR, 1);
     register_primitive(env, "cons", lt_cons, REGULAR, 2);
     register_primitive(env, "eq", lt_eq, REGULAR, 2);
+    register_primitive(env, "eval", lt_eval, REGULAR, 1);
+    register_primitive(env, "if", lt_if, SPECIAL, 3);
+    register_primitive(env, "lambda", lt_lambda, SPECIAL, 2);
+    register_primitive(env, "print", lt_print, REGULAR, 1);
+    register_primitive(env, "progn", lt_progn, SPECIAL, 0);
+    register_primitive(env, "quit", lt_quit, REGULAR, 0);
     register_primitive(env, "quote", lt_quote, SPECIAL, 1);
     register_primitive(env, "set", lt_set, REGULAR, 2);
-    register_primitive(env, "if", lt_if, SPECIAL, 3);
-    register_primitive(env, "lt-dump-env", lt_dump_env, SPECIAL, 0);
-    register_primitive(env, "+", lt_binary_plus, REGULAR, 2);
+    register_primitive(env, "+", lt_binary_add, REGULAR, 2);
+    register_primitive(env, "-", lt_binary_sub, REGULAR, 2);
     register_primitive(env, "*", lt_binary_mul, REGULAR, 2);
-    register_primitive(env, "lambda", lt_lambda, SPECIAL, 2);
-    register_primitive(env, "progn", lt_progn, SPECIAL, 0);
-    register_primitive(env, "eval", lt_eval, REGULAR, 1);
-    register_primitive(env, "print", lt_print, REGULAR, 1);
+    register_primitive(env, "=", lt_numeric_eq, REGULAR, 2);
+    register_primitive(env, ">", lt_numeric_gt, REGULAR, 2);
+    register_primitive(env, "<", lt_numeric_lt, REGULAR, 2);
     register_primitive(env, "lt-clz-env", lt_closure_env, REGULAR, 1);
+    register_primitive(env, "lt-dump-env", lt_dump_env, SPECIAL, 0);
 }

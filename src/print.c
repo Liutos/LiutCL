@@ -1,3 +1,4 @@
+#include "primitives.h"
 #include "types.h"
 
 #include <stdio.h>
@@ -38,7 +39,7 @@ void print_atom(struct LispObject *atom_object)
 
     switch (atom_object->atom_type) {
     case FUNCTION:
-	if (COMPILE == EXPR_TYPE(atom_object))
+	if (COMPILE == EXEC_TYPE(atom_object))
 	    printf("#<Function compiled %p>", FUNC_CODE(atom_object));
 	else {
 	    printf("#<Function interpreted %p ", FUNC_EXPR(atom_object));
@@ -68,7 +69,7 @@ void print_atom(struct LispObject *atom_object)
 
 void print_cons_core(struct LispObject *cons_object)
 {
-    while (cons_object != NULL) {
+    while (is_null(cons_object) == FALSE) {
 	if (ATOM == CAR(cons_object)->type)
 	    print_atom(CAR(cons_object));
 	else {
@@ -76,17 +77,17 @@ void print_cons_core(struct LispObject *cons_object)
 	    print_cons_core(CAR(cons_object));
 	    putchar(')');
 	}
-	if (CDR(cons_object) != NULL) {
+	if (CDR(cons_object) != NIL) {
 	    if (ATOM == CDR(cons_object)->type) {
 		printf(" . ");
 		print_atom(CDR(cons_object));
-		cons_object = NULL;
+		cons_object = NIL;
 	    } else {
 		putchar(' ');
 		cons_object = CDR(cons_object);
 	    }
 	} else
-	    cons_object = NULL;
+	    cons_object = NIL;
     }
 }
 
