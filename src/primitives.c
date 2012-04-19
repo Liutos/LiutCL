@@ -4,6 +4,7 @@
 #include "types.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -322,20 +323,37 @@ BOOLEAN is_null(struct LispObject *object)
     return object == NIL;
 }
 
-PHEAD(lt_backquote)
+struct LispObject *bq_eval_expr(struct LispObject *list, ENVIRONMENT *env)
 {
-    struct LispObject *body, *arg;
+    struct LispObject *tmp, *arg;
 
-    body = arg_list;
-    while (is_null(body) == FALSE) {
-	arg = CAR(body);
-	if (CONS == arg->type && ATOM == CAR(arg)->type &&
-	    SYMBOL == CAR(arg)->atom_type && strcmp("comma", CAR(arg)->name) == 0)
-	    CAR(body) = eval_expression(CADR(arg), env);
-	body = CDR(body);
+    tmp = list;
+    while (is_null(tmp) == FALSE) {
+	arg = CAR(tmp);
+	if (ATOM == arg->type) {
+	    if (SYMBOL == arg->atom_type &&
+		strcmp("comma", SYMBOL_NAME(arg)) == 0)
+		return eval_expression(CADR(tmp), env);
+	} else {
+	    if (ATOM == CAR(arg)->type && SYMBOL == CAR(arg)->atom_type &&
+		strcmp("comma", SYMBOL_NAME(CAR(arg))) == 0)
+		CAR(tmp) = bq_eval_expr(CADR(arg), env);
+	}
+	tmp = CDR(tmp);
     }
 
-    return arg_list;
+    return list;
+}
+
+PHEAD(lt_backquote)
+{
+    struct LispObject *body;
+
+    body = CAR(arg_list);
+    if (ATOM == body->type)
+	return body;
+    else
+	return bq_eval_expr(body, env);
 }
 
 PHEAD(lt_closure_env)
