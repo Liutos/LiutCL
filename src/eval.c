@@ -60,6 +60,7 @@ struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
     struct LispObject *arg_list, *op, *operator, *expand_value;
 
     if (NULL == cons) return NULL;
+    if (is_null(cons)) return NIL;
     operator = CAR(cons);
     assert(SYMBOL == operator->atom_type);
     arg_list = CDR(cons);

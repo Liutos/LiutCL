@@ -192,13 +192,15 @@ struct LispObject *make_cons_core(char *expression, int *offset, ENVIRONMENT *en
 	    step = 1;
 	    break;
 	case '.':
-	    dot = make_cons_core(expression + i + 1, &sub_offset, env);
-	    if (is_null(CDR(dot)))
-		CDR(pre) = CAR(dot);
-	    else
-		CDR(pre) = dot;
-	    *offset = sub_offset;
-	    return CDR(head);
+	    if (' ' == expression[i + 1]) {
+		dot = make_cons_core(expression + i + 1, &sub_offset, env);
+		if (is_null(CDR(dot)))
+		    CDR(pre) = CAR(dot);
+		else
+		    CDR(pre) = dot;
+		*offset = sub_offset + i + 1;
+		return CDR(head);
+	    }
 	    break;
 	default :
 	    token = get_next_token(expression + i);
