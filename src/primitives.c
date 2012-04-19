@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 struct LispObject lt_t;
@@ -299,6 +300,44 @@ PHEAD(lt_print)
     return &lt_nil;
 }
 
+PHEAD(lt_type_of)
+{
+    struct LispObject *object;
+
+    object = CAR(arg_list);
+    if (ATOM == object->type) {
+	switch (object->atom_type) {
+	case FUNCTION: return make_atom("function", env);
+	case INTEGER: return make_atom("integer", env);
+	case STRING: return make_atom("string", env);
+	case SYMBOL: return make_atom("symbol", env);
+	default : return NULL;
+	}
+    } else
+	return make_atom("cons", env);
+}
+
+BOOLEAN is_null(struct LispObject *object)
+{
+    return object == NIL;
+}
+
+PHEAD(lt_backquote)
+{
+    struct LispObject *body, *arg;
+
+    body = arg_list;
+    while (is_null(body) == FALSE) {
+	arg = CAR(body);
+	if (CONS == arg->type && ATOM == CAR(arg)->type &&
+	    SYMBOL == CAR(arg)->atom_type && strcmp("comma", CAR(arg)->name) == 0)
+	    CAR(body) = eval_expression(CADR(arg), env);
+	body = CDR(body);
+    }
+
+    return arg_list;
+}
+
 PHEAD(lt_closure_env)
 {
     struct LispObject *clz;
@@ -327,16 +366,8 @@ void add_lookup_entry(ENVIRONMENT *env, struct LookupEntry *entry)
     head_node->next = entry;
 }
 
-BOOLEAN is_null(struct LispObject *object)
-{
-    return object == NIL;
-}
-
-void register_primitive(ENVIRONMENT *env,
-			char *symbol_name,
-			PRIMITIVE fn,
-			enum FUNC_TYPE func_type,
-			int arg_num)
+void register_primitive(ENVIRONMENT *env, char *symbol_name, PRIMITIVE fn,
+			enum FUNC_TYPE func_type, int arg_num)
 {
     struct LispObject *symbol_object, *function;
     struct LookupEntry *entry, *head_node;
@@ -395,12 +426,14 @@ void init_primitives(ENVIRONMENT *env)
     register_primitive(env, "quit", lt_quit, REGULAR, 0);
     register_primitive(env, "quote", lt_quote, SPECIAL, 1);
     register_primitive(env, "set", lt_set, REGULAR, 2);
+    register_primitive(env, "type-of", lt_type_of, REGULAR, 1);
     register_primitive(env, "+", lt_binary_add, REGULAR, 2);
     register_primitive(env, "-", lt_binary_sub, REGULAR, 2);
     register_primitive(env, "*", lt_binary_mul, REGULAR, 2);
     register_primitive(env, "=", lt_numeric_eq, REGULAR, 2);
     register_primitive(env, ">", lt_numeric_gt, REGULAR, 2);
     register_primitive(env, "<", lt_numeric_lt, REGULAR, 2);
+    register_primitive(env, "lt-backquote", lt_backquote, SPECIAL, 1);
     register_primitive(env, "lt-clz-env", lt_closure_env, REGULAR, 1);
     register_primitive(env, "lt-dump-env", lt_dump_env, SPECIAL, 0);
     register_primitive(env, "lt-macro", lt_macro, SPECIAL, 2);
