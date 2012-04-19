@@ -67,18 +67,17 @@ struct LispObject *eval_cons(struct LispObject *cons, ENVIRONMENT *env)
     op = eval_expression(operator, env);
     assert(op != NULL);
     if (REGULAR == FUNC_TYPE(op)) {
-	arg_list = eval_args(arg_list, env); /* You could not modify the original argument list */
+	arg_list = eval_args(arg_list, env); /* When the function is a regular function, evaluates its arguments first. */
     }
     if (MACRO == FUNC_TYPE(op)) {
 	op->func_env = set_closure_env(op->func_env, arg_list);
 	expand_value = eval_expression(FUNC_EXPR(op), op->func_env); /* The value of macro expanding */
 	return eval_expression(expand_value, env);
-    } else if (COMPILE == EXEC_TYPE(op)) {
+    } else if (COMPILE == EXEC_TYPE(op)) { /* If it is a primitive function defined by the interpreter... */
 	return (*FUNC_CODE(op))(env, arg_list);
     } else {
 	op->func_env = set_closure_env(op->func_env, arg_list);
-	/* print_env(op->func_env, FALSE); */
-	/* print_object(FUNC_EXPR(op)); */
+
 	return eval_expression(FUNC_EXPR(op), op->func_env);
     }
 }

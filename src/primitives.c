@@ -336,7 +336,9 @@ struct LispObject *bq_eval_expr(struct LispObject *list, ENVIRONMENT *env)
 		return eval_expression(CADR(tmp), env);
 	} else {
 	    if (ATOM == CAR(arg)->type && SYMBOL == CAR(arg)->atom_type &&
-		strcmp("comma", SYMBOL_NAME(CAR(arg))) == 0)
+		strcmp("comma", SYMBOL_NAME(CAR(arg))) == 0) {
+		CAR(tmp) = eval_expression(CADR(arg), env);
+	    } else
 		CAR(tmp) = bq_eval_expr(CADR(arg), env);
 	}
 	tmp = CDR(tmp);
