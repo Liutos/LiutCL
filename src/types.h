@@ -26,6 +26,11 @@ enum EXPR_TYPE {
     INTERPRET,
 };
 
+enum ARGC_TYPE {
+    FIXED,
+    VARIABLE,
+};
+
 struct LookupEntry {
     char *symbol_name;
     struct LispObject *symbol_object;
@@ -52,6 +57,7 @@ struct LispObject {
 	    enum EXPR_TYPE expr_type;
 	    enum FUNC_TYPE func_type;
 	    int arg_num;	       /* The number of arguments of a function and now it's useless. */
+	    enum ARGC_TYPE argc_type;
 	    PRIMITIVE func_code;
 	    struct LispObject *func_expr;
 	    ENVIRONMENT *func_env;
@@ -84,6 +90,8 @@ extern struct LispObject lt_null;
 #define FUNC_TYPE(function_object) ((function_object)->func_type)
 #define FUNC_ARGC(function_object) ((function_object)->arg_num)
 #define EXEC_TYPE(function_object) ((function_object)->expr_type)
+#define FUNC_ENV(function_object) ((function_object)->func_env)
+#define ARGC_TYPE(function_object) ((function_object)->argc_type)
 
 #define INTEGER(atom_object) ((atom_object)->integer)
 #define NUMBER(atom_object) ((atom_object)->integer)

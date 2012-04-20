@@ -18,9 +18,12 @@ void print_env(ENVIRONMENT *env, BOOLEAN is_recursive)
 	printf("%-16s%-16p",
 	       first_node->symbol_name,
 	       first_node->symbol_object);
-	if (ATOM == ENTRY_VALUE(first_node)->type) {
-	    print_atom(ENTRY_VALUE(first_node));
-	    putchar('\n');
+	if (ENTRY_VALUE(first_node) != NULL) {
+	    if (ATOM == ENTRY_VALUE(first_node)->type) {
+		print_atom(ENTRY_VALUE(first_node));
+		putchar('\n');
+	    } else
+		printf("%p\n", ENTRY_VALUE(first_node));
 	} else
 	    printf("%p\n", ENTRY_VALUE(first_node));
 	first_node = first_node->next;

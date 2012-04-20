@@ -46,8 +46,10 @@ int is_balance(char *expression)
     i = -1;
     do {
 	i++;
-	if ('(' == expression[i]) balance++;
-	if (')' == expression[i]) balance--;
+	if ('(' == expression[i] && i > 0 &&
+	    '\\' == expression[i - 1]) balance++;
+	if (')' == expression[i] && i > 0 &&
+	    '\\' == expression[i - 1]) balance--;
     } while (expression[i] != '\0');
 
     return balance;
