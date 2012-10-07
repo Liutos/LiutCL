@@ -26,6 +26,20 @@ PHEAD(plus_two)
     return result;
 }
 
+PHEAD(sub_two)
+{
+    int n1, n2;
+    LispObject result;
+
+    n1 = INTEGER(CAR(args));
+    n2 = INTEGER(CAR(CDR(args)));
+    result = new_object();
+    result->type = INTEGER;
+    INTEGER(result) = n1 - n2;
+
+    return result;
+}
+
 PHEAD(mult_two)
 {
     int n1, n2;
@@ -36,6 +50,20 @@ PHEAD(mult_two)
     result = new_object();
     result->type = INTEGER;
     INTEGER(result) = n1 * n2;
+
+    return result;
+}
+
+PHEAD(div_two)
+{
+    int n1, n2;
+    LispObject result;
+
+    n1 = INTEGER(CAR(args));
+    n2 = INTEGER(CAR(CDR(args)));
+    result = new_object();
+    result->type = INTEGER;
+    INTEGER(result) = n1 / n2;
 
     return result;
 }

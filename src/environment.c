@@ -95,6 +95,8 @@ Environment init_environment(Environment env)
     reg("quit", quit);
     reg("gt-two", gt_two);
     reg("and-two", and_two);
+    reg("sub-two", sub_two);
+    reg("div-two", div_two);
     /* Add variables */
     lt_true = new_object();
     lt_true->type = BOOLEAN;

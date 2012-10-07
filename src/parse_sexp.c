@@ -65,9 +65,9 @@ LispType token_type(char *token)
     return SYMBOL;
 }
 
-Atom make_atom(char *token)
+Atom parse_atom(char *token)
 {
-    LispObject atom;
+    Atom atom;
     LispType type;
 
     type = token_type(token);
@@ -94,9 +94,9 @@ Atom make_atom(char *token)
     return atom;
 }
 
-Cons make_cons_core(char *string, int *offset)
+Cons parse_cons_core(char *string, int *offset)
 {
-    LispObject head, cur, pre;
+    Cons head, cur, pre;
     int step, i;
     char *token;
 
@@ -104,7 +104,7 @@ Cons make_cons_core(char *string, int *offset)
     for (i = 0; string[i] != '\0'; i += step) {
 	switch (string[i]) {
 	case '(':
-	    cur = make_cons_cell(make_cons_core(string + i + 1, &step), NULL);
+	    cur = make_cons_cell(parse_cons_core(string + i + 1, &step), NULL);
 	    break;
 	case ' ':
 	    step = 1;
@@ -117,7 +117,7 @@ Cons make_cons_core(char *string, int *offset)
 	    return pre;
 	default :
 	    token = get_next_token(string + i, &step);
-	    cur = make_cons_cell(make_atom(token), NULL);
+	    cur = make_cons_cell(parse_atom(token), NULL);
 	}
 	CDR(pre) = cur;
 	pre = cur;
@@ -128,17 +128,17 @@ Cons make_cons_core(char *string, int *offset)
     return pre;
 }
 
-Cons make_cons(char *string)
+Cons parse_cons(char *string)
 {
     int tmp;
 
-    return make_cons_core(string + 1, &tmp);
+    return parse_cons_core(string + 1, &tmp);
 }
 
-LispObject make_sexp(char *string)
+LispObject parse_sexp(char *string)
 {
     if ('(' == string[0])
-	return make_cons(string);
+	return parse_cons(string);
     else
-	return make_atom(string);
+	return parse_atom(string);
 }

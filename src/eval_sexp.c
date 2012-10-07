@@ -44,13 +44,15 @@ LispObject invoke_c_fun(Function cfunc, Cons args)
 }
 
 LispObject invoke_i_fun(Function ifunc, Cons args)
+/* Invokes a closure means evaluating the function body's expressions in
+   a locally newly extended environment. */
 {
     Environment env;
 
+    /* This is the `newly extended environment'. */
     env = extend_cons_binding(PARAMETERS(ifunc),
 			      args,
 			      LOCAL_ENV(ifunc));
-    /* describe_env(env); */
 
     return eval_sexp(EXPRESSION(ifunc), env);
 }
@@ -92,11 +94,6 @@ LispObject eval_cons(Cons exps, Environment env)
 {
     Function func;
 
-    /* if (FALSE == is_symbol(CAR(exps))) { */
-    /* 	fprintf(stderr, "Do not support non-symbol object at function position: "); */
-    /* 	print_sexp(CAR(exps)); */
-    /* 	exit(1); */
-    /* } */
     if (CAR(exps) == lt_quote)
 	return CAR(CDR(exps));
     if (CAR(exps) == lt_if) {
@@ -109,7 +106,6 @@ LispObject eval_cons(Cons exps, Environment env)
 	return eprogn(CDR(exps), env);
     if (CAR(exps) == lt_lambda)
 	return make_i_fun_object(SECOND(exps), THIRD(exps), env);
-    /* func = get_value(CAR(exps), env); */
     func = eval_sexp(CAR(exps), env);
     if (NULL == func) {
 	fprintf(stderr, "Null-pointer exception.\n");

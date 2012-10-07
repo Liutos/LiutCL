@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-extern LispObject make_sexp(char *);
+extern LispObject parse_sexp(char *);
 extern void init_symbol_table(void);
 
 #endif

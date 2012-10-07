@@ -25,8 +25,8 @@ int main(int argc, char *argv[])
     global_env = NULL;
     global_env = init_environment(global_env);
     /* VERY IMPORTANT! Don't comment them! */
-    expr = "((lambda (x) ((lambda (a b) (plus-two a b)) x x)) 2)";
-    print_sexp(eval_sexp(make_sexp(expr), global_env));
+    expr = "(div-two (plus-two 2 2) (sub-two 3 1))";
+    print_sexp(eval_sexp(parse_sexp(expr), global_env));
 
     return 0;
 }
