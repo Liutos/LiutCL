@@ -1,106 +1,78 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-enum TYPE {
-    ATOM,
+typedef enum {
     CONS,
-};
-
-enum ATOM_TYPE {
-    DO_NOT_MIND,
-    FUNCTION,
-    INTEGER,
-    LOOKUP_TABLE,
-    STRING,
     SYMBOL,
-};
+    INTEGER,
+    FUNCTION,
+    BOOLEAN,
+} LispType;
 
-enum FUNC_TYPE {
-    REGULAR,
-    SPECIAL,
-    MACRO,
-};
+typedef struct LispObject *(*primitive_t)(struct LispObject *);
 
-enum EXPR_TYPE {
-    COMPILE,
-    INTERPRET,
-};
-
-enum ARGC_TYPE {
-    FIXED,
-    VARIABLE,
-};
-
-struct LookupEntry {
-    char *symbol_name;
-    struct LispObject *symbol_object;
-    struct LispObject *value;
-    /* struct LispObject *function; /\* The variable and function will own the same namespace so this slot is obsolete *\/ */
-    struct LookupEntry *next;
-};
-
-#define ENTRY_VALUE(entry) ((entry)->value)
-
-typedef struct LispObject ENVIRONMENT;
-typedef struct LispObject *(*PRIMITIVE)(ENVIRONMENT *, struct LispObject *);
-
-struct LispObject {
-    enum TYPE type;
-    enum ATOM_TYPE atom_type;
-    union {
-	struct {
-	    struct LispObject *car;
-	    struct LispObject *cdr;
-	};			/* CONS */
-	int integer;		/* INTEGER */
-	struct {
-	    enum EXPR_TYPE expr_type;
-	    enum FUNC_TYPE func_type;
-	    int arg_num;	       /* The number of arguments of a function and now it's useless. */
-	    enum ARGC_TYPE argc_type;
-	    PRIMITIVE func_code;
-	    struct LispObject *func_expr;
-	    ENVIRONMENT *func_env;
-	};      /* FUNCTION */
-	struct {
-	    char *env_name;
-	    struct LookupEntry *head_node;			/* LOOKUP_TABLE */
-	    ENVIRONMENT *next_env;				/* Pointer to the outer environment */
-	};
-	char *string;		/* STRING */
-	char *name;		/* SYMBOL */
-    };
-};
-
-typedef int BOOLEAN;
+typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
 
-extern struct LispObject lt_null;
-#define NIL &lt_null
+typedef struct LispObject {
+    LispType type;
+    union {
+	char *symbol_name;
+	int integer;
+	struct {
+	    BOOL is_c_func;	/* Use the 'prim' member variable in the nested
+				   union if this is true. */
+	    union {
+		primitive_t prim;
+		struct {
+		    struct LispObject *parms;
+		    struct LispObject *expr;
+		    struct SymValMap *env;
+		};
+	    };
+	};
+	struct {
+	    struct LispObject *car;
+	    struct LispObject *cdr;
+	};
+    };
+} *LispObject;
 
-#define CAR(cons_object) ((cons_object)->car)
-#define CDR(cons_object) ((cons_object)->cdr)
-#define CADR(cons_object) ((cons_object)->cdr->car)
-#define CADDR(cons_object) ((cons_object)->cdr->cdr->car)
-/* The macros above is designed for extracting the function argument when calling */
+typedef LispObject Cons;
+typedef LispObject Atom;
+typedef LispObject Symbol;
+typedef LispObject Function;
+typedef LispObject Boolean;
 
-#define FUNC_CODE(function_object) ((function_object)->func_code)
-#define FUNC_EXPR(function_object) ((function_object)->func_expr)
-#define FUNC_TYPE(function_object) ((function_object)->func_type)
-#define FUNC_ARGC(function_object) ((function_object)->arg_num)
-#define EXEC_TYPE(function_object) ((function_object)->expr_type)
-#define FUNC_ENV(function_object) ((function_object)->func_env)
-#define ARGC_TYPE(function_object) ((function_object)->argc_type)
+#define CAR(x) ((x)->car)
+#define CDR(x) ((x)->cdr)
+#define TYPE(x) ((x)->type)
+#define INTEGER(x) ((x)->integer)
+#define PRIMITIVE(x) ((x)->prim)
+#define EXPRESSION(x) ((x)->expr)
+#define PARAMETERS(x) ((x)->parms)
+#define LOCAL_ENV(x) ((x)->env)
+#define FUNC_FLAG(x) ((x)->is_c_func)
 
-#define INTEGER(atom_object) ((atom_object)->integer)
-#define NUMBER(atom_object) ((atom_object)->integer)
-#define STRING(atom_object) ((atom_object)->string)
+typedef struct StrSymMap {
+    char *symbol_name;
+    Symbol symbol;
+    struct StrSymMap *next;
+} *SymbolTable;
 
-#define SYMBOL_NAME(symbol_object) ((symbol_object)->name)
+typedef struct SymValMap {
+    Symbol symbol;
+    LispObject value;
+    struct SymValMap *next;
+} *Environment;
 
-#define HEAD_NODE(env) ((env)->head_node)
+#define PHEAD(func_name) LispObject func_name(Cons args)
 
-#define PHEAD(func_name) struct LispObject *func_name(ENVIRONMENT *env, struct LispObject *arg_list)
+#define FIRST(x) CAR(x)
+#define SECOND(x) CAR(CDR(x))
+#define CDDR(x) CDR(CDR(x))
+#define THIRD(x) CAR(CDDR(x))
+#define FOURTH(x) CAR(CDR(CDDR(x)))
 
 #endif

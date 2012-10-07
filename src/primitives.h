@@ -3,12 +3,10 @@
 
 #include "types.h"
 
-extern void init_primitives(ENVIRONMENT *);
-extern BOOLEAN is_null(struct LispObject *);
-extern struct LispObject *with_symbol_cons(const char*, struct LispObject *, ENVIRONMENT *);
-extern char *gensym(void);
-extern struct LispObject *append_cons(struct LispObject *, struct LispObject *);
-extern struct LispObject *cons_two_objects(struct LispObject *, struct LispObject *);
-extern struct LispObject *list_two_objects(struct LispObject *, struct LispObject *);
+extern PHEAD(plus_two);
+extern PHEAD(mult_two);
+extern PHEAD(quit);
+extern PHEAD(gt_two);
+extern PHEAD(and_two);
 
 #endif
