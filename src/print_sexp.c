@@ -6,6 +6,7 @@
  * Copyright (C) 2012-10-03 liutos
  */
 #include "types.h"
+#include "atom_proc.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,9 +24,6 @@ void print_atom(Atom atom)
 	break;
     case INTEGER:
 	printf("%d", INTEGER(atom));
-	break;
-    case BOOLEAN:
-	printf("%s", lt_true == atom ? "#t": "#f");
 	break;
     case FUNCTION:
 	if (TRUE == FUNC_FLAG(atom))
@@ -50,14 +48,20 @@ void print_atom(Atom atom)
 
 void print_cons_core(LispObject cons)
 {
-    while (cons != NULL) {
+    while (!is_tail(cons)) {
 	if (CAR(cons)->type != CONS)
 	    print_atom(CAR(cons));
 	else
 	    print_cons(CAR(cons));
 	cons = CDR(cons);
-	if (NULL != cons)
-	    putchar(' ');
+	if (!is_tail(cons)) {
+	    if (is_atom_object(cons)) {
+		printf(" . ");
+		print_atom(cons);
+	    }
+	    else
+		putchar(' ');
+	}
     }
 }
 

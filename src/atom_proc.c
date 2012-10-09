@@ -12,13 +12,14 @@
 #include <string.h>
 
 SymbolTable symbol_table = NULL;
-Boolean lt_true;		/* The inner representation of logical true in defining language. */
-Boolean lt_false;		/* The inner representation of logical false in defining language. */
-LispObject lt_void;		/* The inner representation of void in defining language. */
+
+Symbol lt_void;		/* The inner representation of void in defining language. */
+Symbol lt_t;		/* The canonical representation of logical true. */
 
 Symbol lt_quote;
 Symbol lt_if;
 Symbol lt_begin;
+Symbol lt_set;
 Symbol lt_lambda;
 
 Symbol make_symbol(char *symbol_name)
@@ -80,6 +81,7 @@ void init_symbol_table(void)
     lt_quote = ensure_symbol_exists("quote");
     lt_if = ensure_symbol_exists("if");
     lt_begin = ensure_symbol_exists("begin");
+    lt_set = ensure_symbol_exists("set!");
     lt_lambda = ensure_symbol_exists("lambda");
 }
 
@@ -97,7 +99,7 @@ Function make_c_fun_object(primitive_t prim)
 
 BOOL is_true_obj(LispObject obj)
 {
-    return lt_false != obj;	/* Everything is true except the object lt_false */
+    return lt_void != obj;	/* Everything is true except the object lt_false */
 }
 
 Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv)
@@ -114,4 +116,14 @@ Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv)
 				   the creation of the closure */
 
     return fun;
+}
+
+BOOL is_atom_object(LispObject object)
+{
+    return TYPE(object) != CONS;
+}
+
+BOOL is_tail(LispObject object)
+{
+    return lt_void == object || is_atom_object(object);
 }

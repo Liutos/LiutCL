@@ -15,6 +15,8 @@
 #include "atom_proc.h"
 #include "object.h"
 
+#define NIL lt_void
+
 extern Boolean lt_true, lt_false;
 
 char *get_next_token(char *string, int *offset)
@@ -46,21 +48,10 @@ BOOL is_integer_token(char *token)
     return flag;
 }
 
-BOOL is_boolean_token(char *token)
-{
-    if (0 == strcmp("#t", token) ||
-	0 == strcmp("#f", token))
-	return TRUE;
-    else
-	return FALSE;
-}
-
 LispType token_type(char *token)
 {
     if (is_integer_token(token))
 	return INTEGER;
-    if (is_boolean_token(token))
-	return BOOLEAN;
 
     return SYMBOL;
 }
@@ -80,12 +71,6 @@ Atom parse_atom(char *token)
     case SYMBOL:
 	atom = ensure_symbol_exists(token);
 	break;
-    case BOOLEAN:
-	if (0 == strcmp("#t", token))
-	    atom = lt_true;
-	else
-	    atom = lt_false;
-	break;
     default :
 	fprintf(stderr, "Don't know how to make atom for token '%s'.\n", token);
 	exit(0);
@@ -104,7 +89,7 @@ Cons parse_cons_core(char *string, int *offset)
     for (i = 0; string[i] != '\0'; i += step) {
 	switch (string[i]) {
 	case '(':
-	    cur = make_cons_cell(parse_cons_core(string + i + 1, &step), NULL);
+	    cur = make_cons_cell(parse_cons_core(string + i + 1, &step), NIL);
 	    break;
 	case ' ':
 	    step = 1;
@@ -117,7 +102,7 @@ Cons parse_cons_core(char *string, int *offset)
 	    return pre;
 	default :
 	    token = get_next_token(string + i, &step);
-	    cur = make_cons_cell(parse_atom(token), NULL);
+	    cur = make_cons_cell(parse_atom(token), NIL);
 	}
 	CDR(pre) = cur;
 	pre = cur;

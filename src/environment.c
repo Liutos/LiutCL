@@ -15,14 +15,17 @@
 #define reg(name, prim) tmp = add_primitive(name, prim, tmp)
 
 extern void print_atom(Atom);
-extern Symbol lt_true, lt_false, lt_void;
+extern Symbol lt_true, lt_false, lt_void, lt_t;
 
 LispObject get_value(Symbol symbol, Environment env)
 {
-    while (env != NULL) {
-	if (env->symbol == symbol)
-	    return env->value;
-	env = env->next;
+    SymValMap map;
+
+    map = env->map;
+    while (map != NULL) {
+	if (map->symbol == symbol)
+	    return map->value;
+	map = map->next;
     }
 
     return NULL;
@@ -30,14 +33,15 @@ LispObject get_value(Symbol symbol, Environment env)
 
 Environment extend_binding(Symbol symbol, LispObject value, Environment env)
 {
-    Environment node;
+    SymValMap node;
 
     node = malloc(sizeof(struct SymValMap));
     node->symbol = symbol;
     node->value = value;
-    node->next = env;
+    node->next = env->map->next; /* Inserts at the head position */
+    env->map->next = node;
 
-    return node;
+    return env;
 }
 
 /* For binding the parameters of a closure. */
@@ -69,8 +73,10 @@ Environment new_env(void)
 {
     Environment env;
 
-    env = malloc(sizeof(struct SymValMap));
-    env->next = NULL;
+    env = malloc(sizeof(struct Environment));
+    env->map = malloc(sizeof(struct SymValMap));
+    env->map->next = NULL;
+    env->next_env = NULL;
 
     return env;
 }
@@ -97,25 +103,34 @@ Environment init_environment(Environment env)
     reg("and-two", and_two);
     reg("sub-two", sub_two);
     reg("div-two", div_two);
-    /* Add variables */
-    lt_true = new_object();
-    lt_true->type = BOOLEAN;
-    tmp = extend_binding_by_name("#t", lt_true, tmp);
-    lt_false = new_object();
-    TYPE(lt_false) = BOOLEAN;
-    tmp = extend_binding_by_name("#f", lt_false, tmp);
-    lt_void = ensure_symbol_exists("void");
+    reg("or-two", or_two);
+    reg("get-cons-car", get_cons_car);
+    reg("get-cons-cdr", get_cons_cdr);
+    reg("numeric-eq", numeric_eq);
+    reg("lt-eq", lt_eq);
 
-    tmp = extend_binding_by_name("void", lt_void, tmp);
+    lt_void = ensure_symbol_exists("nil");
+    lt_t = ensure_symbol_exists("t");
+
+    tmp = extend_binding_by_name("nil", lt_void, tmp);
+    tmp = extend_binding_by_name("t", lt_t, tmp);
 
     return tmp;
 }
 
 void describe_env(Environment env)
 {
-    while (env != NULL) {
-	print_atom(env->symbol);
-	printf("\t->\t%p\n", env->value);
-	env = env->next;
+    SymValMap map;
+
+    map = env->map->next;
+    while (map != NULL) {
+	print_atom(map->symbol);
+	printf("\t->\t");
+	if (is_atom_object(map->value))
+	    print_atom(map->value);
+	else
+	    printf("%p", map->value);
+	putchar('\n');
+	map = map->next;
     }
 }

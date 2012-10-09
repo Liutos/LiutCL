@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "types.h"
 #include "object.h"
+#include "atom_proc.h"
 
 Cons make_cons_cell(LispObject car, LispObject cdr)
 {
@@ -19,4 +20,14 @@ Cons make_cons_cell(LispObject car, LispObject cdr)
     CDR(cons) = cdr;
 
     return cons;
+}
+
+LispObject safe_car(LispObject obj)
+{
+    return lt_void == obj ? lt_void: obj->car;
+}
+
+LispObject safe_cdr(LispObject obj)
+{
+    return lt_void == obj ? lt_void: obj->cdr;
 }

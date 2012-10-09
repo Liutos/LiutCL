@@ -7,6 +7,7 @@
  */
 #include "types.h"
 #include "object.h"
+#include "atom_proc.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -81,7 +82,7 @@ PHEAD(gt_two)
 
     n1 = INTEGER(FIRST(args));
     n2 = INTEGER(SECOND(args));
-    result = n1 > n2 ? lt_true: lt_false;
+    result = n1 > n2 ? lt_t: lt_void;
 
     return result;
 }
@@ -93,5 +94,48 @@ PHEAD(and_two)
     arg1 = FIRST(args);
     arg2 = SECOND(args);
 
-    return ((arg1 != lt_false) && (arg2 != lt_false)) ? lt_true: lt_false;
+    return (is_true_obj(arg1) && is_true_obj(arg2)) ? lt_t: lt_void;
+}
+
+PHEAD(or_two)
+{
+    LispObject arg1, arg2;
+
+    arg1 = FIRST(args);
+    arg2 = SECOND(args);
+
+    return (is_true_obj(arg1) || is_true_obj(arg2)) ? lt_t: lt_void;
+}
+
+PHEAD(get_cons_car)
+{
+    Cons cons;
+
+    cons = FIRST(args);
+
+    return CAR(cons);
+}
+
+PHEAD(get_cons_cdr)
+{
+    Cons cons;
+
+    cons = FIRST(args);
+
+    return CDR(cons);
+}
+
+PHEAD(numeric_eq)
+{
+    int n1, n2;
+
+    n1 = INTEGER(FIRST(args));
+    n2 = INTEGER(SECOND(args));
+
+    return n1 == n2 ? lt_t: lt_void;
+}
+
+PHEAD(lt_eq)
+{
+    return FIRST(args) == SECOND(args) ? lt_t: lt_void;
 }

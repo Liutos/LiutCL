@@ -6,7 +6,6 @@ typedef enum {
     SYMBOL,
     INTEGER,
     FUNCTION,
-    BOOLEAN,
 } LispType;
 
 typedef struct LispObject *(*primitive_t)(struct LispObject *);
@@ -28,7 +27,7 @@ typedef struct LispObject {
 		struct {
 		    struct LispObject *parms;
 		    struct LispObject *expr;
-		    struct SymValMap *env;
+		    struct Environment *env;
 		};
 	    };
 	};
@@ -47,6 +46,7 @@ typedef LispObject Boolean;
 
 #define CAR(x) ((x)->car)
 #define CDR(x) ((x)->cdr)
+#define SCDR(x) safe_cdr(x)
 #define TYPE(x) ((x)->type)
 #define INTEGER(x) ((x)->integer)
 #define PRIMITIVE(x) ((x)->prim)
@@ -65,7 +65,12 @@ typedef struct SymValMap {
     Symbol symbol;
     LispObject value;
     struct SymValMap *next;
-} *Environment;
+} *SymValMap;			/* Kepps the mapping between symbol and
+				   value. */
+typedef struct Environment {
+    SymValMap map;
+    struct Environment *next_env;
+} *Environment;			/* Keeps a series of mapping described above. */
 
 #define PHEAD(func_name) LispObject func_name(Cons args)
 
