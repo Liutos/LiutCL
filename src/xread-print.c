@@ -22,10 +22,11 @@ int main(int argc, char *argv[])
 
     /* The following three lines of code is... */
     init_symbol_table();
-    global_env = NULL;
+    global_env = new_env();
     global_env = init_environment(global_env);
     /* VERY IMPORTANT! Don't comment them! */
-    expr = "(div-two (plus-two 2 2) (sub-two 3 1))";
+    /* describe_env(global_env); */
+    expr = "(if 1 t 1)";
     print_sexp(eval_sexp(parse_sexp(expr), global_env));
 
     return 0;
