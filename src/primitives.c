@@ -13,7 +13,7 @@
 
 extern Boolean lt_true, lt_false;
 
-PHEAD(plus_two)
+PHEAD(add_two)
 {
     int n1, n2;
     LispObject result;
@@ -41,7 +41,7 @@ PHEAD(sub_two)
     return result;
 }
 
-PHEAD(mult_two)
+PHEAD(mul_two)
 {
     int n1, n2;
     LispObject result;

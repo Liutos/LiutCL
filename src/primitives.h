@@ -3,8 +3,8 @@
 
 #include "types.h"
 
-extern PHEAD(plus_two);
-extern PHEAD(mult_two);
+extern PHEAD(add_two);
+extern PHEAD(mul_two);
 extern PHEAD(quit);
 extern PHEAD(gt_two);
 extern PHEAD(and_two);

@@ -110,8 +110,8 @@ Environment init_primitives(Environment env)
 
     tmp = env;
     /* Add primitives */
-    reg("add-two", plus_two);	/* Original lisp function name is plus-two. */
-    reg("mul-two", mult_two);	/* Original lisp function name is mult-two. */
+    reg("add-two", add_two);	/* Original lisp function name is plus-two. */
+    reg("mul-two", mul_two);	/* Original lisp function name is mult-two. */
     reg("quit", quit);
     reg("gt-two", gt_two);
     reg("and-two", and_two);
