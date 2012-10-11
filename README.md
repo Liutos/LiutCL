@@ -6,6 +6,14 @@
 
 ## 实现的功能
 
+* Thu Oct 11 18:10:20 2012
+  * 修改了一些lisp代码级别的函数名
+	* plus-two修改为add-two
+	* mult-two修改为mul-two，命名采自汇编语言。
+  * 将变量名和函数名分开为两个命名空间，即语言为Lisp-2。
+  * 实现了特殊操作符lt/dset!，用于为符号在动态作用域中绑定值，如用于实现函数名和函数对象的绑定。
+	* 我更倾向于将这个功能实现在set!中，就像Common Lisp中的setq可以设定(symbol-function foo)这样的对象所对应的值一样。
+  * 特殊操作符lt/dynamic，用于取出变量在动态环境中对应的值。
 * Tue Oct  9 22:33:16 2012
   * Scheme所使用的特殊操作符，包括quote、if、begin、set!和lambda。
   * 一些基本的函数

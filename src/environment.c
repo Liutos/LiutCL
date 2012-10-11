@@ -17,7 +17,7 @@
 extern void print_atom(Atom);
 extern Symbol lt_true, lt_false, lt_void, lt_t;
 
-LispObject get_value(Symbol symbol, Environment env)
+LispObject get_value_in_one(Symbol symbol, Environment env)
 {
     SymValMap map;
 
@@ -26,6 +26,20 @@ LispObject get_value(Symbol symbol, Environment env)
 	if (map->symbol == symbol)
 	    return map->value;
 	map = map->next;
+    }
+
+    return NULL;
+}
+
+LispObject get_value(Symbol symbol, Environment env)
+{
+    LispObject value;
+
+    while (env != NULL) {
+	value = get_value_in_one(symbol, env);
+	if (value != NULL)
+	    return value;
+	env = env->next_env;
     }
 
     return NULL;
@@ -90,14 +104,14 @@ Environment add_primitive(char *func_name, primitive_t prim, Environment env)
     return extend_binding(ensure_symbol_exists(func_name), func, env);
 }
 
-Environment init_environment(Environment env)
+Environment init_primitives(Environment env)
 {
     Environment tmp;
 
     tmp = env;
     /* Add primitives */
-    reg("plus-two", plus_two);
-    reg("mult-two", mult_two);
+    reg("add-two", plus_two);	/* Original lisp function name is plus-two. */
+    reg("mul-two", mult_two);	/* Original lisp function name is mult-two. */
     reg("quit", quit);
     reg("gt-two", gt_two);
     reg("and-two", and_two);
@@ -109,6 +123,19 @@ Environment init_environment(Environment env)
     reg("numeric-eq", numeric_eq);
     reg("lt-eq", lt_eq);
 
+    /* lt_void = ensure_symbol_exists("nil"); */
+    /* lt_t = ensure_symbol_exists("t"); */
+
+    /* tmp = extend_binding_by_name("nil", lt_void, tmp); */
+    /* tmp = extend_binding_by_name("t", lt_t, tmp); */
+
+    return tmp;
+}
+
+Environment init_variables(Environment env)
+{
+    Environment tmp = env;
+
     lt_void = ensure_symbol_exists("nil");
     lt_t = ensure_symbol_exists("t");
 
@@ -118,7 +145,7 @@ Environment init_environment(Environment env)
     return tmp;
 }
 
-void describe_env(Environment env)
+void describe_one_env(Environment env)
 {
     SymValMap map;
 
@@ -133,4 +160,25 @@ void describe_env(Environment env)
 	putchar('\n');
 	map = map->next;
     }
+}
+
+void describe_env(Environment env)
+{
+    while (env != NULL) {
+	describe_one_env(env);
+	env = env->next_env;
+    }
+}
+
+Environment new_apply_env(Cons parms, Cons values, Environment env)
+/* This function is just used for creating a new environment for
+   function application. */
+{
+    Environment nenv;
+
+    nenv = new_env();
+    nenv->next_env = env;
+    extend_cons_binding(parms, values, nenv);
+
+    return nenv;
 }

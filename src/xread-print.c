@@ -17,17 +17,25 @@
 
 int main(int argc, char *argv[])
 {
-    Environment global_env;
+    Environment global_env, denv;
     char *expr;
 
     /* The following three lines of code is... */
     init_symbol_table();
     global_env = new_env();
-    global_env = init_environment(global_env);
+    global_env = init_variables(global_env);
+    denv = new_env();
+    denv = init_primitives(denv);
     /* VERY IMPORTANT! Don't comment them! */
-    /* describe_env(global_env); */
-    expr = "(if 1 t 1)";
-    print_sexp(eval_sexp(parse_sexp(expr), global_env));
+    /* describe_env(denv); */
+
+    /* In Lisp-2 language, the first appeared symbol `fact' would be stored
+       in lexical environment, the variable `global_env', however, the
+       value of symbol `fact' within the lambda would look up within the
+       dynamic environment, the variable `denv'. Therefore, the evaluator
+       may throw the message that ``No binding of symbol fact.'' */
+    expr = "(begin (lt/dset! fact (lambda (n) (if (numeric-eq 0 n) 1 (mul-two n (fact (sub-two n 1)))))) (fact 5))";
+    print_sexp(eval_sexp(parse_sexp(expr), global_env, denv));
 
     return 0;
 }

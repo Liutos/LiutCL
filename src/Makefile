@@ -8,7 +8,7 @@ eval_sexp.o: eval_sexp.c types.h environment.h atom_proc.h primitives.h
 	gcc -c -Wall -g $< -o $@
 cons.o: cons.c types.h
 	gcc -c -Wall -g $< -o $@
-atom_proc.o: atom_proc.c cons.h object.h
+atom_proc.o: atom_proc.c cons.h object.h types.h
 	gcc -c -Wall -g $< -o $@
 object.o: object.c types.h
 	gcc -c -Wall -g $< -o $@

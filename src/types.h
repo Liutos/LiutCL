@@ -14,23 +14,36 @@ typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
 
+typedef struct function_t {
+    BOOL is_c_func;
+    union {
+	primitive_t prim;
+	struct {
+	    struct LispObject *parms;
+	    struct LispObject *expr;
+	    struct Environment *env;
+	    struct Environment *denv;
+	};
+    };
+} *function_t;
 typedef struct LispObject {
     LispType type;
     union {
 	char *symbol_name;
 	int integer;
-	struct {
-	    BOOL is_c_func;	/* Use the 'prim' member variable in the nested
-				   union if this is true. */
-	    union {
-		primitive_t prim;
-		struct {
-		    struct LispObject *parms;
-		    struct LispObject *expr;
-		    struct Environment *env;
-		};
-	    };
-	};
+	/* struct { */
+	/*     BOOL is_c_func;	/\* Use the 'prim' member variable in the nested */
+	/* 			   union if this is true. *\/ */
+	/*     union { */
+	/* 	primitive_t prim; */
+	/* 	struct { */
+	/* 	    struct LispObject *parms; */
+	/* 	    struct LispObject *expr; */
+	/* 	    struct Environment *env; */
+	/* 	}; */
+	/*     }; */
+	/* }; */
+	function_t fun;
 	struct {
 	    struct LispObject *car;
 	    struct LispObject *cdr;
@@ -49,11 +62,13 @@ typedef LispObject Boolean;
 #define SCDR(x) safe_cdr(x)
 #define TYPE(x) ((x)->type)
 #define INTEGER(x) ((x)->integer)
-#define PRIMITIVE(x) ((x)->prim)
-#define EXPRESSION(x) ((x)->expr)
-#define PARAMETERS(x) ((x)->parms)
-#define LOCAL_ENV(x) ((x)->env)
-#define FUNC_FLAG(x) ((x)->is_c_func)
+#define FUNCTION(x) ((x)->fun)
+#define PRIMITIVE(x) (FUNCTION(x)->prim)
+#define EXPRESSION(x) ((x)->fun->expr)
+#define PARAMETERS(x) ((x)->fun->parms)
+#define LOCAL_ENV(x) ((x)->fun->env)
+#define FUNC_FLAG(x) ((x)->fun->is_c_func)
+#define FUNC_DENV(x) (FUNCTION(x)->denv)
 
 typedef struct StrSymMap {
     char *symbol_name;
