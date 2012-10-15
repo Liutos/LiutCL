@@ -12,8 +12,11 @@
 #include "environment.h"
 #include "atom_proc.h"
 #include "eval_sexp.h"
+#include "env_types.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+BOOL is_debug_mode = FALSE;
 
 int main(int argc, char *argv[])
 {
@@ -34,7 +37,8 @@ int main(int argc, char *argv[])
        value of symbol `fact' within the lambda would look up within the
        dynamic environment, the variable `denv'. Therefore, the evaluator
        may throw the message that ``No binding of symbol fact.'' */
-    expr = "(begin (lt/dset! fact (lambda (n) (if (numeric-eq 0 n) 1 (mul-two n (fact (sub-two n 1)))))) (fact 5))";
+    /* expr = "(begin (lt/dset! fact (lambda (n) (if (numeric-eq 0 n) 1 (mul-two n (fact (sub-two n 1)))))) (fact 5))"; */
+    expr = "(cons 1 2)";
     print_sexp(eval_sexp(parse_sexp(expr), global_env, denv));
 
     return 0;

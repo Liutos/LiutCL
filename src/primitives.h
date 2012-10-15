@@ -11,9 +11,10 @@ extern PHEAD(and_two);
 extern PHEAD(sub_two);
 extern PHEAD(div_two);
 extern PHEAD(or_two);
-extern PHEAD(get_cons_car);
-extern PHEAD(get_cons_cdr);
+extern PHEAD(lt_car);
+extern PHEAD(lt_cdr);
 extern PHEAD(numeric_eq);
 extern PHEAD(lt_eq);
+extern PHEAD(lt_cons);
 
 #endif

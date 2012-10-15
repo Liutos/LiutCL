@@ -9,13 +9,15 @@
 #include "atom_proc.h"
 #include "primitives.h"
 #include "object.h"
+#include "cons.h"
+#include "env_types.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 #define reg(name, prim) tmp = add_primitive(name, prim, tmp)
 
 extern void print_atom(Atom);
-extern Symbol lt_true, lt_false, lt_void, lt_t;
+/* extern Symbol lt_true, lt_false, lt_void, lt_t; */
 
 LispObject get_value_in_one(Symbol symbol, Environment env)
 {
@@ -61,16 +63,19 @@ Environment extend_binding(Symbol symbol, LispObject value, Environment env)
 /* For binding the parameters of a closure. */
 Environment extend_cons_binding(Cons symbols, Cons values, Environment env)
 {
-    while (symbols != NULL) {
-	if (NULL == values) {
+    while (!is_tail(symbols)) {
+	if (is_tail(values)) {
 	    fprintf(stderr, "Too less values.\n");
 	    exit(1);
 	}
 	env = extend_binding(CAR(symbols), CAR(values), env);
+        /* The two calling to function `is_tail' above ensures that
+           the parameters `symbols' and `values' would never be a
+           empty list in the two lines of code below. */
 	symbols = CDR(symbols);
 	values = CDR(values);
     }
-    if (NULL == values)
+    if (is_tail(values))
 	return env;
     else {
 	fprintf(stderr, "Too much symbols.\n");
@@ -118,16 +123,11 @@ Environment init_primitives(Environment env)
     reg("sub-two", sub_two);
     reg("div-two", div_two);
     reg("or-two", or_two);
-    reg("get-cons-car", get_cons_car);
-    reg("get-cons-cdr", get_cons_cdr);
+    reg("car", lt_car);
+    reg("cdr", lt_cdr);
     reg("numeric-eq", numeric_eq);
-    reg("lt-eq", lt_eq);
-
-    /* lt_void = ensure_symbol_exists("nil"); */
-    /* lt_t = ensure_symbol_exists("t"); */
-
-    /* tmp = extend_binding_by_name("nil", lt_void, tmp); */
-    /* tmp = extend_binding_by_name("t", lt_t, tmp); */
+    reg("eq", lt_eq);
+    reg("cons", lt_cons);
 
     return tmp;
 }
@@ -136,10 +136,10 @@ Environment init_variables(Environment env)
 {
     Environment tmp = env;
 
-    lt_void = ensure_symbol_exists("nil");
+    lt_nil = ensure_symbol_exists("nil");
     lt_t = ensure_symbol_exists("t");
 
-    tmp = extend_binding_by_name("nil", lt_void, tmp);
+    tmp = extend_binding_by_name("nil", lt_nil, tmp);
     tmp = extend_binding_by_name("t", lt_t, tmp);
 
     return tmp;
@@ -170,9 +170,11 @@ void describe_env(Environment env)
     }
 }
 
-Environment new_apply_env(Cons parms, Cons values, Environment env)
+Environment new_binding_env(Cons parms, Cons values, Environment env)
 /* This function is just used for creating a new environment for
-   function application. */
+   function application. And actually you can use it at anywhere
+   when you'd like to bind some lexical variables but don't want
+   to pollute the outer lexical environment. */
 {
     Environment nenv;
 
@@ -181,4 +183,15 @@ Environment new_apply_env(Cons parms, Cons values, Environment env)
     extend_cons_binding(parms, values, nenv);
 
     return nenv;
+}
+
+SymValMap make_single_map(Symbol symbol, LispObject value)
+{
+    SymValMap map = malloc(sizeof(struct SymValMap));
+
+    map->symbol = symbol;
+    map->value = value;
+    map->next = NULL;
+
+    return map;
 }

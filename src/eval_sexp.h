@@ -2,6 +2,7 @@
 #define EVAL_SEXP_H
 
 #include "types.h"
+#include "env_types.h"
 
 extern LispObject eval_sexp(Cons, Environment, Environment);
 extern void init_special_operators(void);

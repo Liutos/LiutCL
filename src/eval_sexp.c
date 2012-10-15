@@ -11,13 +11,16 @@
 #include "primitives.h"
 #include "print_sexp.h"
 #include "cons.h"
+#include "env_types.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-/* extern Symbol lt_quote, lt_if, lt_begin, lt_lambda, lt_set; */
+#include <setjmp.h>
+#include <string.h>
 
 LispObject eval_sexp(LispObject, Environment, Environment);
 LispObject eval_cons(Cons, Environment, Environment);
+
+jmp_buf context;
 
 LispObject eval_atom(Atom exp, Environment env)
 {
@@ -51,12 +54,7 @@ LispObject invoke_i_fun(Function ifunc, Cons args)
        interpreted function invokation because at that case, the outer
        environment exists when the closure was created, its content
        shouldn't be modified by the function application. */
-    env = new_apply_env(PARAMETERS(ifunc), args, LOCAL_ENV(ifunc));
-    /* The code below commented is the old one. */
-
-    /* env = extend_cons_binding(PARAMETERS(ifunc), */
-    /* 			      args, */
-    /* 			      LOCAL_ENV(ifunc)); */
+    env = new_binding_env(PARAMETERS(ifunc), args, LOCAL_ENV(ifunc));
 
     return eval_sexp(EXPRESSION(ifunc), env, FUNCTION(ifunc)->denv);
 }
@@ -70,9 +68,13 @@ LispObject invoke_function(Function func, Cons args)
 }
 
 LispObject eprogn(Cons exps, Environment env, Environment denv)
+/* This function name used in _Lisp in Small Pieces_. */
 {
     if (is_tail(exps))
-	return lt_void;
+	return lt_nil;
+    /* The if statement above ensures that the parameter `exps' used
+       below would never be the lt_void, the empty list in the Lisp
+       level. */
     if (is_tail(CDR(exps)))
 	return eval_sexp(CAR(exps), env, denv);
     while (!is_tail(exps)) {
@@ -91,7 +93,7 @@ LispObject eval_args(Cons args, Environment env, Environment denv)
 	return make_cons_cell(eval_sexp(CAR(args), env, denv),
 			      eval_args(CDR(args), env, denv));
     else
-	return lt_void;
+	return lt_nil;
 }
 
 LispObject eval_operator(LispObject op, Environment env, Environment denv)
@@ -111,29 +113,36 @@ LispObject eval_operator(LispObject op, Environment env, Environment denv)
 }
 
 LispObject eval_cons(Cons exps, Environment env, Environment denv)
+/* This function should handles only the Lisp objects of type Cons, 
+   not included the symbol `nil'. */
 {
     Function func;
+    Cons argv;
 
-    /* Cases of special operators */
+ INTERP:                        /* The support of tail-recursion optimization */
+    argv = SCDR(exps);
+    /* Cases of special operators in Scheme */
     if (CAR(exps) == lt_quote)
-	return CAR(CDR(exps));
+	return CAR(argv);
     if (CAR(exps) == lt_if) {
-	if (is_true_obj(eval_sexp(FIRST(CDR(exps)), env, denv)))
-	    return eval_sexp(SECOND(CDR(exps)), env, denv);
-	else {
-	    Cons argv = CDR(exps);
-
-	    return eval_sexp(safe_car(safe_cdr(safe_cdr(argv))), env, denv);
-	}
+	if (is_true_obj(eval_sexp(FIRST(argv), env, denv))) {
+	    /* return eval_sexp(SECOND(argv), env, denv); */
+            exps = SECOND(argv); /* A try of tail-recursive optimization. */
+            goto INTERP;
+	} else {
+            /* return eval_sexp(SCAR(SCDR(SCDR(argv))), env, denv); */
+            exps = THIRD(argv);
+            goto INTERP;
+        }
     }
     if (CAR(exps) == lt_begin)
-	return eprogn(CDR(exps), env, denv);
+	return eprogn(argv, env, denv);
     if (CAR(exps) == lt_set) {
-        extend_binding(SECOND(exps),
-                       eval_sexp(THIRD(exps), env, denv),
+        extend_binding(SCAR(argv),
+                       eval_sexp(SCAR(SCDR(argv)), env, denv),
                        env);
 
-        return lt_void;
+        return lt_nil;
     }
 
     if (CAR(exps) == lt_lambda)
@@ -144,10 +153,41 @@ LispObject eval_cons(Cons exps, Environment env, Environment denv)
 		       eval_sexp(THIRD(exps), env, denv),
 		       denv);
 
-	return lt_void;
+	return lt_nil;
     }
     if (CAR(exps) == lt_dynamic)
 	return eval_atom(eval_sexp(SECOND(exps), env, denv), denv);
+    if (CAR(exps) == lt_catch) { /* Symbol LT/CATCH */
+        jmp_buf tmp_context;
+        int val;
+        Symbol label;
+
+        label = eval_sexp(FIRST(argv), env, denv);
+        memcpy(tmp_context, context, sizeof(jmp_buf));
+        val = setjmp(context);
+        if (0 == val) {
+            LispObject val = eprogn(SCDR(argv), env, denv);
+            if (tmp_context != NULL)
+                memcpy(context, tmp_context, sizeof(jmp_buf));
+
+            return val;
+        } else {
+            SymValMap tmp_map = (SymValMap)val;
+
+            memcpy(context, tmp_context, sizeof(jmp_buf));
+            if (tmp_map->symbol == label)
+                return tmp_map->value;
+            else
+                longjmp(context, (int)tmp_map);
+        }
+    }
+    if (CAR(exps) == lt_throw) { /* Symbol LT/THROW */
+        Symbol label = eval_sexp(FIRST(argv), env, denv);
+        LispObject value = eval_sexp(SECOND(argv), env, denv);
+        SymValMap map = make_single_map(label, value);
+
+        longjmp(context, (int)map);
+    }
 
     func = eval_operator(CAR(exps), env, denv);
     if (NULL == func) {
@@ -155,11 +195,13 @@ LispObject eval_cons(Cons exps, Environment env, Environment denv)
 	exit(1);
     }
 
-    return invoke_function(func, eval_args(CDR(exps), env, denv));
+    return invoke_function(func, eval_args(argv, env, denv));
 }
 
 LispObject eval_sexp(LispObject exp, Environment env, Environment denv)
-/* Parameter 'denv' means dynamic environment. */
+/* Parameter 'denv' means dynamic environment. Currently the `denv' also
+   stores the function value in it but I think providing a specific
+   environmen named fenv would be better. */
 {
     if (TYPE(exp) != CONS)
 	return eval_atom(exp, env);

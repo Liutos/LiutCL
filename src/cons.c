@@ -24,10 +24,10 @@ Cons make_cons_cell(LispObject car, LispObject cdr)
 
 LispObject safe_car(LispObject obj)
 {
-    return lt_void == obj ? lt_void: obj->car;
+    return lt_nil == obj ? lt_nil: obj->car;
 }
 
 LispObject safe_cdr(LispObject obj)
 {
-    return lt_void == obj ? lt_void: obj->cdr;
+    return lt_nil == obj ? lt_nil: obj->cdr;
 }

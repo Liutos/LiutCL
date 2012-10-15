@@ -6,6 +6,7 @@ typedef enum {
     SYMBOL,
     INTEGER,
     FUNCTION,
+    STRING,
 } LispType;
 
 typedef struct LispObject *(*primitive_t)(struct LispObject *);
@@ -31,19 +32,8 @@ typedef struct LispObject {
     union {
 	char *symbol_name;
 	int integer;
-	/* struct { */
-	/*     BOOL is_c_func;	/\* Use the 'prim' member variable in the nested */
-	/* 			   union if this is true. *\/ */
-	/*     union { */
-	/* 	primitive_t prim; */
-	/* 	struct { */
-	/* 	    struct LispObject *parms; */
-	/* 	    struct LispObject *expr; */
-	/* 	    struct Environment *env; */
-	/* 	}; */
-	/*     }; */
-	/* }; */
 	function_t fun;
+        char *string;
 	struct {
 	    struct LispObject *car;
 	    struct LispObject *cdr;
@@ -59,7 +49,8 @@ typedef LispObject Boolean;
 
 #define CAR(x) ((x)->car)
 #define CDR(x) ((x)->cdr)
-#define SCDR(x) safe_cdr(x)
+#define SCAR(x) safe_car(x)     /* A safe version of macro CAR */
+#define SCDR(x) safe_cdr(x)     /* A safe version of macro CDR */
 #define TYPE(x) ((x)->type)
 #define INTEGER(x) ((x)->integer)
 #define FUNCTION(x) ((x)->fun)
@@ -70,29 +61,14 @@ typedef LispObject Boolean;
 #define FUNC_FLAG(x) ((x)->fun->is_c_func)
 #define FUNC_DENV(x) (FUNCTION(x)->denv)
 
-typedef struct StrSymMap {
-    char *symbol_name;
-    Symbol symbol;
-    struct StrSymMap *next;
-} *SymbolTable;
-
-typedef struct SymValMap {
-    Symbol symbol;
-    LispObject value;
-    struct SymValMap *next;
-} *SymValMap;			/* Kepps the mapping between symbol and
-				   value. */
-typedef struct Environment {
-    SymValMap map;
-    struct Environment *next_env;
-} *Environment;			/* Keeps a series of mapping described above. */
-
 #define PHEAD(func_name) LispObject func_name(Cons args)
 
 #define FIRST(x) CAR(x)
-#define SECOND(x) CAR(CDR(x))
-#define CDDR(x) CDR(CDR(x))
-#define THIRD(x) CAR(CDDR(x))
-#define FOURTH(x) CAR(CDR(CDDR(x)))
+#define SECOND(x) CAR(SCDR(x))
+#define CDDR(x) SCDR(SCDR(x))
+#define THIRD(x) SCAR(CDDR(x))
+#define FOURTH(x) SCAR(SCDR(CDDR(x)))
+
+extern BOOL is_debug_mode;
 
 #endif
