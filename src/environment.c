@@ -128,6 +128,7 @@ Environment init_primitives(Environment env)
     reg("numeric-eq", numeric_eq);
     reg("eq", lt_eq);
     reg("cons", lt_cons);
+    reg("type-of", lt_type_of);
 
     return tmp;
 }

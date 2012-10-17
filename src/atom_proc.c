@@ -13,8 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-SymbolTable symbol_table = NULL;
-
 Symbol lt_nil;		/* The inner representation of void in defining language. */
 Symbol lt_t;		/* The canonical representation of logical true. */
 /* Special operators in Scheme */
@@ -38,73 +36,6 @@ Symbol make_symbol(char *symbol_name)
     sym->symbol_name = symbol_name;
 
     return sym;
-}
-
-Symbol get_symbol(char *symbol_name)
-{
-    SymbolTable tbl;
-
-    tbl = symbol_table;
-    while (tbl != NULL) {
-        if (0 == strcmp(tbl->symbol_name, symbol_name))
-            return tbl->symbol;
-        if (strcmp(symbol_name, tbl->symbol_name) < 0)
-            tbl = tbl->left;
-        else
-            tbl = tbl->right;
-    }
-
-    return NULL;
-}
-
-StrSymMapNode make_StrSymMapNode(Symbol symbol)
-{
-    StrSymMapNode node;
-
-    node = malloc(sizeof(struct StrSymMapNode));
-    node->symbol_name = symbol->symbol_name;
-    node->symbol = symbol;
-    node->left = node->parent = node->right = NULL;
-
-    return node;
-}
-
-void put_symbol(Symbol symbol)
-{
-    StrSymMapNode node, parent, root;
-
-    node = make_StrSymMapNode(symbol);
-    root = symbol_table;
-    parent = NULL;
-    while (root != NULL) {
-        parent = root;
-        if (strcmp(symbol->symbol_name, root->symbol_name) < 0)
-            root = root->left;
-        else
-            root = root->right;
-    }
-    node->parent = parent;
-    if (NULL == parent)
-        symbol_table = node;
-    else if (strcmp(symbol->symbol_name, parent->symbol_name) < 0)
-        parent->left = node;
-    else
-        parent->right = node;
-}
-
-Symbol ensure_symbol_exists(char *symbol_name)
-{
-    Symbol symbol;
-
-    symbol = get_symbol(symbol_name);
-    if (symbol != NULL)
-	return symbol;
-    else {
-	symbol = make_symbol(symbol_name);
-	put_symbol(symbol);
-
-	return symbol;
-    }
 }
 
 void init_symbol_table(void)

@@ -28,10 +28,12 @@ char *get_next_token(char *string, int *offset)
             exit(1);
         }
         *offset = i + 1;
+        i++;
     } else {
         i = 0;
         while (string[i] != ' ' && string[i] != '(' &&
-               string[i] != ')' && string[i] != '\0')
+               string[i] != ')' && string[i] != '\0' &&
+               string[i] != '\n')
             i++;
         *offset = i;
     }
@@ -111,6 +113,7 @@ Cons parse_cons_core(char *string, int *offset)
 	    cur = make_cons_cell(parse_cons_core(string + i + 1, &step), lt_nil);
 	    break;
 	case ' ':
+        case '\n':
 	    step = 1;
 	    continue;
 	case ')':
@@ -141,8 +144,13 @@ Cons parse_cons(char *string)
 
 LispObject parse_sexp(char *string)
 {
+    int trash;
+
+    while ('\0' != *string && isblank(*string))
+        string++;
+    if ('\0' == *string) return NULL;
     if ('(' == string[0])
 	return parse_cons(string);
     else
-	return parse_atom(string);
+	return parse_atom(get_next_token(string, &trash));
 }

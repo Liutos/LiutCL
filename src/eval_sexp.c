@@ -203,6 +203,8 @@ LispObject eval_sexp(LispObject exp, Environment env, Environment denv)
    stores the function value in it but I think providing a specific
    environmen named fenv would be better. */
 {
+    if (NULL == exp)
+        return NULL;
     if (TYPE(exp) != CONS)
 	return eval_atom(exp, env);
     else

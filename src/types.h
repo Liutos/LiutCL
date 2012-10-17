@@ -2,7 +2,7 @@
 #define TYPES_H
 
 typedef enum {
-    CONS,
+    CONS,                       /* Everything except CONS is of type ATOM. */
     SYMBOL,
     INTEGER,
     FUNCTION,
@@ -26,7 +26,8 @@ typedef struct function_t {
 	    struct Environment *denv;
 	};
     };
-} *function_t;
+} *function_t;                  /* The inner representation of the
+                                   function type in Lisp level. */
 typedef struct LispObject {
     LispType type;
     union {
@@ -41,6 +42,7 @@ typedef struct LispObject {
     };
 } *LispObject;
 
+/* Alias. For readbility. */
 typedef LispObject Cons;
 typedef LispObject Atom;
 typedef LispObject Symbol;

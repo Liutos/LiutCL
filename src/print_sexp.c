@@ -38,7 +38,7 @@ void print_atom(Atom atom)
 	    printf("#<FUNCTION I ");
 	    print_cons(PARAMETERS(atom));
 	    putchar(' ');
-	    print_sexp_notln(atom);
+	    print_sexp_notln(EXPRESSION(atom));
 	    putchar(' ');
 	    printf("%p>", atom);
 	}
@@ -89,6 +89,10 @@ void print_sexp_notln(LispObject object)
 
 void print_sexp(LispObject object)
 {
+    if (NULL == object) {
+        printf("; No value\n");
+        return;
+    }
     print_sexp_notln(object);
     putchar('\n');
 }

@@ -31,8 +31,11 @@ char *read_sexp(FILE *fp)
                                    balanced. */
             if ('(' == c) burden++;
             if (')' == c) burden--;
-            if (0 == burden) break;
-        } else if ('\n' == c)
+            /* if (0 == burden) break; */
+        } /* else if ('\n' == c) */
+          /*   break; */
+        if ('\n' == c &&
+            (!reading_cons || 0 == burden))
             break;
         c = fgetc(fp);
     }

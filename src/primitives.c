@@ -156,3 +156,19 @@ PHEAD(lt_eq)
 {
     return FIRST(args) == SECOND(args) ? lt_t: lt_nil;
 }
+
+PHEAD(lt_type_of)
+{
+    LispObject object = FIRST(args);
+
+    switch (TYPE(object)) {
+    case CONS: return ensure_symbol_exists("cons");
+    case SYMBOL: return ensure_symbol_exists("symbol");
+    case INTEGER: return ensure_symbol_exists("integer");
+    case FUNCTION: return ensure_symbol_exists("function");
+    case STRING: return ensure_symbol_exists("string");
+    default :
+        fprintf(stderr, "Unknown data type %d. How can you define that?\n", TYPE(object));
+        exit(1);
+    }
+}

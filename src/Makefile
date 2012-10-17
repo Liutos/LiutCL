@@ -1,4 +1,4 @@
-OBJS=parse_sexp.o print_sexp.o eval_sexp.o cons.o atom_proc.o object.o environment.o primitives.o read_sexp.o
+OBJS=parse_sexp.o print_sexp.o eval_sexp.o cons.o atom_proc.o object.o environment.o primitives.o read_sexp.o symbol_table.o
 
 liutcl: liutcl.o $(OBJS)
 	gcc -Wall -g $^ -o $@
@@ -22,6 +22,8 @@ environment.o: environment.c types.h atom_proc.h
 primitives.o: primitives.c types.h
 	gcc -c -Wall -g $< -o $@
 read_sexp.o: read_sexp.c
+	gcc -c -Wall -g $< -o $@
+symbol_table.o: symbol_table.c symtbl.h
 	gcc -c -Wall -g $< -o $@
 
 xread-print: xread-print.o $(OBJS)
