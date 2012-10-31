@@ -24,8 +24,8 @@ void print_atom(Atom atom)
         {
             int i;
 
-            for (i = 0; atom->symbol_name[i] != '\0'; i++)
-                printf("%c", toupper(atom->symbol_name[i]));
+            for (i = 0; SYMBOL_NAME(atom)[i] != '\0'; i++)
+                printf("%c", toupper(SYMBOL_NAME(atom)[i]));
         }
 	break;
     case INTEGER:
@@ -44,7 +44,7 @@ void print_atom(Atom atom)
 	}
 	break;
     case STRING:
-        printf("\"%s\"", atom->string);
+        printf("\"%s\"", STRING(atom));
         break;
     default :
 	fprintf(stderr, "Unknown type '%d'\n", TYPE(atom));
