@@ -90,7 +90,7 @@ Atom parse_atom(char *token)
     case STRING:
         atom = new_object();
         atom->type = type;
-        atom->string = strndup(token + 1, strlen(token) - 2);
+        STRING(atom) = strndup(token + 1, strlen(token) - 2);
         break;
     default :
 	fprintf(stderr, "Don't know how to make atom for token '%s'.\n", token);
