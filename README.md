@@ -6,6 +6,13 @@
 
 ## 实现的功能
 
+* 2012年10月31日
+  * 新定义结构体类型struct block_environment，对应的指针类型别名为BlockEnvironment，用于支撑lt/block所创建的词法作用域。其中成员变量name即为lt/block所使用的第一个参数，context成员变量则是用于longjmp进行跳转。lt/block可嵌套，所以需要一个prev指针链接外部的lt/block所创建的块。
+  * 给大部分的eval\_\*函数增加一个BlockEnvironment类型的block_env参数，用于支撑lt/block和lt/return-from的实现。
+  * 增加了和Common Lisp的两个特殊操作符相仿的功能
+    * 和block类似的lt/block；
+    * 和return-from类似的lt/return-from，这两个都是特殊操作符。
+  * 在types.h文件中新增struct stream_t结构体类型
 * 2012年10月17日
   * 把SymbolTable的实现从普通的二叉查找树更换为AVL树
 * 2012年10月15日
@@ -42,3 +49,13 @@
 	* get-cons-cdr。仅作用于点对类型的对象，取其cdr成员。
 	* numeric-eq。判断两个整数是否相等。
 	* lt-eq。判断任意两个对象是否*同一*。
+
+## 实现细节
+
+* 对于要预定义的特殊操作符的名字，即对应的符号，应该像下面这样操作
+  * 在atom\_proc.c文件中定义全局变量，名字为lt\_操作符名
+  * 在init\_symbol\_table函数中给上述定义的符号赋值
+  * 在atom\_proc.h头文件中声明这个全局变量
+* 目前函数名和对应的值，即函数体的绑定位于动态作用域中，在接下来我觉得应该把函数作为一个单独的环境实现，从动态作用域中剥离出来。
+* 我希望给解释器增加一个底层的堆栈式的虚拟机，以方便直接地对函数调用的栈和帧进行管理，或许可以方便地实现多重返回值。
+* 如果不是非常迫切的需要，我大概是不会使用指针中的位来表示一个对象的类型的。我觉得这样做牺牲了代码的可读性和可维护性。
