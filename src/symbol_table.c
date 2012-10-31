@@ -17,7 +17,7 @@ SymbolTable symbol_table = NULL;
 
 char *get_node_key(StrSymMapNode node)
 {
-    return node->symbol->symbol_name;
+    return SYMBOL_NAME(node->symbol);
 }
 
 /* Query for a symbol by its name. */
