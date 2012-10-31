@@ -26,6 +26,8 @@ Symbol lt_dset;
 Symbol lt_dynamic;
 Symbol lt_catch;
 Symbol lt_throw;
+Symbol lt_block;
+Symbol lt_return_from;
 
 Symbol make_symbol(char *symbol_name)
 {
@@ -33,7 +35,7 @@ Symbol make_symbol(char *symbol_name)
 
     sym = new_object();
     sym->type = SYMBOL;
-    sym->symbol_name = symbol_name;
+    SYMBOL_NAME(sym) = symbol_name;
 
     return sym;
 }
@@ -50,6 +52,8 @@ void init_symbol_table(void)
     lt_dynamic = ensure_symbol_exists("lt/dynamic");
     lt_catch = ensure_symbol_exists("lt/catch");
     lt_throw = ensure_symbol_exists("lt/throw");
+    lt_block = ensure_symbol_exists("lt/block");
+    lt_return_from = ensure_symbol_exists("lt/return-from");
 }
 
 Function new_function(void)
@@ -78,7 +82,7 @@ BOOL is_true_obj(LispObject obj)
     return lt_nil != obj;	/* Everything is true except the object lt_false */
 }
 
-Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Environment denv)
+Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Environment denv, BlockEnvironment block_env, Environment fenv)
 /* The parameter 'cenv' points to the environment at the creation time. */
 /* In Lisp-2, a closure should also stores the dynamic environment at the
    creating time. */
@@ -93,6 +97,8 @@ Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Enviro
     LOCAL_ENV(fun) = cenv;	/* This lexical environment could be modified 
 				   after the creation of the closure */
     FUNC_DENV(fun) = denv;	/* The dynamic environment. */
+    BLOCK_ENV(fun) = block_env; /* 对于block_env这样的指针对象，比起拷贝一份还是共享来得好。 */
+    FENV(fun) = fenv;           /* Outer function definition environment. */
 
     return fun;
 }
