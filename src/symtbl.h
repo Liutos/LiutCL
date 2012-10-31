@@ -14,11 +14,11 @@
 
 /* AVL tree version */
 typedef struct StrSymMapNode {
-    /* char *symbol_name; */          /* This field should be removed. */
     struct LispObject *symbol;
     struct StrSymMapNode *left, *right, *parent;
     int height;                 /* Height of the tree. */
     int bf;                     /* balance factor */
 } *SymbolTable, *StrSymMapNode;
+/* Please give a Trie version below. */
 
 #endif
