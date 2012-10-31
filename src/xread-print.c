@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
        dynamic environment, the variable `denv'. Therefore, the evaluator
        may throw the message that ``No binding of symbol fact.'' */
     /* expr = "(begin (lt/dset! fact (lambda (n) (if (numeric-eq 0 n) 1 (mul-two n (fact (sub-two n 1)))))) (fact 5))"; */
-    expr = "(cons 1 2)";
-    print_sexp(eval_sexp(parse_sexp(expr), global_env, denv));
+    expr = "(lt/block a (lt/return-from a 2))";
+    print_sexp(eval_sexp(parse_sexp(expr), global_env, denv, NULL));
 
     return 0;
 }

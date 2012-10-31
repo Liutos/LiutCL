@@ -196,3 +196,14 @@ SymValMap make_single_map(Symbol symbol, LispObject value)
 
     return map;
 }
+
+BlockEnvironment make_block_env(Symbol name, jmp_buf context, BlockEnvironment prev_block_env)
+{
+    BlockEnvironment block_env = malloc(sizeof(struct block_environment));
+
+    block_env->name = name;
+    *block_env->context = *context;
+    block_env->prev = prev_block_env;
+
+    return block_env;
+}

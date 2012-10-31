@@ -5,5 +5,6 @@
 
 extern void print_sexp(LispObject);
 extern void print_cons(Cons);
+extern void print_atom(Atom);
 
 #endif
