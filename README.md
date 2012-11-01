@@ -1,4 +1,4 @@
-# LiutCL - 挖坑必填
+# LiutCL - A Common Lisp Implementation from Scratch
 
 ## 简介
 
@@ -6,6 +6,10 @@
 
 ## 实现的功能
 
+* 2012年11月1日
+  * 定义了结构体类型struct stream_t，用于实现Lisp级别的流对象，如文件流和字符流、字节流。
+  * 在Lisp代码级别，实现了用于从文件流中读取输入的lt/read-a-char函数。
+  * 在stream.c文件中增加了很多向文件流对象中写入数据的函数，如写入单个字符的write\_stream\_char、写入字符串的write\_stream\_string等。
 * 2012年10月31日
   * 新定义结构体类型struct block_environment，对应的指针类型别名为BlockEnvironment，用于支撑lt/block所创建的词法作用域。其中成员变量name即为lt/block所使用的第一个参数，context成员变量则是用于longjmp进行跳转。lt/block可嵌套，所以需要一个prev指针链接外部的lt/block所创建的块。
   * 给大部分的eval\_\*函数增加一个BlockEnvironment类型的block_env参数，用于支撑lt/block和lt/return-from的实现。
@@ -59,3 +63,4 @@
 * 目前函数名和对应的值，即函数体的绑定位于动态作用域中，在接下来我觉得应该把函数作为一个单独的环境实现，从动态作用域中剥离出来。
 * 我希望给解释器增加一个底层的堆栈式的虚拟机，以方便直接地对函数调用的栈和帧进行管理，或许可以方便地实现多重返回值。
 * 如果不是非常迫切的需要，我大概是不会使用指针中的位来表示一个对象的类型的。我觉得这样做牺牲了代码的可读性和可维护性。
+  * 或许是时候考虑实现用位来表示数据对象的类型了→_→
