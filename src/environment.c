@@ -11,13 +11,12 @@
 #include "object.h"
 #include "cons.h"
 #include "env_types.h"
+#include "stream.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
-#define reg(name, prim) tmp = add_primitive(name, prim, tmp)
-
 extern void print_atom(Atom);
-/* extern Symbol lt_true, lt_false, lt_void, lt_t; */
 
 LispObject get_value_in_one(Symbol symbol, Environment env)
 {
@@ -111,6 +110,8 @@ Environment add_primitive(char *func_name, primitive_t prim, Environment env)
 
 Environment init_primitives(Environment env)
 {
+#define reg(name, prim) tmp = add_primitive(name, prim, tmp)
+
     Environment tmp;
 
     tmp = env;
@@ -129,6 +130,8 @@ Environment init_primitives(Environment env)
     reg("eq", lt_eq);
     reg("cons", lt_cons);
     reg("type-of", lt_type_of);
+    reg("lt/read-a-char", lt_read_a_char);
+    reg("lt/write-a-char", lt_write_a_char);
 
     return tmp;
 }
@@ -142,6 +145,10 @@ Environment init_variables(Environment env)
 
     tmp = extend_binding_by_name("nil", lt_nil, tmp);
     tmp = extend_binding_by_name("t", lt_t, tmp);
+    standard_output = make_file_stream(stdout);
+    tmp = extend_binding_by_name("*standard-output*", standard_output, tmp);
+    standard_input = make_file_stream(stdin);
+    tmp = extend_binding_by_name("*standard-input*", standard_input, tmp);
 
     return tmp;
 }
