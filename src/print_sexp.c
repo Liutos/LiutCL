@@ -7,6 +7,8 @@
  */
 #include "types.h"
 #include "atom_proc.h"
+#include "stream.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -20,16 +22,18 @@ void print_atom(Atom atom)
 {
     switch (TYPE(atom)) {
     case SYMBOL:
-	/* printf("%s", atom->symbol_name); */
         {
             int i;
 
             for (i = 0; SYMBOL_NAME(atom)[i] != '\0'; i++)
-                printf("%c", toupper(SYMBOL_NAME(atom)[i]));
+                /* printf("%c", toupper(SYMBOL_NAME(atom)[i])); */
+                write_stream_char(standard_output,
+                                  make_char(toupper(SYMBOL_NAME(atom)[i])));
         }
 	break;
     case INTEGER:
-	printf("%d", INTEGER(atom));
+	/* printf("%d", INTEGER(atom)); */
+        write_file_stream_integer(standard_output, atom);
 	break;
     case FUNCTION:
 	if (TRUE == FUNC_FLAG(atom))
@@ -45,6 +49,12 @@ void print_atom(Atom atom)
 	break;
     case STRING:
         printf("\"%s\"", STRING(atom));
+        break;
+    case CHARACTER:
+        printf("#\\%c", CHARACTER(atom));
+        break;
+    case STREAM:
+        printf("#<STREAM %p>", atom);
         break;
     default :
 	fprintf(stderr, "Unknown type '%d'\n", TYPE(atom));
