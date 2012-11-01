@@ -10,6 +10,8 @@ typedef enum {
     FUNCTION,
     STRING,
     STREAM,
+    CHARACTER,
+    VECTOR,
 } LispType;
 
 struct LispObject;
@@ -20,8 +22,12 @@ typedef LispObject Atom;
 typedef LispObject Symbol;
 typedef LispObject Boolean;
 typedef LispObject Function;
-typedef LispObject (*primitive_t)(LispObject);
 typedef LispObject Stream;
+typedef LispObject Character;
+typedef LispObject Vector;
+typedef LispObject Integer;
+typedef LispObject String;      /* 只是为了快速试验一下向文件流的写入而设的 */
+typedef LispObject (*primitive_t)(LispObject);
 
 typedef int BOOL;
 #define TRUE 1
@@ -51,6 +57,7 @@ struct symbol_t {
     LispObject value_cell;
     LispObject function_cell;
 };
+
 /* Stream definition */
 typedef enum {
     FILE_STREAM,
@@ -67,7 +74,16 @@ struct stream_t {
     STREAM_TYPE type;
     union {
         FILE *file;
+        char *string;
     } u;
+};
+
+/* Vector definition */
+struct vector_t;
+typedef struct vector_t *vector_t;
+struct vector_t {
+    unsigned int length;
+    LispObject *content;        /* A C array. */
 };
 
 /* Lisp Object definition */
@@ -83,6 +99,8 @@ struct LispObject {
 	    LispObject car;
 	    LispObject cdr;
 	} s;
+        char c;                 /* The character */
+        struct vector_t *vector;
     } u;
 };
 
@@ -115,9 +133,16 @@ struct LispObject {
 #define SYMBOL_NAME(x) (theSYMBOL(x)->symbol_name)
 /* String Object */
 #define STRING(x) ((x)->u.string)
+/* Character Object */
+#define CHARACTER(x) ((x)->u.c)
+/* Stream Object */
+#define theSTREAM(x) ((x)->u.stream)
+#define FILE_STREAM(x) ((x)->u.file)
+/* Vector Object */
+#define theVector(x) ((x)->u.vector)
 
 #define PHEAD(func_name) LispObject func_name(Cons args)
 
-extern BOOL is_debug_mode;
+extern BOOL is_debug_mode;      /* Not used yet */
 
 #endif
