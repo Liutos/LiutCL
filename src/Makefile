@@ -5,7 +5,7 @@ CFLAGS=-Wall -g
 liutcl: liutcl.o $(OBJS)
 	gcc -Wall -g $^ -o $@
 liutcl.o: liutcl.c atom_proc.h environment.h types.h parse_sexp.h read_sexp.h eval_sexp.h print_sexp.h
-	gcc -c -Wall -g $< -o $@
+	$(CC) -c $(CFLAGS) $< -o $@
 
 parse_sexp.o: parse_sexp.c types.h cons.h atom_proc.h
 	gcc -c -Wall -g $< -o $@
@@ -19,7 +19,7 @@ atom_proc.o: atom_proc.c cons.h object.h types.h symbol_table.h
 	gcc -c -Wall -g $< -o $@
 object.o: object.c types.h
 	gcc -c -Wall -g $< -o $@
-environment.o: environment.c types.h atom_proc.h
+environment.o: environment.c types.h atom_proc.h stream.h
 	gcc -c -Wall -g $< -o $@
 primitives.o: primitives.c types.h
 	gcc -c -Wall -g $< -o $@
@@ -28,7 +28,7 @@ read_sexp.o: read_sexp.c
 symbol_table.o: symbol_table.c symtbl.h types.h
 	gcc -c -Wall -g $< -o $@
 
-stream.o: stream.c types.h object.h
+stream.o: stream.c types.h object.h atom_proc.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
 xread-print: xread-print.o $(OBJS)
