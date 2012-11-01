@@ -17,5 +17,7 @@ extern PHEAD(numeric_eq);
 extern PHEAD(lt_eq);
 extern PHEAD(lt_cons);
 extern PHEAD(lt_type_of);
+extern PHEAD(lt_read_a_char);
+extern PHEAD(lt_write_a_char);
 
 #endif
