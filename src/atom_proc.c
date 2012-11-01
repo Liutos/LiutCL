@@ -31,11 +31,11 @@ Symbol lt_return_from;
 
 Symbol make_symbol(char *symbol_name)
 {
-    Symbol sym;
+    Symbol sym = new_object();
 
-    sym = new_object();
-    sym->type = SYMBOL;
-    SYMBOL_NAME(sym) = symbol_name;
+    TYPE(sym) = SYMBOL;
+    /* SYMBOL_NAME(sym) = symbol_name; */
+    theSYMBOL(sym) = make_C_symbol(symbol_name);
 
     return sym;
 }
@@ -59,17 +59,14 @@ void init_symbol_table(void)
 Function new_function(void)
 {
     Function obj = new_object();
-
     FUNCTION(obj) = malloc(sizeof(struct function_t));
-
     return obj;
 }
 
 Function make_c_fun_object(primitive_t prim)
 {
-    Function func;
+    Function func = new_function();
 
-    func = new_function();
     TYPE(func) = FUNCTION;
     FUNC_FLAG(func) = TRUE;
     PRIMITIVE(func) = prim;
@@ -78,18 +75,15 @@ Function make_c_fun_object(primitive_t prim)
 }
 
 BOOL is_true_obj(LispObject obj)
-{
-    return lt_nil != obj;	/* Everything is true except the object lt_false */
-}
+{ return lt_nil != obj;	/* Everything is true except the object lt_false */ }
 
 Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Environment denv, BlockEnvironment block_env, Environment fenv)
 /* The parameter 'cenv' points to the environment at the creation time. */
 /* In Lisp-2, a closure should also stores the dynamic environment at the
    creating time. */
 {
-    Function fun;
+    Function fun = new_function();
 
-    fun = new_function();
     TYPE(fun) = FUNCTION;
     FUNC_FLAG(fun) = FALSE;
     PARAMETERS(fun) = parms;
@@ -104,16 +98,20 @@ Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Enviro
 }
 
 BOOL is_atom_object(LispObject object)
-{
-    return TYPE(object) != CONS;
-}
+{ return TYPE(object) != CONS; }
 
 BOOL is_tail(LispObject object)
-{
-    return lt_nil == object || is_atom_object(object);
-}
+{ return lt_nil == object || is_atom_object(object); }
 
 BOOL is_symbol(LispObject object)
+{ return SYMBOL == object->type; }
+
+Character make_char(char c)
 {
-    return SYMBOL == object->type;
+    Character object = new_object();
+
+    TYPE(object) = CHARACTER;
+    CHARACTER(object) = c;
+
+    return object;
 }
