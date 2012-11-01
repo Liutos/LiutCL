@@ -9,6 +9,8 @@
 #include "object.h"
 #include "atom_proc.h"
 #include "cons.h"
+#include "stream.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -106,24 +108,6 @@ PHEAD(or_two)
     return (is_true_obj(arg1) || is_true_obj(arg2)) ? lt_t: lt_nil;
 }
 
-/* PHEAD(get_cons_car) */
-/* { */
-/*     Cons cons; */
-
-/*     cons = FIRST(args); */
-
-/*     return SCAR(cons); */
-/* } */
-
-/* PHEAD(get_cons_cdr) */
-/* { */
-/*     Cons cons; */
-
-/*     cons = FIRST(args); */
-
-/*     return SCDR(cons); */
-/* } */
-
 PHEAD(lt_car)
 {
     return safe_car(FIRST(args));
@@ -144,18 +128,14 @@ PHEAD(lt_cons)
 
 PHEAD(numeric_eq)
 {
-    int n1, n2;
-
-    n1 = INTEGER(FIRST(args));
-    n2 = INTEGER(SECOND(args));
+    int n1 = INTEGER(FIRST(args));
+    int n2 = INTEGER(SECOND(args));
 
     return n1 == n2 ? lt_t: lt_nil;
 }
 
 PHEAD(lt_eq)
-{
-    return FIRST(args) == SECOND(args) ? lt_t: lt_nil;
-}
+{ return FIRST(args) == SECOND(args) ? lt_t: lt_nil; }
 
 PHEAD(lt_type_of)
 {
@@ -167,8 +147,26 @@ PHEAD(lt_type_of)
     case INTEGER: return ensure_symbol_exists("integer");
     case FUNCTION: return ensure_symbol_exists("function");
     case STRING: return ensure_symbol_exists("string");
+    case STREAM: return ensure_symbol_exists("stream");
     default :
         fprintf(stderr, "Unknown data type %d. How can you define that?\n", TYPE(object));
         exit(1);
     }
+}
+
+PHEAD(lt_read_a_char)
+{
+    Stream str = FIRST(args);
+
+    return read_stream_char(str);
+}
+
+PHEAD(lt_write_a_char)
+{
+    Stream str = FIRST(args);
+    Character c = SECOND(args);
+
+    write_stream_char(str, c);
+
+    return lt_nil;
 }
