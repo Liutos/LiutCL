@@ -12,6 +12,7 @@ extern Function make_i_fun_object(Cons, LispObject, Environment, Environment, Bl
 extern BOOL is_atom_object(LispObject);
 extern BOOL is_tail(LispObject);
 extern BOOL is_symbol(LispObject);
+extern Character make_char(char);
 
 extern Symbol lt_nil;
 extern Symbol lt_t;
