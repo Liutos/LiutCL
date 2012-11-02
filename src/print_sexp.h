@@ -3,8 +3,8 @@
 
 #include "types.h"
 
-extern void print_sexp(LispObject);
-extern void print_cons(Cons);
-extern void print_atom(Atom);
+extern void print_sexp(LispObject, Stream);
+extern void print_cons(Cons, Stream);
+extern void print_atom(Atom, Stream);
 
 #endif
