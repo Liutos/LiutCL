@@ -1,7 +1,8 @@
 /*
  * stream.c
  *
- * Implementation of operations on objects of type stream
+ * Implementation of operations on objects of type stream. Maybe it's
+ * suitable for implementing some low-level operations here.
  *
  * Copyright (C) 2012-10-31 liutos <mat.liutos@gmail.com>
  */
@@ -19,7 +20,7 @@ Stream make_file_stream(FILE *fp)
 {
     Stream object = new_object();
 
-    TYPE(object) = STREAM;
+    object->type = STREAM;
     theSTREAM(object) = make_C_file_stream(fp);
 
     return object;
@@ -29,7 +30,7 @@ Stream make_string_stream(char *string)
 {
     Stream object = new_object();
 
-    TYPE(object) = STREAM;
+    object->type = STREAM;
     theSTREAM(object) = make_C_string_stream(string);
 
     return object;
