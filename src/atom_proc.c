@@ -31,13 +31,13 @@ Symbol lt_return_from;
 
 Symbol make_symbol(char *symbol_name)
 {
-    Symbol sym = new_object();
+    /* Symbol sym = new_object(); */
 
-    TYPE(sym) = SYMBOL;
+    /* sym->type = SYMBOL; */
     /* SYMBOL_NAME(sym) = symbol_name; */
-    theSYMBOL(sym) = make_C_symbol(symbol_name);
+    /* theSYMBOL(sym) = make_C_symbol(symbol_name); */
 
-    return sym;
+    return MAKE_SYMBOL(make_C_symbol(symbol_name));
 }
 
 void init_symbol_table(void)
@@ -67,7 +67,7 @@ Function make_c_fun_object(primitive_t prim)
 {
     Function func = new_function();
 
-    TYPE(func) = FUNCTION;
+    func->type = FUNCTION;
     FUNC_FLAG(func) = TRUE;
     PRIMITIVE(func) = prim;
 
@@ -84,7 +84,7 @@ Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Enviro
 {
     Function fun = new_function();
 
-    TYPE(fun) = FUNCTION;
+    fun->type = FUNCTION;
     FUNC_FLAG(fun) = FALSE;
     PARAMETERS(fun) = parms;
     EXPRESSION(fun) = expr;
@@ -98,20 +98,23 @@ Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Enviro
 }
 
 BOOL is_atom_object(LispObject object)
-{ return TYPE(object) != CONS; }
+{ return INTEGER_P(object) ||
+        CHARACTER_P(object) ||
+        (POINTER_P(object) &&
+         TYPE(object) != CONS); }
 
 BOOL is_tail(LispObject object)
 { return lt_nil == object || is_atom_object(object); }
 
 BOOL is_symbol(LispObject object)
-{ return SYMBOL == object->type; }
+{ return /* SYMBOL == object->type */SYMBOL_P(object); }
 
 Character make_char(char c)
 {
-    Character object = new_object();
+    /* Character object = new_object(); */
 
-    TYPE(object) = CHARACTER;
-    CHARACTER(object) = c;
+    /* object->type = CHARACTER; */
+    /* CHARACTER(object) = c; */
 
-    return object;
+    return MAKE_CHARACTER(c);
 }
