@@ -46,3 +46,12 @@ stream_t make_C_string_stream(char *string)
 
     return stream;
 }
+
+LispType enum_type_of(LispObject object)
+{
+    if (INTEGER_P(object)) return INTEGER;
+    if (SYMBOL_P(object)) return SYMBOL;
+    if (CHARACTER_P(object)) return CHARACTER;
+    if (CONS_P(object)) return CONS;
+    else return object->type;
+}
