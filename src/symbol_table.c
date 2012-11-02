@@ -7,9 +7,11 @@
  */
 #include "symtbl.h"
 #include "types.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 extern Symbol make_symbol(char *);
 
@@ -155,11 +157,23 @@ void put_symbol(Symbol symbol)
     symbol_table = put_symbol_core(node, symbol_table);
 }
 
+char *toupper_string(char *origin)
+{
+    int i;
+    char *target = strdup(origin); /* 传进来的origin有可能是分配在只读区域的，因此还是复制一份再修改比较保险。事实上这说明坚持函数式的思路是有益的。 */
+
+    for (i = 0; target[i] != '\0'; ++i)
+        target[i] = toupper(target[i]);
+
+    return target;
+}
+
 /* Ensure the symbol with name `symbol_name' exists uniquely. */
 Symbol ensure_symbol_exists(char *symbol_name)
 {
     Symbol symbol;
 
+    symbol_name = toupper_string(symbol_name); /* Converts all characters in symbol name to capitalized. */
     symbol = get_symbol(symbol_name);
     if (symbol != NULL)
 	return symbol;
