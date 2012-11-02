@@ -12,6 +12,7 @@
 #include "print_sexp.h"
 #include "cons.h"
 #include "env_types.h"
+#include "stream.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,8 +22,10 @@
 #define eq(x, y) (x == y)
 #define DEFEVAL(name, hd) LispObject name(LispObject hd, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv)
 
-LispObject eval_sexp(LispObject, Environment, Environment, BlockEnvironment, Environment);
-LispObject eval_cons(Cons, Environment, Environment, BlockEnvironment, Environment);
+/* LispObject eval_sexp(LispObject, Environment, Environment, BlockEnvironment, Environment); */
+/* LispObject eval_cons(Cons, Environment, Environment, BlockEnvironment, Environment); */
+DEFEVAL(eval_sexp, _);
+DEFEVAL(eval_cons, _);
 
 jmp_buf context;
 
@@ -71,8 +74,6 @@ LispObject invoke_function(Function func, Cons args)
 	return invoke_i_fun(func, args);
 }
 
-/* LispObject eprogn(Cons exps, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv) */
-/* The code above is the old function header line. */
 DEFEVAL(eprogn, exps)
 /* This function name used in _Lisp in Small Pieces_. */
 {
@@ -93,7 +94,6 @@ DEFEVAL(eprogn, exps)
     return eval_sexp(CAR(exps), env, denv, block_env, fenv);
 }
 
-/* LispObject eval_args(Cons args, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv) */
 DEFEVAL(eval_args, args)
 {
     if (!is_tail(args))
@@ -103,15 +103,14 @@ DEFEVAL(eval_args, args)
 	return lt_nil;
 }
 
-/* LispObject eval_operator(LispObject op, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv) */
 DEFEVAL(eval_operator, op)
 {
     if (is_symbol(op)) {
 	LispObject tmp;
 
-	tmp = get_value(op, fenv/* denv */);
+	tmp = get_value(op, fenv);
 	if (tmp != NULL)
-	    return tmp/* get_value(op, denv); */;
+	    return tmp;
 	else {
 	    fprintf(stderr, "No binding of symbol %s.\n", SYMBOL_NAME(op));
 	    exit(1);
@@ -120,7 +119,6 @@ DEFEVAL(eval_operator, op)
 	return eval_cons(op, env, denv, block_env, fenv);
 }
 
-/* LispObject eval_catch(Cons argv, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv) */
 DEFEVAL(eval_catch, argv)
 {
     jmp_buf tmp_context;
@@ -147,33 +145,32 @@ DEFEVAL(eval_catch, argv)
     }
 }
 
-/* LispObject eval_cons(Cons exps, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv) */
 DEFEVAL(eval_cons, exps)
 /* This function should handles only the Lisp objects of type Cons, 
    not included the symbol `nil'. */
 {
     Function func;
     Cons argv;
+    LispObject op;
 
  INTERP:                        /* The support of tail-recursion optimization */
     argv = SCDR(exps);
+    op = SCAR(exps);
     /* Cases of special operators in Scheme */
-    if (eq(CAR(exps), lt_quote))
+    if (eq(op, lt_quote))
 	return CAR(argv);
-    if (eq(CAR(exps), lt_if)) {   /* 如果把if对应的操作给函数化了，那么就不能应用goto来实现尾递归优化了。 */
+    if (eq(op, lt_if)) {   /* 如果把if对应的操作给函数化了，那么就不能应用goto来实现尾递归优化了。 */
 	if (is_true_obj(eval_sexp(FIRST(argv), env, denv, block_env, fenv))) {
-	    /* return eval_sexp(SECOND(argv), env, denv); */
-            exps = SECOND(argv); /* A try of tail-recursive optimization. */
+	    exps = SECOND(argv); /* A try of tail-recursive optimization. */
             goto INTERP;
 	} else {
-            /* return eval_sexp(SCAR(SCDR(SCDR(argv))), env, denv); */
             exps = THIRD(argv);
             goto INTERP;
         }
     }
-    if (eq(CAR(exps), lt_begin))
+    if (eq(op, lt_begin))
 	return eprogn(argv, env, denv, block_env, fenv);
-    if (eq(CAR(exps), lt_set)) {
+    if (eq(op, lt_set)) {
         extend_binding(SCAR(argv),
                        eval_sexp(SCAR(SCDR(argv)), env, denv, block_env, fenv),
                        env);
@@ -181,28 +178,28 @@ DEFEVAL(eval_cons, exps)
         return lt_nil;
     }
 
-    if (eq(CAR(exps), lt_lambda)) /* LAMBDA */
+    if (eq(op, lt_lambda)) /* LAMBDA */
 	return make_i_fun_object(SECOND(exps), THIRD(exps), env, denv, block_env);
     /* Process the special operator added by myself. */
-    if (eq(CAR(exps), lt_dset)) {
+    if (eq(op, lt_dset)) {
 	extend_binding(SECOND(exps),
 		       eval_sexp(THIRD(exps), env, denv, block_env, fenv),
 		       denv);
 
 	return lt_nil;
     }
-    if (eq(CAR(exps), lt_dynamic)) /* Symbol LT/DYNAMIC */
+    if (eq(op, lt_dynamic)) /* Symbol LT/DYNAMIC */
 	return eval_atom(eval_sexp(SECOND(exps), env, denv, block_env, fenv), denv);
-    if (eq(CAR(exps), lt_catch)) /* Symbol LT/CATCH */
+    if (eq(op, lt_catch)) /* Symbol LT/CATCH */
         return eval_catch(argv, env, denv, block_env, fenv);
-    if (eq(CAR(exps), lt_throw)) { /* Symbol LT/THROW */
+    if (eq(op, lt_throw)) { /* Symbol LT/THROW */
         Symbol label = eval_sexp(FIRST(argv), env, denv, block_env, fenv); /* 这里假设了第一个参数是要求值的，因为我一时忘了Common Lisp是否对其进行求值了。 */
         LispObject value = eval_sexp(SECOND(argv), env, denv, block_env, fenv);
         SymValMap map = make_single_map(label, value);
 
         longjmp(context, (int)map);
     }
-    if (eq(CAR(exps), lt_block)) { /* Symbol LT/BLOCK */
+    if (eq(op, lt_block)) { /* Symbol LT/BLOCK */
         jmp_buf context;
         int val;
         Symbol name = FIRST(argv);/* eval_sexp(FIRST(argv), env, denv, block_env). This argument should not be evaluated. */;
@@ -213,7 +210,7 @@ DEFEVAL(eval_cons, exps)
         else
             return (LispObject)val;
     }
-    if (eq(CAR(exps), lt_return_from)) { /* Symbol LT/RETURN-FROM */
+    if (eq(op, lt_return_from)) { /* Symbol LT/RETURN-FROM */
         Symbol name = FIRST(argv);     /* Name should not be evaluated. */
         LispObject value = eval_sexp(SECOND(argv), env, denv, block_env, fenv);
 
@@ -223,13 +220,13 @@ DEFEVAL(eval_cons, exps)
             block_env = block_env->prev;
         }
         printf("No such a block environment contains name `");
-        print_atom(name);
+        print_atom(name, standard_output);
         printf("'.\n");
         exit(1);
     }
 
     /* Regular function evaluation. */
-    func = eval_operator(CAR(exps), env, denv, block_env, fenv);
+    func = eval_operator(op, env, denv, block_env, fenv);
 
     return invoke_function(func, eval_args(argv, env, denv, block_env, fenv));
 }
@@ -239,7 +236,6 @@ DEFEVAL(eval_cons, exps)
  * denv : dynamic environment;
  * block_env : environment contains bindings of name and context.
  */
-/* LispObject eval_sexp(LispObject exp, Environment env, Environment denv, BlockEnvironment block_env, Environment fenv) */
 DEFEVAL(eval_sexp, exp)
 /* Parameter 'denv' means dynamic environment. Currently the `denv' also
    stores the function value in it but I think providing a specific
@@ -247,8 +243,8 @@ DEFEVAL(eval_sexp, exp)
 {
     if (NULL == exp)
         return NULL;
-    if (TYPE(exp) != CONS)
-	return eval_atom(exp, env);
+    if (CONS_P(exp))
+        return eval_cons(exp, env, denv, block_env, fenv);
     else
-	return eval_cons(exp, env, denv, block_env, fenv);
+        return eval_atom(exp, env);
 }
