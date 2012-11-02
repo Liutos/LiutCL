@@ -13,6 +13,8 @@
 #include "eval_sexp.h"
 #include "print_sexp.h"
 #include "env_types.h"
+#include "stream.h"
+
 #include <stdio.h>
 
 int main(int argc, char *argv[])
@@ -35,7 +37,7 @@ int main(int argc, char *argv[])
     do {
         expr = read_sexp(stdin);
         sexp = parse_sexp(expr);
-        print_sexp(eval_sexp(sexp, lexical_env, dynamic_env, block_env, fun_env));
+        print_sexp(eval_sexp(sexp, lexical_env, dynamic_env, block_env, fun_env), standard_output);
     } while (1);
 
     return 0;
