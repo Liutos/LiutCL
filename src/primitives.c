@@ -14,60 +14,71 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* 为了重构四则运算的代码而编写的宏，取出第一、二个参数并取出特定的成员。 */
+#define ACCESS_PARM2(o1, ac1, o2, ac2) \
+    do { \
+    o1 = ac1(FIRST(args)); \
+    o2 = ac2(SECOND(args)); \
+    } while (0)
+
 PHEAD(add_two)
 {
     int n1, n2;
-    LispObject result;
+    /* LispObject result; */
 
-    n1 = INTEGER(FIRST(args));
-    n2 = INTEGER(SECOND(args));
-    result = new_object();
-    result->type = INTEGER;
-    INTEGER(result) = n1 + n2;
+    /* n1 = INTEGER(FIRST(args)); */
+    /* n2 = INTEGER(SECOND(args)); */
+    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
+    /* result = new_object(); */
+    /* result->type = INTEGER; */
+    /* INTEGER(result) = n1 + n2; */
 
-    return result;
+    return MAKE_INTEGER(n1 + n2);
 }
 
 PHEAD(sub_two)
 {
     int n1, n2;
-    LispObject result;
+    /* LispObject result; */
 
-    n1 = INTEGER(FIRST(args));
-    n2 = INTEGER(SECOND(args));
-    result = new_object();
-    result->type = INTEGER;
-    INTEGER(result) = n1 - n2;
+    /* n1 = INTEGER(FIRST(args)); */
+    /* n2 = INTEGER(SECOND(args)); */
+    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
+    /* result = new_object(); */
+    /* result->type = INTEGER; */
+    /* INTEGER(result) = n1 - n2; */
 
-    return result;
+    return MAKE_INTEGER(n1 - n2);
 }
 
 PHEAD(mul_two)
 {
     int n1, n2;
-    LispObject result;
+    /* LispObject result; */
 
-    n1 = INTEGER(FIRST(args));
-    n2 = INTEGER(SECOND(args));
-    result = new_object();
-    result->type = INTEGER;
-    INTEGER(result) = n1 * n2;
+    /* n1 = INTEGER(FIRST(args)); */
+    /* n2 = INTEGER(SECOND(args)); */
+    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
+    /* result = new_object(); */
+    /* result->type = INTEGER; */
+    /* INTEGER(result) = n1 * n2; */
 
-    return result;
+    return MAKE_INTEGER(n1 * n2);
 }
 
 PHEAD(div_two)
 {
     int n1, n2;
-    LispObject result;
+    /* LispObject result; */
 
-    n1 = INTEGER(FIRST(args));
-    n2 = INTEGER(SECOND(args));
-    result = new_object();
-    result->type = INTEGER;
-    INTEGER(result) = n1 / n2;
+    /* n1 = INTEGER(FIRST(args)); */
+    /* n2 = INTEGER(SECOND(args)); */
+    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
+    /* result = new_object(); */
+    /* result->type = INTEGER; */
+    /* INTEGER(result) = n1 / n2; */
 
-    return result;
+    return MAKE_INTEGER(n1 / n2);
 }
 
 PHEAD(quit)
@@ -81,8 +92,9 @@ PHEAD(gt_two)
     int n1, n2;
     Boolean result;
 
-    n1 = INTEGER(FIRST(args));
-    n2 = INTEGER(SECOND(args));
+    /* n1 = INTEGER(FIRST(args)); */
+    /* n2 = INTEGER(SECOND(args)); */
+    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
     result = n1 > n2 ? lt_t: lt_nil;
 
     return result;
