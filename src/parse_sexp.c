@@ -80,9 +80,7 @@ Atom parse_atom(char *token)
     type = token_type(token);
     switch (type) {
     case INTEGER:
-	atom = new_object();
-	atom->type = type;
-	INTEGER(atom) = atoi(token);
+        atom = MAKE_INTEGER(atoi(token));
 	break;
     case SYMBOL:
 	atom = ensure_symbol_exists(token);
@@ -106,7 +104,8 @@ Cons parse_cons_core(char *string, int *offset)
     int step, i;
     char *token;
 
-    pre = head = new_object();
+    /* pre = head = new_object(); */
+    pre = head = make_cons_cell(NULL, NULL);
     for (i = 0; string[i] != '\0'; i += step) {
 	switch (string[i]) {
 	case '(':
@@ -119,7 +118,8 @@ Cons parse_cons_core(char *string, int *offset)
 	case ')':
 	    *offset = i + 2;
 	    pre = CDR(head);
-	    free(head);
+	    /* free(GET_CONS(head)); */
+            free_cons_cell(head);
 
 	    return pre;
 	default :
@@ -130,7 +130,8 @@ Cons parse_cons_core(char *string, int *offset)
 	pre = cur;
     }
     pre = CDR(head);
-    free(head);
+    /* free(GET_CONS(head)); */
+    free_cons_cell(head);
 
     return pre;
 }
