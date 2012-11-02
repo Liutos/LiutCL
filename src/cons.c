@@ -6,28 +6,39 @@
  * Copyright (C) 2012-10-04 liutos
  */
 #include <stdlib.h>
+#include <assert.h>
+
 #include "types.h"
 #include "object.h"
 #include "atom_proc.h"
 
+/* Tagged Pointer version */
 Cons make_cons_cell(LispObject car, LispObject cdr)
 {
-    Cons cons;
+    cons_t cons = malloc(sizeof(struct cons_t));
 
-    cons = new_object();
-    cons->type = CONS;
-    CAR(cons) = car;
-    CDR(cons) = cdr;
+    cons->car = car;
+    cons->cdr = cdr;
 
-    return cons;
+    return MAKE_CONS(cons);
+}
+
+void free_cons_cell(Cons cons)
+{
+    assert(lt_nil == cons || CONS_P(cons));
+    free(GET_CONS(cons));
 }
 
 LispObject safe_car(LispObject obj)
 {
-    return lt_nil == obj ? lt_nil: CAR(obj);
+    assert(lt_nil == obj || CONS_P(obj));
+
+    return lt_nil == obj ? lt_nil: GET_CONS(obj)->car;
 }
 
 LispObject safe_cdr(LispObject obj)
 {
-    return lt_nil == obj ? lt_nil: CDR(obj);
+    assert(lt_nil == obj || CONS_P(obj));
+
+    return lt_nil == obj ? lt_nil: GET_CONS(obj)->cdr;
 }
