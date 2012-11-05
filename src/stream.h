@@ -1,17 +1,20 @@
 #ifndef STREAM_H
 #define STREAM_H
 
-#include "types.h"
-
 #include <stdio.h>
 
-extern Stream make_file_stream(FILE *);
-extern Character read_stream_char(Stream);
-extern void write_stream_char(Stream, Character);
-extern void write_stream_string(Stream, String);
-extern void write_file_stream_integer(Stream, Integer);
+#include "types.h"
 
-extern Stream standard_output;
+extern Character read_char(Stream);
+extern Stream make_file_stream(FILE *);
+extern void write_address(Stream, LispObject);
+extern void write_char(Stream, Character);
+extern void write_fixnum(Stream, Fixnum);
+extern void write_format(Stream, const char *, ...);
+extern void write_string(Stream, String);
+
+extern Stream standard_error;
 extern Stream standard_input;
+extern Stream standard_output;
 
 #endif
