@@ -1,120 +1,88 @@
 /*
  * atom_proc.c
  *
- * Operators on objects of type Atom
+ * 
  *
  * Copyright (C) 2012-10-05 liutos
  */
-#include "object.h"
-#include "types.h"
-#include "symbol_table.h"
-#include "env_types.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-Symbol lt_nil;		/* The inner representation of void in defining language. */
-Symbol lt_t;		/* The canonical representation of logical true. */
-/* Special operators in Scheme */
-Symbol lt_quote;
-Symbol lt_if;
-Symbol lt_begin;
-Symbol lt_set;
-Symbol lt_lambda;
+#include "cons.h"
+#include "env_types.h"
+#include "object.h"
+#include "symbol_table.h"
+#include "types.h"
 
-Symbol lt_dset;
-Symbol lt_dynamic;
-Symbol lt_catch;
-Symbol lt_throw;
+Symbol lt_nil;
+Symbol lt_t;
+
 Symbol lt_block;
+Symbol lt_catch;
+Symbol lt_defvar;
+Symbol lt_fset;
+Symbol lt_function;
+Symbol lt_if;
+Symbol lt_lambda;
+Symbol lt_progn;
+Symbol lt_quote;
 Symbol lt_return_from;
+Symbol lt_set;
+Symbol lt_throw;
 
-Symbol make_symbol(char *symbol_name)
+inline Character make_char(char C_character)
+{ return TO_CHAR(C_character); }
+
+inline Fixnum make_fixnum(int C_integer)
+{ return TO_FIXNUM(C_integer); }
+
+inline Function make_function_t(void)
+{ return TO_FUNCTION(malloc(sizeof(struct function_t))); }
+
+Function make_C_function(primitive_t prim, int arity)
 {
-    /* Symbol sym = new_object(); */
+    Function fn = make_function_t();
 
-    /* sym->type = SYMBOL; */
-    /* SYMBOL_NAME(sym) = symbol_name; */
-    /* theSYMBOL(sym) = make_C_symbol(symbol_name); */
+    FUNCTION_CFLAG(fn) = TRUE;
+    PRIMITIVE(fn) = prim;
+    ARITY(fn) = arity;
 
-    return MAKE_SYMBOL(make_C_symbol(symbol_name));
+    return fn;
 }
 
-void init_symbol_table(void)
+Function make_Lisp_function(Cons parms, LispObject expr, Environment lenv, Environment denv, BlockEnvironment benv, Environment fenv)
 {
-    lt_quote = ensure_symbol_exists("quote");
-    lt_if = ensure_symbol_exists("if");
-    lt_begin = ensure_symbol_exists("begin");
-    lt_set = ensure_symbol_exists("set!");
-    lt_lambda = ensure_symbol_exists("lambda");
-    /* The symbols below names the special operators of myself. */
-    lt_dset = ensure_symbol_exists("lt/dset!");
-    lt_dynamic = ensure_symbol_exists("lt/dynamic");
-    lt_catch = ensure_symbol_exists("lt/catch");
-    lt_throw = ensure_symbol_exists("lt/throw");
-    lt_block = ensure_symbol_exists("lt/block");
-    lt_return_from = ensure_symbol_exists("lt/return-from");
+    Function fn = make_function_t();
+
+    ARITY(fn) = cons_length(parms);
+    BLOCK_ENV(fn) = benv;
+    FDEFINITION_ENV(fn) = fenv;
+    FUNCTION_CFLAG(fn) = FALSE;
+    EXPRESSION(fn) = expr;
+    LEXICAL_ENV(fn) = lenv;
+    PARAMETERS(fn) = parms;
+
+    return fn;
 }
 
-Function new_function(void)
+String make_string(char *C_string)
 {
-    Function obj = new_object();
-    FUNCTION(obj) = malloc(sizeof(struct function_t));
-    return obj;
+    string_t object = malloc(sizeof(struct string_t));
+    object->content = strdup(C_string);
+    object->length = strlen(C_string);
+
+    return TO_STRING(object);
 }
 
-Function make_c_fun_object(primitive_t prim)
-{
-    Function func = new_function();
+inline BOOL is_true_obj(LispObject obj)
+{ return lt_nil != obj; }
 
-    func->type = FUNCTION;
-    FUNC_FLAG(func) = TRUE;
-    PRIMITIVE(func) = prim;
+inline BOOL is_atom_object(LispObject object)
+{ return !CONS_P(object); }
 
-    return func;
-}
-
-BOOL is_true_obj(LispObject obj)
-{ return lt_nil != obj;	/* Everything is true except the object lt_false */ }
-
-Function make_i_fun_object(Cons parms, LispObject expr, Environment cenv, Environment denv, BlockEnvironment block_env, Environment fenv)
-/* The parameter 'cenv' points to the environment at the creation time. */
-/* In Lisp-2, a closure should also stores the dynamic environment at the
-   creating time. */
-{
-    Function fun = new_function();
-
-    fun->type = FUNCTION;
-    FUNC_FLAG(fun) = FALSE;
-    PARAMETERS(fun) = parms;
-    EXPRESSION(fun) = expr;
-    LOCAL_ENV(fun) = cenv;	/* This lexical environment could be modified 
-				   after the creation of the closure */
-    FUNC_DENV(fun) = denv;	/* The dynamic environment. */
-    BLOCK_ENV(fun) = block_env; /* 对于block_env这样的指针对象，比起拷贝一份还是共享来得好。 */
-    FENV(fun) = fenv;           /* Outer function definition environment. */
-
-    return fun;
-}
-
-BOOL is_atom_object(LispObject object)
-{ return INTEGER_P(object) ||
-        CHARACTER_P(object) ||
-        (POINTER_P(object) &&
-         TYPE(object) != CONS); }
-
-BOOL is_tail(LispObject object)
+inline BOOL is_tail(LispObject object)
 { return lt_nil == object || is_atom_object(object); }
 
-BOOL is_symbol(LispObject object)
-{ return /* SYMBOL == object->type */SYMBOL_P(object); }
-
-Character make_char(char c)
-{
-    /* Character object = new_object(); */
-
-    /* object->type = CHARACTER; */
-    /* CHARACTER(object) = c; */
-
-    return MAKE_CHARACTER(c);
-}
+inline BOOL is_symbol(LispObject object)
+{ return SYMBOL_P(object); }
