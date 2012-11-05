@@ -1,19 +1,21 @@
 /*
  * read-sexp.c
  *
- * Parses the string and generates the correspoding inner structures of
- * S-expressions.
+ * 
  *
  * Copyright (C) 2012-10-03 liutos
  */
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "types.h"
-#include "cons.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "atom_proc.h"
+#include "cons.h"
 #include "object.h"
+#include "symbol_table.h"
+#include "types.h"
+#include "stream.h"
 
 char *get_next_token(char *string, int *offset)
 {
@@ -24,11 +26,10 @@ char *get_next_token(char *string, int *offset)
         while (string[i] != '\0' && string[i] != '"')
             i++;
         if ('\0' == string[i]) {
-            fprintf(stderr, "Incomplete string.\n");
+            write_format(standard_error, "Incomplete string\n");
             exit(1);
         }
-        *offset = i + 1;
-        i++;
+        *offset = ++i;
     } else {
         i = 0;
         while (string[i] != ' ' && string[i] != '(' &&
@@ -43,16 +44,11 @@ char *get_next_token(char *string, int *offset)
 
 BOOL is_integer_token(char *token)
 {
-    BOOL flag;
+    BOOL flag = TRUE;
     int i;
-
-    flag = TRUE;
-    for (i = 0; token[i] != '\0'; i++) {
-	if (isdigit(token[i]) == 0) {
-	    flag = FALSE;
-	    break;
-	}
-    }
+    for (i = 0; token[i] != '\0'; i++)
+	if (isdigit(token[i]) == 0)
+            return FALSE;
 
     return flag;
 }
@@ -65,51 +61,50 @@ BOOL is_string_token(char *token)
 LispType token_type(char *token)
 {
     if (is_integer_token(token))
-	return INTEGER;
+	return FIXNUM;
     if (is_string_token(token))
         return STRING;
 
     return SYMBOL;
 }
 
-Atom parse_atom(char *token)
+char *toupper_string(char *origin)
 {
-    Atom atom;
-    LispType type;
+    char *target = strdup(origin);
+    int i;
+    for (i = 0; target[i] != '\0'; ++i)
+        target[i] = toupper(target[i]);
 
-    type = token_type(token);
-    switch (type) {
-    case INTEGER:
-        atom = MAKE_INTEGER(atoi(token));
-	break;
-    case SYMBOL:
-	atom = ensure_symbol_exists(token);
-	break;
-    case STRING:
-        atom = new_object();
-        atom->type = type;
-        STRING(atom) = strndup(token + 1, strlen(token) - 2);
-        break;
-    default :
-	fprintf(stderr, "Don't know how to make atom for token '%s'.\n", token);
-	exit(0);
-    }
-
-    return atom;
+    return target;
 }
 
-Cons parse_cons_core(char *string, int *offset)
+Atom parse_atom(char *token)
+{
+    LispType type = token_type(token);
+    switch (type) {
+    case FIXNUM:
+        return make_fixnum(atoi(token));
+    case STRING:
+        return make_string(strndup(token + 1, strlen(token) - 2));
+    case SYMBOL:
+	return ensure_symbol_exists(toupper_string(token));
+    default :
+        write_format(standard_error, "Don't know how to parse token %!.\n", token);
+	exit(0);
+    }
+}
+
+Cons parse_cons_aux(char *string, int *offset)
 {
     Cons head, cur, pre;
     int step, i;
     char *token;
 
-    /* pre = head = new_object(); */
-    pre = head = make_cons_cell(NULL, NULL);
+    pre = head = make_cons(lt_nil, lt_nil);
     for (i = 0; string[i] != '\0'; i += step) {
 	switch (string[i]) {
 	case '(':
-	    cur = make_cons_cell(parse_cons_core(string + i + 1, &step), lt_nil);
+	    cur = make_cons(parse_cons_aux(string + i + 1, &step), lt_nil);
 	    break;
 	case ' ':
         case '\n':
@@ -118,40 +113,39 @@ Cons parse_cons_core(char *string, int *offset)
 	case ')':
 	    *offset = i + 2;
 	    pre = CDR(head);
-	    /* free(GET_CONS(head)); */
-            free_cons_cell(head);
+            free_cons(head);
 
 	    return pre;
 	default :
 	    token = get_next_token(string + i, &step);
-	    cur = make_cons_cell(parse_atom(token), lt_nil);
+	    cur = make_cons(parse_atom(token), lt_nil);
 	}
-	CDR(pre) = cur;
+	_CDR(pre) = cur;
 	pre = cur;
     }
     pre = CDR(head);
-    /* free(GET_CONS(head)); */
-    free_cons_cell(head);
+    free_cons(head);
 
     return pre;
 }
 
-Cons parse_cons(char *string)
+Cons parse_cons(char *input)
 {
     int tmp;
 
-    return parse_cons_core(string + 1, &tmp);
+    return parse_cons_aux(input + 1, &tmp);
 }
 
-LispObject parse_sexp(char *string)
+LispObject parse_sexp(char *input)
 {
     int trash;
 
-    while ('\0' != *string && isblank(*string))
-        string++;
-    if ('\0' == *string) return NULL;
-    if ('(' == string[0])
-	return parse_cons(string);
+    while ('\0' != *input && isblank(*input))
+        input++;
+    if ('\0' == *input)
+        return NULL;
+    if ('(' == input[0])
+	return parse_cons(input);
     else
-	return parse_atom(get_next_token(string, &trash));
+        return parse_atom(get_next_token(input, &trash));
 }
