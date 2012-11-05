@@ -1,19 +1,17 @@
 /*
  * symbol_table.c
  *
- * Implements the symbol table as an AVL tree and its operators.
+ * 
  *
- * Copyright (C) 2012-10-17 liutos mat.liutos@gmail.com
+ * Copyright (C) 2012-10-17 liutos <mat.liutos@gmail.com>
  */
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "symtbl.h"
 #include "types.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-
-extern Symbol make_symbol(char *);
 
 SymbolTable symbol_table = NULL;
 
@@ -25,9 +23,7 @@ char *get_node_key(StrSymMapNode node)
 /* Query for a symbol by its name. */
 Symbol get_symbol(char *symbol_name)
 {
-    SymbolTable tbl;
-
-    tbl = symbol_table;
+    SymbolTable tbl = symbol_table;
     while (tbl != NULL) {
         if (0 == strcmp(get_node_key(tbl), symbol_name))
             return tbl->symbol;
@@ -42,9 +38,7 @@ Symbol get_symbol(char *symbol_name)
 
 StrSymMapNode make_node(Symbol symbol)
 {
-    StrSymMapNode node;
-
-    node = malloc(sizeof(struct StrSymMapNode));
+    StrSymMapNode node = malloc(sizeof(struct StrSymMapNode));
     node->symbol = symbol;
     node->left = node->parent = node->right = NULL;
     node->height = node->bf = 0;
@@ -58,10 +52,8 @@ int node_compare(StrSymMapNode node1, StrSymMapNode node2)
     return strcmp(get_node_key(node1), get_node_key(node2));
 }
 
-int get_max(int a, int b)
-{
-    return a > b? a: b;
-}
+inline int get_max(int a, int b)
+{ return a > b? a: b; }
 
 int get_tree_height(SymbolTable sym_tbl)
 {
@@ -82,25 +74,20 @@ int compute_tree_bf(SymbolTable table)
 
 SymbolTable left_rotate(SymbolTable tree)
 {
-    SymbolTable tmp;
-
-    tmp = tree->right;
+    SymbolTable tmp = tree->right;
     tree->right = tmp->left;
     tmp->left = tree;
     tmp->bf = 0;
     tree->bf = 0;
-    tree->height = compute_tree_height(tree); /* Update the tree->height first. */
-    tmp->height = compute_tree_height(tmp);   /* Update the height of the root of
-                                                 the new tree. */
+    tree->height = compute_tree_height(tree);
+    tmp->height = compute_tree_height(tmp);
 
     return tmp;
 }
 
 SymbolTable right_rotate(SymbolTable tree)
 {
-    SymbolTable tmp;
-
-    tmp = tree->left;
+    SymbolTable tmp = tree->left;
     tree->left = tmp->right;
     tmp->right = tree;
     tmp->bf = 0;
@@ -151,30 +138,27 @@ SymbolTable put_symbol_core(StrSymMapNode node, SymbolTable sym_tbl)
 /* The interface function for using. */
 void put_symbol(Symbol symbol)
 {
-    StrSymMapNode node;
-
-    node = make_node(symbol);
+    StrSymMapNode node = make_node(symbol);
     symbol_table = put_symbol_core(node, symbol_table);
 }
 
-char *toupper_string(char *origin)
+symbol_t make_symbol_t(char *name)
 {
-    int i;
-    char *target = strdup(origin); /* 传进来的origin有可能是分配在只读区域的，因此还是复制一份再修改比较保险。事实上这说明坚持函数式的思路是有益的。 */
+    symbol_t symbol = malloc(sizeof(struct symbol_t));
+    symbol->name = name;
+    symbol->value = NULL;
+    symbol->function = NULL;
 
-    for (i = 0; target[i] != '\0'; ++i)
-        target[i] = toupper(target[i]);
-
-    return target;
+    return symbol;
 }
+
+inline Symbol make_symbol(char *name)
+{ return TO_SYMBOL(make_symbol_t(name)); }
 
 /* Ensure the symbol with name `symbol_name' exists uniquely. */
 Symbol ensure_symbol_exists(char *symbol_name)
 {
-    Symbol symbol;
-
-    symbol_name = toupper_string(symbol_name); /* Converts all characters in symbol name to capitalized. */
-    symbol = get_symbol(symbol_name);
+    Symbol symbol = get_symbol(symbol_name);
     if (symbol != NULL)
 	return symbol;
     else {
