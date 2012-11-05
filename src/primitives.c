@@ -1,85 +1,31 @@
 /*
  * primitives.c
  *
- * Defining primitives.
+ * 
  *
  * Copyright (C) 2012-10-05 liutos
  */
-#include "types.h"
-#include "object.h"
-#include "atom_proc.h"
-#include "cons.h"
-#include "stream.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
-/* 为了重构四则运算的代码而编写的宏，取出第一、二个参数并取出特定的成员。 */
-#define ACCESS_PARM2(o1, ac1, o2, ac2) \
-    do { \
-    o1 = ac1(FIRST(args)); \
-    o2 = ac2(SECOND(args)); \
+#include "atom_proc.h"
+#include "cons.h"
+#include "object.h"
+#include "stream.h"
+#include "symbol_table.h"
+#include "types.h"
+
+#define PARM2(o1, o2)                           \
+    do {                                        \
+        o1 = FIRST(args);                       \
+        o2 = SECOND(args);                      \
+    } while(0)
+#define ACCESS_PARM2(o1, ac1, o2, ac2)          \
+    do {                                        \
+        o1 = ac1(FIRST(args));                  \
+        o2 = ac2(SECOND(args));                 \
     } while (0)
-
-PHEAD(add_two)
-{
-    int n1, n2;
-    /* LispObject result; */
-
-    /* n1 = INTEGER(FIRST(args)); */
-    /* n2 = INTEGER(SECOND(args)); */
-    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
-    /* result = new_object(); */
-    /* result->type = INTEGER; */
-    /* INTEGER(result) = n1 + n2; */
-
-    return MAKE_INTEGER(n1 + n2);
-}
-
-PHEAD(sub_two)
-{
-    int n1, n2;
-    /* LispObject result; */
-
-    /* n1 = INTEGER(FIRST(args)); */
-    /* n2 = INTEGER(SECOND(args)); */
-    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
-    /* result = new_object(); */
-    /* result->type = INTEGER; */
-    /* INTEGER(result) = n1 - n2; */
-
-    return MAKE_INTEGER(n1 - n2);
-}
-
-PHEAD(mul_two)
-{
-    int n1, n2;
-    /* LispObject result; */
-
-    /* n1 = INTEGER(FIRST(args)); */
-    /* n2 = INTEGER(SECOND(args)); */
-    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
-    /* result = new_object(); */
-    /* result->type = INTEGER; */
-    /* INTEGER(result) = n1 * n2; */
-
-    return MAKE_INTEGER(n1 * n2);
-}
-
-PHEAD(div_two)
-{
-    int n1, n2;
-    /* LispObject result; */
-
-    /* n1 = INTEGER(FIRST(args)); */
-    /* n2 = INTEGER(SECOND(args)); */
-    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
-    /* result = new_object(); */
-    /* result->type = INTEGER; */
-    /* INTEGER(result) = n1 / n2; */
-
-    return MAKE_INTEGER(n1 / n2);
-}
+#define PHEAD(fn_name) LispObject fn_name(Cons args)
 
 PHEAD(quit)
 {
@@ -87,66 +33,22 @@ PHEAD(quit)
     exit(0);
 }
 
-PHEAD(gt_two)
-{
-    int n1, n2;
-    Boolean result;
-
-    /* n1 = INTEGER(FIRST(args)); */
-    /* n2 = INTEGER(SECOND(args)); */
-    ACCESS_PARM2(n1, INTEGER, n2, INTEGER);
-    result = n1 > n2 ? lt_t: lt_nil;
-
-    return result;
-}
-
-PHEAD(and_two)
-{
-    LispObject arg1, arg2;
-
-    arg1 = FIRST(args);
-    arg2 = SECOND(args);
-
-    return (is_true_obj(arg1) && is_true_obj(arg2)) ? lt_t: lt_nil;
-}
-
-PHEAD(or_two)
-{
-    LispObject arg1, arg2;
-
-    arg1 = FIRST(args);
-    arg2 = SECOND(args);
-
-    return (is_true_obj(arg1) || is_true_obj(arg2)) ? lt_t: lt_nil;
-}
-
 PHEAD(lt_car)
-{
-    return safe_car(FIRST(args));
-}
+{ return safe_car(FIRST(args)); }
 
 PHEAD(lt_cdr)
-{
-    return safe_cdr(FIRST(args));
-}
+{ return safe_cdr(FIRST(args)); }
 
 PHEAD(lt_cons)
 {
-    LispObject o1 = FIRST(args); /* Define-initialize style */
-    LispObject o2 = SECOND(args);
+    LispObject o1, o2;
 
-    return make_cons_cell(o1, o2);
+    PARM2(o1, o2);
+
+    return make_cons(o1, o2);
 }
 
-PHEAD(numeric_eq)
-{
-    int n1 = INTEGER(FIRST(args));
-    int n2 = INTEGER(SECOND(args));
-
-    return n1 == n2 ? lt_t: lt_nil;
-}
-
-PHEAD(lt_eq)
+inline PHEAD(lt_eq)
 { return FIRST(args) == SECOND(args) ? lt_t: lt_nil; }
 
 PHEAD(lt_type_of)
@@ -154,31 +56,14 @@ PHEAD(lt_type_of)
     LispObject object = FIRST(args);
 
     switch (TYPE(object)) {
-    case CONS: return ensure_symbol_exists("cons");
-    case SYMBOL: return ensure_symbol_exists("symbol");
-    case INTEGER: return ensure_symbol_exists("integer");
-    case FUNCTION: return ensure_symbol_exists("function");
-    case STRING: return ensure_symbol_exists("string");
-    case STREAM: return ensure_symbol_exists("stream");
+    case CONS: return ensure_symbol_exists("CONS");
+    case SYMBOL: return ensure_symbol_exists("SYMBOL");
+    case FIXNUM: return ensure_symbol_exists("FIXNUM");
+    case FUNCTION: return ensure_symbol_exists("FUNCTION");
+    case STRING: return ensure_symbol_exists("STRING");
+    case STREAM: return ensure_symbol_exists("STREAM");
     default :
         fprintf(stderr, "Unknown data type %d. How can you define that?\n", TYPE(object));
         exit(1);
     }
-}
-
-PHEAD(lt_read_a_char)
-{
-    Stream str = FIRST(args);
-
-    return read_stream_char(str);
-}
-
-PHEAD(lt_write_a_char)
-{
-    Stream str = FIRST(args);
-    Character c = SECOND(args);
-
-    write_stream_char(str, c);
-
-    return lt_nil;
 }
