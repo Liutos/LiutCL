@@ -1,25 +1,27 @@
 /*
  * stream.c
  *
- * Implementation of operations on objects of type stream. Maybe it's
- * suitable for implementing some low-level operations here.
+ * 
  *
  * Copyright (C) 2012-10-31 liutos <mat.liutos@gmail.com>
  */
-#include "types.h"
-#include "object.h"
-#include "atom_proc.h"
-
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-Stream standard_output;         /* Stream object forwards standard output. */
-Stream standard_input;          /* Stream object forwards standard input. */
+#include "atom_proc.h"
+#include "object.h"
+#include "types.h"
+
+Stream standard_output;
+Stream standard_input;
+Stream standard_error;
+
+extern void print_object_notln(LispObject, Stream);
 
 Stream make_file_stream(FILE *fp)
 {
-    Stream object = new_object();
-
+    Stream object = make_object();
     object->type = STREAM;
     theSTREAM(object) = make_C_file_stream(fp);
 
@@ -28,54 +30,91 @@ Stream make_file_stream(FILE *fp)
 
 Stream make_string_stream(char *string)
 {
-    Stream object = new_object();
-
+    Stream object = make_object();
     object->type = STREAM;
     theSTREAM(object) = make_C_string_stream(string);
 
     return object;
 }
 
-Character read_file_stream_char(Stream file_stream)
+inline Character read_file_stream_char(Stream file_stream)
 {
-    return make_char(fgetc(theSTREAM(file_stream)->u.file));
+    return TO_CHAR(fgetc(theSTREAM(file_stream)->u.file));
 }
 
-Character read_stream_char(Stream stream)
+void write_string(Stream stream, String string)
+{
+    fputs(STRING_CONTENT(string), STREAM_FILE(stream));
+}
+
+Character read_char(Stream stream)
 {
     switch (theSTREAM(stream)->type) {
     case FILE_STREAM:
         return read_file_stream_char(stream);
         break;
     default :
-        fprintf(stderr, "Unknown stream type.\n");
+        write_string(standard_error, TO_STRING("Unknown stream type\n"));
         exit(1);
     }
 }
 
-void write_file_stream_char(Stream stream, Character c_object)
+inline void write_file_stream_char(Stream stream, Character c)
 {
-    fputc(CHARACTER(c_object), FILE_STREAM(theSTREAM(stream)));
+    fputc(theCHAR(c), STREAM_FILE(stream));
 }
 
-void write_file_stream_integer(Stream stream, Integer i_object)
+inline void write_file_stream_fixnum(Stream stream, Fixnum number)
 {
-    fprintf(FILE_STREAM(theSTREAM(stream)), "%d", INTEGER(i_object));
+    fprintf(STREAM_FILE(stream), "%d", theFIXNUM(number));
 }
 
-void write_stream_char(Stream str, Character c) /* 我可能要写很多个版本的write_stream_*函数了，因为要对付许多不同的类型。 */
+void write_address(Stream stream, LispObject object)
 {
-    switch (theSTREAM(str)->type) {
-    case FILE_STREAM:
-        return write_file_stream_char(str, c);
-        break;
-    default :
-        fprintf(stderr, "Unknown stream type %d.\n", theSTREAM(str)->type);
-        exit(1);
-    }
+    fprintf(STREAM_FILE(stream), "%p", thePOINTER(object));
 }
 
-void write_stream_string(Stream stream, String string)
+void write_char(Stream stream, Character c)
 {
-    fprintf(FILE_STREAM(theSTREAM(stream)), "%s", STRING(string));
+    write_file_stream_char(stream, c);
+}
+
+void write_fixnum(Stream stream, Fixnum number)
+{
+    write_file_stream_fixnum(stream, number);
+}
+
+void write_format(Stream dest, const char *format, ...)
+{
+    va_list ap;
+    char c;
+
+    va_start(ap, format);
+    while ((c = *format++))
+        if ('%' == c)
+            switch (*format++) {
+            case '!':
+                print_object_notln(va_arg(ap, LispObject), dest);
+                break;
+            case '%':
+                write_char(dest, TO_CHAR('%'));
+                break;
+            case 'c':
+                write_char(dest, va_arg(ap, Character));
+                break;
+            case 'd':
+                write_fixnum(dest, va_arg(ap, Fixnum));
+                break;
+            case 'p':
+                write_address(dest, va_arg(ap, LispObject));
+                break;
+            case 's':
+                write_string(dest, va_arg(ap, String));
+                break;
+            default :
+                write_string(standard_error, TO_STRING("Unknown directive\n"));
+                exit(1);
+            }
+        else
+            write_char(dest, TO_CHAR(c));
 }
