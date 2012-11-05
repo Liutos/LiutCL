@@ -1,28 +1,26 @@
 /*
  * environment.c
  *
- * Operators about processing the environment.
+ * 
  *
  * Copyright (C) 2012-10-05 liutos
  */
-#include "types.h"
-#include "atom_proc.h"
-#include "primitives.h"
-#include "object.h"
-#include "cons.h"
-#include "env_types.h"
-#include "stream.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
-extern void print_atom(Atom);
+#include "atom_proc.h"
+#include "cons.h"
+#include "env_types.h"
+#include "print_sexp.h"
+#include "stream.h"
+#include "symbol_table.h"
+#include "types.h"
 
-LispObject get_value_in_one(Symbol symbol, Environment env)
+Environment global_dynamic_env;
+
+LispObject get_value_aux(Symbol symbol, Environment env)
 {
-    SymValMap map;
-
-    map = env->map;
+    env_entry_t map = env->map;
     while (map != NULL) {
 	if (map->symbol == symbol)
 	    return map->value;
@@ -34,43 +32,35 @@ LispObject get_value_in_one(Symbol symbol, Environment env)
 
 LispObject get_value(Symbol symbol, Environment env)
 {
-    LispObject value;
-
     while (env != NULL) {
-	value = get_value_in_one(symbol, env);
+	LispObject value = get_value_aux(symbol, env);
 	if (value != NULL)
 	    return value;
-	env = env->next_env;
+	env = env->next;
     }
 
     return NULL;
 }
 
-Environment extend_binding(Symbol symbol, LispObject value, Environment env)
+Environment extend_env(Symbol symbol, LispObject value, Environment env)
 {
-    SymValMap node;
-
-    node = malloc(sizeof(struct SymValMap));
+    env_entry_t node = malloc(sizeof(struct env_entry_t));
     node->symbol = symbol;
     node->value = value;
-    node->next = env->map->next; /* Inserts at the head position */
+    node->next = env->map->next;
     env->map->next = node;
 
     return env;
 }
 
-/* For binding the parameters of a closure. */
-Environment extend_cons_binding(Cons symbols, Cons values, Environment env)
+Environment extend_env_cons(Cons symbols, Cons values, Environment env)
 {
     while (!is_tail(symbols)) {
 	if (is_tail(values)) {
 	    fprintf(stderr, "Too less values.\n");
 	    exit(1);
 	}
-	env = extend_binding(CAR(symbols), CAR(values), env);
-        /* The two calling to function `is_tail' above ensures that
-           the parameters `symbols' and `values' would never be a
-           empty list in the two lines of code below. */
+	env = extend_env(CAR(symbols), CAR(values), env);
 	symbols = CDR(symbols);
 	values = CDR(values);
     }
@@ -82,131 +72,59 @@ Environment extend_cons_binding(Cons symbols, Cons values, Environment env)
     }
 }
 
-Environment extend_binding_by_name(char *name, LispObject value, Environment env)
+Environment extend_env_by_name(char *name, LispObject value, Environment env)
 {
-    return extend_binding(ensure_symbol_exists(name), value, env);
+    return extend_env(ensure_symbol_exists(name), value, env);
 }
 
-Environment new_env(void)
+Environment make_empty_env(void)
 {
     Environment env;
 
-    env = malloc(sizeof(struct Environment));
-    env->map = malloc(sizeof(struct SymValMap));
+    env = malloc(sizeof(struct environment_t));
+    env->map = malloc(sizeof(struct env_entry_t));
     env->map->next = NULL;
-    env->next_env = NULL;
+    env->next = NULL;
 
     return env;
 }
 
-Environment add_primitive(char *func_name, primitive_t prim, Environment env)
+void describe_env_aux(Environment env, Stream stream)
 {
-    Function func;
-
-    func = make_c_fun_object(prim);
-
-    return extend_binding(ensure_symbol_exists(func_name), func, env);
-}
-
-Environment init_primitives(Environment env)
-{
-#define reg(name, prim) tmp = add_primitive(name, prim, tmp)
-
-    Environment tmp;
-
-    tmp = env;
-    /* Add primitives */
-    reg("add-two", add_two);	/* Original lisp function name is plus-two. */
-    reg("mul-two", mul_two);	/* Original lisp function name is mult-two. */
-    reg("quit", quit);
-    reg("gt-two", gt_two);
-    reg("and-two", and_two);
-    reg("sub-two", sub_two);
-    reg("div-two", div_two);
-    reg("or-two", or_two);
-    reg("car", lt_car);
-    reg("cdr", lt_cdr);
-    reg("numeric-eq", numeric_eq);
-    reg("eq", lt_eq);
-    reg("cons", lt_cons);
-    reg("type-of", lt_type_of);
-    reg("lt/read-a-char", lt_read_a_char);
-    reg("lt/write-a-char", lt_write_a_char);
-
-    return tmp;
-}
-
-Environment init_variables(Environment env)
-{
-    Environment tmp = env;
-
-    lt_nil = ensure_symbol_exists("nil");
-    lt_t = ensure_symbol_exists("t");
-
-    tmp = extend_binding_by_name("nil", lt_nil, tmp);
-    tmp = extend_binding_by_name("t", lt_t, tmp);
-    standard_output = make_file_stream(stdout);
-    tmp = extend_binding_by_name("*standard-output*", standard_output, tmp);
-    standard_input = make_file_stream(stdin);
-    tmp = extend_binding_by_name("*standard-input*", standard_input, tmp);
-
-    return tmp;
-}
-
-void describe_one_env(Environment env)
-{
-    SymValMap map;
-
-    map = env->map->next;
+    env_entry_t map = env->map->next;
     while (map != NULL) {
-	print_atom(map->symbol);
+	print_atom(map->symbol, stream);
 	printf("\t->\t");
 	if (is_atom_object(map->value))
-	    print_atom(map->value);
+	    print_atom(map->value, stream);
 	else
 	    printf("%p", map->value);
-	putchar('\n');
+	/* putchar('\n'); */
+        write_char(standard_output, TO_CHAR('\n'));
 	map = map->next;
     }
 }
 
-void describe_env(Environment env)
+void describe_env(Environment env, Stream stream)
 {
     while (env != NULL) {
-	describe_one_env(env);
-	env = env->next_env;
+	describe_env_aux(env, stream);
+	env = env->next;
     }
 }
 
-Environment new_binding_env(Cons parms, Cons values, Environment env)
-/* This function is just used for creating a new environment for
-   function application. And actually you can use it at anywhere
-   when you'd like to bind some lexical variables but don't want
-   to pollute the outer lexical environment. */
+Environment make_new_env(Cons parms, Cons values, Environment prev_env)
 {
-    Environment nenv;
+    Environment env = make_empty_env();
+    env->next = prev_env;
+    env = extend_env_cons(parms, values, env);
 
-    nenv = new_env();
-    nenv->next_env = env;
-    extend_cons_binding(parms, values, nenv);
-
-    return nenv;
-}
-
-SymValMap make_single_map(Symbol symbol, LispObject value)
-{
-    SymValMap map = malloc(sizeof(struct SymValMap));
-
-    map->symbol = symbol;
-    map->value = value;
-    map->next = NULL;
-
-    return map;
+    return env;
 }
 
 BlockEnvironment make_block_env(Symbol name, jmp_buf context, BlockEnvironment prev_block_env)
 {
-    BlockEnvironment block_env = malloc(sizeof(struct block_environment));
+    BlockEnvironment block_env = malloc(sizeof(struct block_environment_t));
 
     block_env->name = name;
     *block_env->context = *context;
