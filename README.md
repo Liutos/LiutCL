@@ -6,6 +6,19 @@
 
 ## 实现的功能
 
+* 2012年11月5日
+  * 将Lisp级别的特殊操作符lt/catch和lt/throw修改为catch和throw，将lt\_begin修改为lt\_progn。
+  * 去掉了lt/dynamic的C和Lisp级别的定义
+  * 名字修改：
+    * add_two改为add、对应的add-two改为add，另外三个四则运算函数同样；
+    * and-two和or-two分别改为and2和or2；
+    * numeric_eq改为fixnum_eq，对应的numeric-eq改为fixnum-eq。
+  * 增加参数个数检查功能check_arity
+* 2012年11月3日
+  * 以tagged pointer的方式定义了函数对象
+  * 将原来出现INTEGER枚举值的地方全部修改为FIXNUM，并修改了相应的宏定义。
+  * 将read\_stream\_char更名为read\_char；将write\_stream\_char更名为write\_char；将write\_stream\_string更名为write\_string。
+  * 将liutcl.c中的局部变量dynamic\_env修改为名为global\_dynamic\_env
 * 2012年11月2日
   * 修改了INTEGER宏的定义，将LispObject类型的对象视为tagged pointer处理，通过移位操作来得到真正的无符号整数的值。
   * 在primitive.c文件中定义了宏ACCESS\_PARM2，以方便在四则运算函数中的代码编写。
@@ -61,19 +74,14 @@
 
 ## 实现细节
 
-* 对于要预定义的特殊操作符的名字，即对应的符号，应该像下面这样操作
-  * 在atom\_proc.c文件中定义全局变量，名字为lt\_操作符名
-  * 在init\_symbol\_table函数中给上述定义的符号赋值
-  * 在atom\_proc.h头文件中声明这个全局变量
-* 目前函数名和对应的值，即函数体的绑定位于动态作用域中，在接下来我觉得应该把函数作为一个单独的环境实现，从动态作用域中剥离出来。
-* 我希望给解释器增加一个底层的堆栈式的虚拟机，以方便直接地对函数调用的栈和帧进行管理，或许可以方便地实现多重返回值。
-* 如果不是非常迫切的需要，我大概是不会使用指针中的位来表示一个对象的类型的。我觉得这样做牺牲了代码的可读性和可维护性。
-  * 或许是时候考虑实现用位来表示数据对象的类型了→_→
-  * （2012年11月2日）已将较小的无符号整数用tagged pointer表示，并且需要同时修改parse\_atom、print\_sexp和eval\_sexp的实现。
-* 我觉得命名规范很重要啊
-  * 为了可读性而取的LispObject类型的别名的要求是首字母大写
-* 对于每一个使用了tag的类型而言，都要在eval\_sexp和print\_sexp中特殊处理。
-  * 可能对于所有需要使用TYPE或者进行类型判断和派发的代码而言，都有修改的可能。
-* 将点对cons\_t和符号symbol\_t从LispObject中独立出来，与将较小的无符号整数和字符从LispObject中独立出来的用法是不一样的。
-  * 对于smi（Small Integer）和字符而言，它们本身要使用字（节）当中的每一位，因此为了使其低位可以利用为类型信息，必须先做左移。
-  * 对于点对和符号，它们本身就是存储地址的指针罢了，因此低位原本就是固定的，没有携带有意义的信息，可以直接写入（用按位与运算）类型信息。
+* 对于要预定义的特殊操作符的对应的符号，应该执行以下步骤：
+  * 在atom\_proc.c文件中定义全局变量，命名约定为lt\_操作符名；
+  * 在atom\_proc.h头文件中声明这个全局变量；
+  * 在init\_special\_operators函数中初始化上述定义的符号。
+* types.h中的命名约定：
+  * 在types.h文件中，所有形如TO\_XXX的宏均为类型转换宏，主要用于将以tagged pointer形式存储的数据转换为相应的LispObject类型。对于非tagged pointer形式存储的数据，只起普通的强制类型转换的作用。
+* 将cons\_t和symbol\_t类型从LispObject中独立出来，与将Fixnum和Character从LispObject的做法是不同的：
+  * 对于Fixnum和Character而言，其存储需要使用字中的每一bit。为了以tagged pointer形式存储，需要先左移。
+  * 对于Cons和Symbol，本质为指针，因此低位在对齐后有空闲的bit，可以直接用bitwise-or写入类型信息。
+  * 所有以tagged pointer形式存储的数据，都不具备type成员变量。
+* ensure\_symbol\_exists函数只负责生成名字与参数*相同*的符号，不负责进行名字的大小写转换，因此在源代码中调用这个函数的地方都要用全大写字符串作为参数。
