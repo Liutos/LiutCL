@@ -3,22 +3,23 @@
 
 #include <setjmp.h>
 
-typedef struct SymValMap {
+#include "decls.h"
+
+struct env_entry_t {
     Symbol symbol;
     LispObject value;
-    struct SymValMap *next;
-} *SymValMap;			/* Kepps the mapping between symbol and
-				   value. */
-typedef struct Environment {
-    SymValMap map;
-    struct Environment *next_env;
-} *Environment;			/* Keeps a series of mapping described above. */
+    env_entry_t next;
+};
 
-/* Environment used for block special form. */
-typedef struct block_environment {
+struct environment_t {
+    env_entry_t map;
+    Environment next;
+};
+
+struct block_environment_t {
     Symbol name;
     jmp_buf context;
-    struct block_environment *prev;
-} *BlockEnvironment;
+    BlockEnvironment prev;
+};
 
 #endif

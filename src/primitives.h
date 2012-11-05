@@ -3,21 +3,13 @@
 
 #include "types.h"
 
-extern PHEAD(add_two);
-extern PHEAD(mul_two);
-extern PHEAD(quit);
-extern PHEAD(gt_two);
-extern PHEAD(and_two);
-extern PHEAD(sub_two);
-extern PHEAD(div_two);
-extern PHEAD(or_two);
+#define PHEAD(fn_name) LispObject fn_name(Cons)
+
 extern PHEAD(lt_car);
 extern PHEAD(lt_cdr);
-extern PHEAD(numeric_eq);
-extern PHEAD(lt_eq);
 extern PHEAD(lt_cons);
+extern PHEAD(lt_eq);
 extern PHEAD(lt_type_of);
-extern PHEAD(lt_read_a_char);
-extern PHEAD(lt_write_a_char);
+extern PHEAD(quit);
 
 #endif
