@@ -7,19 +7,20 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "types.h"
+#include "stream.h"
 
 #define DELTA 80
 
 char *read_sexp(FILE *fp)
 {
-    char *str, c;
-    int len, i, burden;
+    char *str = NULL, c;
+    int len, i, burden;;
     BOOL reading_cons;
 
     c = fgetc(fp);
-    str = NULL;
-    burden = i = len = 0;
+    len = i = burden = 0;
     reading_cons = '(' == c ? TRUE: FALSE;
     while (EOF != c) {
         if (i > len - 1) {
@@ -31,16 +32,12 @@ char *read_sexp(FILE *fp)
                                    balanced. */
             if ('(' == c) burden++;
             if (')' == c) burden--;
-            /* if (0 == burden) break; */
-        } /* else if ('\n' == c) */
-          /*   break; */
-        if ('\n' == c &&
-            (!reading_cons || 0 == burden))
-            break;
+        }
+        if ('\n' == c && (!reading_cons || 0 == burden)) break;
         c = fgetc(fp);
     }
     if (NULL == str) {
-        fprintf(stderr, "Encounter EOF.\n");
+        write_format(standard_error, "Encounter EOF.\n");
         exit(1);
     }
     str[i] = '\0';
