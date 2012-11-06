@@ -5,6 +5,8 @@
 
 #include "decls.h"
 
+extern Symbol lt_nil;
+
 enum bool_t { FALSE, TRUE};
 
 /* Cons definition */
@@ -14,9 +16,26 @@ typedef struct cons_t {
 } *cons_t;
 
 /* Function definition */
+typedef enum {
+    MACRO,
+    REGULAR,
+    SPECIAL,
+} FunctionType;
+
+/* typedef int Arity; */
+typedef struct arity_t {
+    int req_count;
+    int opt_count;
+    BOOL rest_flag;
+    BOOL key_flag;
+    int key_count;
+    List keywords;
+} *arity_t, *Arity;
+
 typedef struct function_t {
     BOOL is_C_function;
-    int arity;
+    FunctionType type;
+    Arity arity;
     union {
 	primitive_t fptr;
 	struct {
@@ -83,6 +102,12 @@ typedef struct symbol_t {
     LispObject package;
 } *symbol_t;
 
+/* Multiple values cell definition */
+typedef struct values_t {
+    LispObject *values;
+    int count;
+} *values_t;
+
 /* Vector definition */
 typedef struct vector_t {
     unsigned int length;
@@ -100,6 +125,7 @@ typedef enum {
     STREAM,
     STRING,
     SYMBOL,
+    VALUES,
     VECTOR,
 } LispType;
 
@@ -125,6 +151,7 @@ struct lisp_object_t {
 #define CHARACTER_TAG 4
 #define FUNCTION_TAG 5
 #define STRING_TAG 6
+#define VALUES_TAG 7
 
 #define POINTER_P(x) (TAGOF(x) == POINTER_TAG)
 #define thePOINTER(x) ((LispObject)UNTAG(x))
@@ -141,13 +168,12 @@ struct lisp_object_t {
 
 #define _CAR(x) (theCONS(x)->car)
 #define _CDR(x) (theCONS(x)->cdr)
-#define CAR(x) safe_car(x)
-#define CDR(x) safe_cdr(x)
+#define CAR(x) /* safe_car(x) */(lt_nil == (x) ? lt_nil: theCONS(x)->car)
+#define CDR(x) /* safe_cdr(x) */(lt_nil == (x) ? lt_nil: theCONS(x)->cdr)
 #define CDDR(x) CDR(CDR(x))
 #define FIRST(x) CAR(x)
 #define SECOND(x) CAR(CDR(x))
 #define THIRD(x) CAR(CDDR(x))
-#define FOURTH(x) CAR(CDR(CDDR(x)))
 
 /* Fixnum */
 #define TO_FIXNUM(x) ((LispObject)(((int)(x) << 3) | FIXNUM_TAG))
@@ -163,10 +189,13 @@ struct lisp_object_t {
 #define BLOCK_ENV(x) (theFUNCTION(x)->u.s.block_env)
 #define EXPRESSION(x) (theFUNCTION(x)->u.s.body)
 #define FDEFINITION_ENV(x) (theFUNCTION(x)->u.s.fdefinition_env)
+#define FTYPE(x) (theFUNCTION(x)->type)
 #define FUNCTION_CFLAG(x) (theFUNCTION(x)->is_C_function)
 #define LEXICAL_ENV(x) (theFUNCTION(x)->u.s.lexical_env)
 #define PARAMETERS(x) (theFUNCTION(x)->u.s.parameters)
 #define PRIMITIVE(x) (theFUNCTION(x)->u.fptr)
+
+#define SPECIAL_P(x) (SPECIAL == FTYPE(x))
 
 /* Hash table */
 #define TO_HASH_TABLE(x) ((HashTable)(x))
@@ -205,9 +234,18 @@ struct lisp_object_t {
 
 #define SYMBOL_NAME(x) (theSYMBOL(x)->name)
 #define SYMBOL_PACKAGE(x) (theSYMBOL(x)->package)
+#define SYMBOL_VALUE(x) (theSYMBOL(x)->value)
+
+/* Multiple values cell */
+#define TO_VALUES(x) ((LispObject)((int)(x) | VALUES_TAG))
+#define theVALUES(x) ((values_t)UNTAG(x))
+#define VALUES_P(x) (TAGOF(x) == VALUES_TAG)
+
+#define _VALUES(x) (theVALUES(x)->values)
+#define PRIMARY_VALUE(x) (_VALUES(x)[0])
 
 /* Vector */
-#define theVector(x) ((x)->u.vector)
+#define theVECTOR(x) ((x)->u.vector)
 #define VECTOR_P(x) (POINTER_P(x) && VECTOR == (x)->type)
 
 #endif
