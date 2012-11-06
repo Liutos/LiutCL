@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "atom_proc.h"
+#include "cons.h"
 #include "object.h"
 #include "stream.h"
 #include "types.h"

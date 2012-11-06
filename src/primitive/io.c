@@ -9,13 +9,7 @@
 #include "../cons.h"
 #include "../stream.h"
 #include "../types.h"
-
-#define PARM2(o1, o2)                           \
-    do {                                        \
-        o1 = FIRST(args);                       \
-        o2 = SECOND(args);                      \
-    } while(0)
-#define PHEAD(fn_name) LispObject fn_name(Cons args)
+#include "pdecls.h"
 
 PHEAD(lt_read_a_char)
 {

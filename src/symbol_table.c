@@ -52,7 +52,7 @@ int node_compare(StrSymMapNode node1, StrSymMapNode node2)
     return strcmp(get_node_key(node1), get_node_key(node2));
 }
 
-inline int get_max(int a, int b)
+int get_max(int a, int b)
 { return a > b? a: b; }
 
 int get_tree_height(SymbolTable sym_tbl)
@@ -152,7 +152,7 @@ symbol_t make_symbol_t(char *name)
     return symbol;
 }
 
-inline Symbol make_symbol(char *name)
+Symbol make_symbol(char *name)
 { return TO_SYMBOL(make_symbol_t(name)); }
 
 /* Ensure the symbol with name `symbol_name' exists uniquely. */

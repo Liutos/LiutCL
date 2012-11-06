@@ -1,19 +1,5 @@
-/*
- * primitives.c
- *
- * 
- *
- * Copyright (C) 2012-10-05 liutos
- */
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "atom_proc.h"
-#include "cons.h"
-#include "object.h"
-#include "stream.h"
-#include "symbol_table.h"
-#include "types.h"
+#ifndef PDECLS_H
+#define PDECLS_H
 
 #define PARM2(o1, o2)                           \
     do {                                        \
@@ -25,10 +11,15 @@
         o1 = ac1(FIRST(args));                  \
         o2 = ac2(SECOND(args));                 \
     } while (0)
+
+#ifndef FS
+
 #define PHEAD(fn_name) LispObject fn_name(Cons args)
 
-PHEAD(quit)
-{
-    printf("Quiting......\n");
-    exit(0);
-}
+#else
+
+#define PHEAD(fn_name) LispObject fn_name(Cons args, Environment lenv, Environment denv, BlockEnvironment benv, Environment fenv)
+
+#endif
+
+#endif

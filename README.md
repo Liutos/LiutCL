@@ -79,9 +79,11 @@
   * 在atom\_proc.h头文件中声明这个全局变量；
   * 在init\_special\_operators函数中初始化上述定义的符号。
 * types.h中的命名约定：
-  * 在types.h文件中，所有形如TO\_XXX的宏均为类型转换宏，主要用于将以tagged pointer形式存储的数据转换为相应的LispObject类型。对于非tagged pointer形式存储的数据，只起普通的强制类型转换的作用。
+  * 在types.h文件中，所有形如TO\_XXX的宏均为类型转换宏，主要用于将普通的数据转换为相应的tagged pointer形式存储的数据，它们分别对应于形如theXXX的宏，后者用于从LispObject中取出需要的值。
 * 将cons\_t和symbol\_t类型从LispObject中独立出来，与将Fixnum和Character从LispObject的做法是不同的：
   * 对于Fixnum和Character而言，其存储需要使用字中的每一bit。为了以tagged pointer形式存储，需要先左移。
   * 对于Cons和Symbol，本质为指针，因此低位在对齐后有空闲的bit，可以直接用bitwise-or写入类型信息。
   * 所有以tagged pointer形式存储的数据，都不具备type成员变量。
 * ensure\_symbol\_exists函数只负责生成名字与参数*相同*的符号，不负责进行名字的大小写转换，因此在源代码中调用这个函数的地方都要用全大写字符串作为参数。
+* 关于条件预处理：
+  * 在CFLAGS中定义的宏FS，意为Functional Special operators，当需要将特殊操作符定义为函数原语，而不是实现成eval\_*时所使用。

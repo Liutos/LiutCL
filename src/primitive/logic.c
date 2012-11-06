@@ -8,28 +8,27 @@
 #include "../atom_proc.h"
 #include "../cons.h"
 #include "../types.h"
+#include "../vm_stack.h"
+#include "pdecls.h"
 
-#define PARM2(o1, o2)                           \
-    do {                                        \
-        o1 = FIRST(args);                       \
-        o2 = SECOND(args);                      \
-    } while(0)
-#define PHEAD(fn_name) LispObject fn_name(Cons args)
-
+/* Greedy logical-and operation. */
 PHEAD(and_two)
 {
-    LispObject arg1, arg2;
-
-    PARM2(arg1, arg2);
+    /* LispObject arg1, arg2; */
+    LispObject arg2 = pop_object();
+    LispObject arg1 = pop_object();
+    /* PARM2(arg1, arg2); */
 
     return (is_true_obj(arg1) && is_true_obj(arg2)) ? lt_t: lt_nil;
 }
 
+/* Greedy logical-or operation. */
 PHEAD(or_two)
 {
-    LispObject arg1, arg2;
-
-    PARM2(arg1, arg2);
+    /* LispObject arg1, arg2; */
+    LispObject arg2 = pop_object();
+    LispObject arg1 = pop_object();
+    /* PARM2(arg1, arg2); */
 
     return (is_true_obj(arg1) || is_true_obj(arg2)) ? lt_t: lt_nil;
 }

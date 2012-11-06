@@ -37,7 +37,7 @@ Stream make_string_stream(char *string)
     return object;
 }
 
-inline Character read_file_stream_char(Stream file_stream)
+Character read_file_stream_char(Stream file_stream)
 {
     return TO_CHAR(fgetc(theSTREAM(file_stream)->u.file));
 }
@@ -59,12 +59,12 @@ Character read_char(Stream stream)
     }
 }
 
-inline void write_file_stream_char(Stream stream, Character c)
+void write_file_stream_char(Stream stream, Character c)
 {
     fputc(theCHAR(c), STREAM_FILE(stream));
 }
 
-inline void write_file_stream_fixnum(Stream stream, Fixnum number)
+void write_file_stream_fixnum(Stream stream, Fixnum number)
 {
     fprintf(STREAM_FILE(stream), "%d", theFIXNUM(number));
 }

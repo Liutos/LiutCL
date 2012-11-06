@@ -13,7 +13,7 @@
 
 LispObject g_unbound;
 
-inline LispObject make_object(void)
+LispObject make_object(void)
 {
     return malloc(sizeof(struct lisp_object_t));
 }

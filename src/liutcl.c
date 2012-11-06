@@ -27,12 +27,15 @@ int main(int argc, char *argv[])
 
     init_special_operators();
     global_dynamic_env = make_empty_env();
+    global_dynamic_env = init_dvars(global_dynamic_env);
     block_env = NULL;
     fdefinition_env = make_empty_env();
     fdefinition_env = init_primitives(fdefinition_env);
     lexical_env = make_empty_env();
     lexical_env = init_variables(lexical_env);
     do {
+        write_format(standard_output, "LT-USER> ");
+        fflush(stdout);
         input = read_sexp(stdin);
         sexp = parse_sexp(input);
         result = eval_sexp(sexp, lexical_env, global_dynamic_env, block_env, fdefinition_env);
