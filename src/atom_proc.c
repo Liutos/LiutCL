@@ -23,66 +23,52 @@ Symbol lt_catch;
 Symbol lt_defvar;
 Symbol lt_fset;
 Symbol lt_function;
+Symbol lt_progn;
+#ifndef FS
 Symbol lt_if;
 Symbol lt_lambda;
-Symbol lt_progn;
 Symbol lt_quote;
+#endif
 Symbol lt_return_from;
-Symbol lt_set;
+Symbol lt_setq;
 Symbol lt_throw;
 
-inline Character make_char(char C_character)
-{ return TO_CHAR(C_character); }
-
-inline Fixnum make_fixnum(int C_integer)
-{ return TO_FIXNUM(C_integer); }
-
-inline Function make_function_t(void)
-{ return TO_FUNCTION(malloc(sizeof(struct function_t))); }
-
-Function make_C_function(primitive_t prim, int arity)
+Character make_char(char C_character)
 {
-    Function fn = make_function_t();
-
-    FUNCTION_CFLAG(fn) = TRUE;
-    PRIMITIVE(fn) = prim;
-    ARITY(fn) = arity;
-
-    return fn;
+    return TO_CHAR(C_character);
 }
 
-Function make_Lisp_function(Cons parms, LispObject expr, Environment lenv, Environment denv, BlockEnvironment benv, Environment fenv)
+Fixnum make_fixnum(int C_integer)
 {
-    Function fn = make_function_t();
-
-    ARITY(fn) = cons_length(parms);
-    BLOCK_ENV(fn) = benv;
-    FDEFINITION_ENV(fn) = fenv;
-    FUNCTION_CFLAG(fn) = FALSE;
-    EXPRESSION(fn) = expr;
-    LEXICAL_ENV(fn) = lenv;
-    PARAMETERS(fn) = parms;
-
-    return fn;
+    return TO_FIXNUM(C_integer);
 }
 
 String make_string(char *C_string)
 {
     string_t object = malloc(sizeof(struct string_t));
+
     object->content = strdup(C_string);
     object->length = strlen(C_string);
 
     return TO_STRING(object);
 }
 
-inline BOOL is_true_obj(LispObject obj)
-{ return lt_nil != obj; }
+BOOL is_true_obj(LispObject obj)
+{
+    return lt_nil != obj;
+}
 
-inline BOOL is_atom_object(LispObject object)
-{ return !CONS_P(object); }
+BOOL is_atom_object(LispObject object)
+{
+    return !CONS_P(object);
+}
 
-inline BOOL is_tail(LispObject object)
-{ return lt_nil == object || is_atom_object(object); }
+BOOL is_tail(LispObject object)
+{
+    return lt_nil == object || is_atom_object(object);
+}
 
-inline BOOL is_symbol(LispObject object)
-{ return SYMBOL_P(object); }
+BOOL is_symbol(LispObject object)
+{
+    return SYMBOL_P(object);
+}
