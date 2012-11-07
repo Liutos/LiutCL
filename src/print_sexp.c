@@ -18,7 +18,7 @@ void print_object_notln(LispObject, Stream);
 
 void print_atom(Atom atom, Stream output)
 {
-    switch (TYPE(atom)) {
+    switch (enum_type_of(atom)) {
     case SYMBOL:
         write_string(output, make_string(SYMBOL_NAME(atom)));
 	break;
@@ -44,7 +44,7 @@ void print_atom(Atom atom, Stream output)
         write_format(output, "#<STREAM %p>", atom);
         break;
     default :
-        write_format(output, "Unknown type %d\n", TO_FIXNUM(TYPE(atom)));
+        write_format(output, "Unknown type %d\n", TO_FIXNUM(enum_type_of(atom)));
 	exit(1);
     }
 }

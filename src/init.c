@@ -12,14 +12,15 @@
 #include "symbol_table.h"
 #include "types.h"
 
-#include "primitive/arit.h"
-#include "primitive/cons_proc.h"
-#include "primitive/io.h"
-#include "primitive/logic.h"
-#include "primitive/object_proc.h"
+/* Primitives implementation */
+#include "arit.h"
+#include "cons_proc.h"
+#include "io.h"
+#include "logic.h"
+#include "object_proc.h"
 
 #ifdef FS
-#include "primitive/spec.h"
+#include "spec.h"
 #endif
 
 Environment reg_primitive(char *fn_name, primitive_t prim, Arity arity, FunctionType type, Environment env)
@@ -67,8 +68,9 @@ Environment init_primitives(Environment env)
 
 Environment init_dvars(Environment denv)
 {
-    Environment tmp = denv;
+    Environment tmp;
 
+    tmp = denv;
     standard_output = make_file_stream(stdout);
     tmp = extend_env_by_name("*STANDARD-OUTPUT*", standard_output, tmp);
     standard_input = make_file_stream(stdin);
@@ -81,8 +83,9 @@ Environment init_dvars(Environment denv)
 
 Environment init_variables(Environment lenv)
 {
-    Environment tmp = lenv;
+    Environment tmp;
 
+    tmp = lenv;
     lt_nil = ensure_symbol_exists("NIL");
     tmp = extend_env_by_name("NIL", lt_nil, tmp);
     lt_t = ensure_symbol_exists("T");

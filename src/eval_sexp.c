@@ -321,7 +321,7 @@ DEFEVAL(eval_cons, exps)
     args = CDR(exps);
     op = FIRST(exps);
 #ifdef FS
-    switch (TYPE(op)) {
+    switch (enum_type_of(op)) {
     case CONS:
         op = CALL_EVAL(eval_cons, op);
         if (!FUNCTION_P(op)) {

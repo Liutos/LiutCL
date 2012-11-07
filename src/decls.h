@@ -10,6 +10,7 @@ typedef LispObject Boolean;
 typedef LispObject Character;
 typedef LispObject Cons;
 typedef LispObject Fixnum;
+typedef LispObject Float;
 typedef LispObject Function;
 typedef LispObject HashTable;
 /* Type `List' means proper list */

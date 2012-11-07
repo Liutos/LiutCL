@@ -120,6 +120,7 @@ typedef enum {
     CONS,
     FUNCTION,
     FIXNUM,
+    FLOAT,
     HASH_TABLE,
     PACKAGE,
     STREAM,
@@ -132,6 +133,7 @@ typedef enum {
 struct lisp_object_t {
     LispType type;
     union {
+        float f;
         hash_table_t hash_table;
         package_t package;
         stream_t stream;
@@ -140,7 +142,7 @@ struct lisp_object_t {
 };
 
 /* Type */
-#define TYPE(x) (enum_type_of(x))
+/* #define TYPE(x) (enum_type_of(x)) */
 #define TAGOF(x) ((int)(x) & 7)
 #define UNTAG(x) ((int)(x) & ~7)
 
@@ -179,6 +181,9 @@ struct lisp_object_t {
 #define TO_FIXNUM(x) ((LispObject)(((int)(x) << 3) | FIXNUM_TAG))
 #define theFIXNUM(x) ((int)(x) >> 3)
 #define FIXNUM_P(x) (TAGOF(x) == FIXNUM_TAG)
+
+/* Single floating point number */
+#define theFLOAT(x) ((x)->u.f)
 
 /* Function */
 #define TO_FUNCTION(x) ((LispObject)((int)(x) | FUNCTION_TAG))
