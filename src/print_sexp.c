@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "atom_proc.h"
+#include "atom.h"
 #include "cons.h"
 #include "object.h"
 #include "stream.h"
@@ -18,10 +18,10 @@ void print_object_notln(LispObject, Stream);
 
 void print_atom(Atom atom, Stream output)
 {
-    switch (enum_type_of(atom)) {
-    case SYMBOL:
-        write_string(output, make_string(SYMBOL_NAME(atom)));
-	break;
+    switch (type_of(atom)) {
+    case CHARACTER:
+        write_format(output, "#\\%c", atom);
+        break;
     case FIXNUM:
         write_fixnum(output, atom);
 	break;
@@ -34,30 +34,33 @@ void print_atom(Atom atom, Stream output)
                          EXPRESSION(atom),
                          atom);
 	break;
-    case STRING:
-        write_format(output, "\"%s\"", atom);
-        break;
-    case CHARACTER:
-        write_format(output, "#\\%c", atom);
+    case PACKAGE:
+        write_format(output, "#<PACKAGE %!>", make_string(PACKAGE_NAME(atom)));
         break;
     case STREAM:
         write_format(output, "#<STREAM %p>", atom);
         break;
+    case STRING:
+        write_format(output, "\"%s\"", atom);
+        break;
+    case SYMBOL:
+        write_string(output, make_string(SYMBOL_NAME(atom)));
+	break;
     default :
-        write_format(output, "Unknown type %d\n", TO_FIXNUM(enum_type_of(atom)));
+        write_format(output, "Unknown type %d\n", TO_FIXNUM(type_of(atom)));
 	exit(1);
     }
 }
 
 void print_cons_core(LispObject cons, Stream output)
 {
-    while (!is_tail(cons)) {
+    while (CONS_P(cons)) {
 	if (CONS_P(CAR(cons)))
             print_object_notln(CAR(cons), output);
         else
             print_atom(CAR(cons), output);
 	cons = CDR(cons);
-	if (is_atom_object(cons)) {
+	if (!CONS_P(cons)) {
 	    if (cons != lt_nil) {
 		write_string(output, make_string(" . "));
 		print_atom(cons, output);
@@ -82,11 +85,11 @@ void print_object_notln(LispObject object, Stream output)
 	print_atom(object, output);
 }
 
-/* Print the representation of `object' to OUTPUT. */
+/* Print the string representation of `object' to `output'. */
 void print_object(LispObject object, Stream output)
 {
     if (NULL == object) {
-        write_string(output, make_string("; No value\n"));
+        write_string(output, TO_STRING("; No value\n"));
         return;
     }
     print_object_notln(object, output);
