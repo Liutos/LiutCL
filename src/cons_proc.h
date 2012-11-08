@@ -3,8 +3,5 @@
 
 #include "pdecls.h"
 
-extern PHEAD(lt_car);
-extern PHEAD(lt_cdr);
-extern PHEAD(lt_cons);
 
 #endif

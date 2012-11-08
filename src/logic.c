@@ -5,30 +5,17 @@
  *
  * Copyright (C) 2012-11-04 liutos <mat.liutos@gmail.com>
  */
-#include "atom_proc.h"
+#include "atom.h"
 #include "cons.h"
-#include "types.h"
-#include "vm_stack.h"
 #include "pdecls.h"
+#include "types.h"
 
-/* Greedy logical-and operation. */
-PHEAD(and_two)
+PHEAD(and2)
 {
-    /* LispObject arg1, arg2; */
-    LispObject arg2 = pop_object();
-    LispObject arg1 = pop_object();
-    /* PARM2(arg1, arg2); */
-
-    return (is_true_obj(arg1) && is_true_obj(arg2)) ? lt_t: lt_nil;
+    RETURN(ARG1 != lt_nil && ARG2 != lt_nil ? lt_t: lt_nil);
 }
 
-/* Greedy logical-or operation. */
-PHEAD(or_two)
+PHEAD(or2)
 {
-    /* LispObject arg1, arg2; */
-    LispObject arg2 = pop_object();
-    LispObject arg1 = pop_object();
-    /* PARM2(arg1, arg2); */
-
-    return (is_true_obj(arg1) || is_true_obj(arg2)) ? lt_t: lt_nil;
+    RETURN(ARG1 != lt_nil || ARG2 != lt_nil ? lt_t: lt_nil);
 }

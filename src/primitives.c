@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "atom_proc.h"
+#include "atom.h"
 #include "cons.h"
 #include "object.h"
 #include "stream.h"

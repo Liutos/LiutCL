@@ -1,10 +1,10 @@
 #ifndef LOGIC_H
 #define LOGIC_H
 
-#include "types.h"
 #include "pdecls.h"
+#include "types.h"
 
-extern PHEAD(and_two);
-extern PHEAD(or_two);
+extern PHEAD(and2);
+extern PHEAD(or2);
 
 #endif

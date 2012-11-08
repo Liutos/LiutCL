@@ -7,7 +7,7 @@
  */
 #include "cons.h"
 #include "types.h"
-#include "atom_proc.h"
+#include "atom.h"
 
 #include <stdio.h>
 #include <stdlib.h>

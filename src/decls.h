@@ -20,11 +20,10 @@ typedef LispObject Stream;
 typedef LispObject String;
 typedef LispObject Symbol;
 typedef LispObject Vector;
-#ifndef FS
-typedef LispObject (*primitive_t)(LispObject);
-#else
 typedef LispObject (*primitive_t)(LispObject, Environment, Environment, BlockEnvironment, Environment);
-#endif
 typedef struct env_entry_t *env_entry_t;
+
+extern Symbol lt_nil;
+extern Symbol lt_t;
 
 #endif

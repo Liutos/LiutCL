@@ -5,26 +5,19 @@
  *
  * Copyright (C) 2012-11-04 liutos <mat.liutos@gmail.com>
  */
-#include "atom_proc.h"
+#include "atom.h"
 #include "cons.h"
 #include "stream.h"
-#include "types.h"
 #include "pdecls.h"
+#include "types.h"
 
 PHEAD(lt_read_a_char)
 {
-    Stream str = FIRST(args);
-
-    return read_char(str);
+    RETURN(read_char(ARG1));
 }
 
 PHEAD(lt_write_a_char)
 {
-    Stream str;
-    Character c;
-
-    PARM2(str, c);
-    write_char(str, c);
-
-    return lt_nil;
+    write_char(ARG2, ARG1);
+    RETURN(lt_nil);
 }

@@ -7,11 +7,11 @@
  */
 #include <stdlib.h>
 
-#include "atom_proc.h"
+#include "atom.h"
 #include "stream.h"
 #include "types.h"
 
-LispObject global_stack[20];
+LispObject global_stack[50];
 int global_stack_top = -1;
 
 BOOL is_stack_empty(void)
