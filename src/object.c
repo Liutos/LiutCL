@@ -11,38 +11,15 @@
 
 #include "types.h"
 
-LispObject g_unbound;
-
 LispObject make_object(void)
 {
     return malloc(sizeof(struct lisp_object_t));
 }
 
-stream_t make_C_file_stream(FILE *fp)
+LispType type_of(LispObject object)
 {
-    stream_t stream = malloc(sizeof(struct stream_t));
-    stream->type = FILE_STREAM;
-    stream->u.file = fp;
-
-    return stream;
-}
-
-stream_t make_C_string_stream(char *string)
-{
-    stream_t stream = malloc(sizeof(struct stream_t));
-    stream->type = CHARACTER_STREAM;
-    stream->u.s.string = strdup(string);
-
-    return stream;
-}
-
-LispType enum_type_of(LispObject object)
-{
-    if (CHAR_P(object)) return CHARACTER;
-    if (CONS_P(object)) return CONS;
-    if (FIXNUM_P(object)) return FIXNUM;
-    if (FUNCTION_P(object)) return FUNCTION;
-    if (STRING_P(object)) return STRING;
-    if (SYMBOL_P(object)) return SYMBOL;
-    else return object->type;
+    if (POINTER_P(object))
+        return object->type;
+    else
+        return TAGOF(object);
 }
