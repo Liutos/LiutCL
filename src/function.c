@@ -8,14 +8,21 @@
 #include <stdlib.h>
 
 #include "cons.h"
+#include "edecls.h"
 #include "environment.h"
 #include "eval_sexp.h"
+#include "package.h"
 #include "stream.h"
-#include "symbol_table.h"
+#include "symbol.h"
 #include "types.h"
 
-#define CALL_EVAL(eval_fn, arg) eval_fn(arg, lenv, denv, benv, fenv)
-#define eq(x, y) (x == y)
+#define DEFINVOKE(fn_name, fn)                  \
+    LispObject fn_name(Function fn,             \
+                       List args,               \
+                       Environment lenv,        \
+                       Environment denv,        \
+                       BlockEnvironment benv,   \
+                       Environment fenv)        \
 
 Function make_function_aux(void)
 {
@@ -34,7 +41,13 @@ Function make_C_function(primitive_t prim, Arity arity, FunctionType type)
     return fn;
 }
 
-arity_t make_arity_t(int req_cnt, int opt_cnt, BOOL rest_flag, BOOL key_flag, int key_cnt, List keywords)
+arity_t make_arity_t(req_cnt, opt_cnt, rest_flag, key_flag, key_cnt, keywords)
+     int req_cnt;
+     int opt_cnt;
+     BOOL rest_flag;
+     BOOL key_flag;
+     int key_cnt;
+     List keywords;
 {
     arity_t arity;
 
@@ -55,9 +68,9 @@ Arity make_arity(List parms)
     Symbol key, opt, rest;
     int key_count, opt_count, req_count;
 
-    key = ensure_symbol_exists("&KEY");
-    opt = ensure_symbol_exists("&OPTIONAL");
-    rest = ensure_symbol_exists("&REST");
+    key = gen_pkg_sym("&KEY", pkg_cl);
+    opt = gen_pkg_sym("&OPTIONAL", pkg_cl);
+    rest = gen_pkg_sym("&REST", pkg_cl);
     key_count = opt_count = req_count = 0;
     /* Required parameters */
     while (CONS_P(parms)) {
@@ -108,13 +121,17 @@ Arity make_arity(List parms)
     return make_arity_t(req_count, opt_count, rest_flag, key_count != 0, key_count, lt_nil);
 }
 
-Function make_Lisp_function(List parms, LispObject expr, Environment lenv, Environment denv, BlockEnvironment benv, Environment fenv)
-/* The argument `expr' must be a proper list because it will be evaluated by
-   eval_progn in function invoke_Lisp_function. */
+Function make_Lisp_function(parms, expr, lenv, denv, benv, fenv)
+     List parms;
+     LispObject expr;
+     Environment lenv;
+     Environment denv;
+     BlockEnvironment benv;
+     Environment fenv;
 {
-    Function fn = make_function_aux();
+    Function fn;
 
-    /* ARITY(fn) = cons_length(parms); */
+    fn = make_function_aux();
     ARITY(fn) = make_arity(parms);
     BLOCK_ENV(fn) = benv;
     FDEFINITION_ENV(fn) = fenv;
@@ -127,21 +144,12 @@ Function make_Lisp_function(List parms, LispObject expr, Environment lenv, Envir
     return fn;
 }
 
-#ifndef FS
-LispObject invoke_C_function(Function C_fn, Cons args)
-{
-    return PRIMITIVE(C_fn)(args);
-}
-#else
-LispObject invoke_C_function(Function C_fn, Cons args, Environment lenv, Environment denv, BlockEnvironment benv, Environment fenv)
+DEFINVOKE(invoke_C_function, C_fn)
 {
     return PRIMITIVE(C_fn)(args, lenv, denv, benv, fenv);
 }
-#endif
 
 LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment denv)
-/* Invokes a Lisp function means evaluating the function's body in a extended
-   environment. */
 {
     BlockEnvironment benv = BLOCK_ENV(Lisp_function);
     Environment fenv = FDEFINITION_ENV(Lisp_function);
@@ -150,23 +158,13 @@ LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment d
                      args,
                      LEXICAL_ENV(Lisp_function));
     
-    return CALL_EVAL(eval_progn, EXPRESSION(Lisp_function));
+    return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
 }
 
-#ifndef FS
-LispObject invoke_function(Function function, Cons args, Environment denv)
-{
-    if (TRUE == FUNCTION_CFLAG(function))
-	return invoke_C_function(function, args);
-    else
-	return invoke_Lisp_function(function, args, denv);
-}
-#else
-LispObject invoke_function(Function function, Cons args, Environment lenv, Environment denv, BlockEnvironment benv, Environment fenv)
+DEFINVOKE(invoke_function, function)
 {
     if (TRUE == FUNCTION_CFLAG(function))
 	return invoke_C_function(function, args, lenv, denv, benv, fenv);
     else
 	return invoke_Lisp_function(function, args, denv);
 }
-#endif
