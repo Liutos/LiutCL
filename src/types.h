@@ -5,8 +5,6 @@
 
 #include "decls.h"
 
-extern Symbol lt_nil;
-
 enum bool_t { FALSE, TRUE};
 
 /* Cons definition */
@@ -51,15 +49,15 @@ typedef struct function_t {
 /* Hash table definition */
 typedef struct table_entry_t *table_entry_t;
 struct table_entry_t {
-    LispObject key;
-    LispObject value;
+    void *key;
+    void *value;
     table_entry_t next;
 };
 
 typedef struct hash_table_t {
     table_entry_t *elements;
-    unsigned int (*hash_fn)(LispObject, unsigned int);
-    BOOL (*compare_fn)(LispObject, LispObject);
+    unsigned int (*hash_fn)(void *, unsigned int);
+    BOOL (*compare_fn)(void *, void *);
     unsigned int size;
     unsigned int count;
 } *hash_table_t;
@@ -116,17 +114,19 @@ typedef struct vector_t {
 
 /* Lisp object definition */
 typedef enum {
-    CHARACTER,
+    /* Tagged pointer */
+    CHARACTER = 1,
     CONS,
-    FUNCTION,
     FIXNUM,
+    FUNCTION,
+    STRING,
+    SYMBOL,
+    VALUES,
+    /* Tagged union */
     FLOAT,
     HASH_TABLE,
     PACKAGE,
     STREAM,
-    STRING,
-    SYMBOL,
-    VALUES,
     VECTOR,
 } LispType;
 
@@ -142,42 +142,44 @@ struct lisp_object_t {
 };
 
 /* Type */
-/* #define TYPE(x) (enum_type_of(x)) */
 #define TAGOF(x) ((int)(x) & 7)
 #define UNTAG(x) ((int)(x) & ~7)
 
 #define POINTER_TAG 0
-#define FIXNUM_TAG 1
+#define CHARACTER_TAG 1
 #define CONS_TAG 2
-#define SYMBOL_TAG 3
-#define CHARACTER_TAG 4
-#define FUNCTION_TAG 5
-#define STRING_TAG 6
+#define FIXNUM_TAG 3
+#define FUNCTION_TAG 4
+#define STRING_TAG 5
+#define SYMBOL_TAG 6
 #define VALUES_TAG 7
 
 #define POINTER_P(x) (TAGOF(x) == POINTER_TAG)
 #define thePOINTER(x) ((LispObject)UNTAG(x))
 
 /* Character */
+/* TO_CHAR: char -> Character */
 #define TO_CHAR(x) ((LispObject)(((int)(x) << 3) | CHARACTER_TAG))
 #define theCHAR(x) ((int)(x) >> 3)
 #define CHAR_P(x) (TAGOF(x) == CHARACTER_TAG)
 
 /* Cons */
+/* TO_CONS: cons_t -> Cons */
 #define TO_CONS(x) ((LispObject)((int)(x) | CONS_TAG))
 #define theCONS(x) ((cons_t)UNTAG(x))
 #define CONS_P(x) (TAGOF(x) == CONS_TAG)
 
 #define _CAR(x) (theCONS(x)->car)
 #define _CDR(x) (theCONS(x)->cdr)
-#define CAR(x) /* safe_car(x) */(lt_nil == (x) ? lt_nil: theCONS(x)->car)
-#define CDR(x) /* safe_cdr(x) */(lt_nil == (x) ? lt_nil: theCONS(x)->cdr)
+#define CAR(x) (lt_nil == (x) ? lt_nil: theCONS(x)->car)
+#define CDR(x) (lt_nil == (x) ? lt_nil: theCONS(x)->cdr)
 #define CDDR(x) CDR(CDR(x))
 #define FIRST(x) CAR(x)
 #define SECOND(x) CAR(CDR(x))
 #define THIRD(x) CAR(CDDR(x))
 
 /* Fixnum */
+/* TO_FIXNUM: int -> Fixnum */
 #define TO_FIXNUM(x) ((LispObject)(((int)(x) << 3) | FIXNUM_TAG))
 #define theFIXNUM(x) ((int)(x) >> 3)
 #define FIXNUM_P(x) (TAGOF(x) == FIXNUM_TAG)
@@ -186,6 +188,7 @@ struct lisp_object_t {
 #define theFLOAT(x) ((x)->u.f)
 
 /* Function */
+/* TO_FUNCTION: function_t -> Function */
 #define TO_FUNCTION(x) ((LispObject)((int)(x) | FUNCTION_TAG))
 #define theFUNCTION(x) ((function_t)UNTAG(x))
 #define FUNCTION_P(x) (TAGOF(x) == FUNCTION_TAG)
@@ -203,7 +206,6 @@ struct lisp_object_t {
 #define SPECIAL_P(x) (SPECIAL == FTYPE(x))
 
 /* Hash table */
-#define TO_HASH_TABLE(x) ((HashTable)(x))
 #define theHASH_TABLE(x) ((x)->u.hash_table)
 #define HASH_TABLE_P(x) (POINTER_P(x) && HASH_TABLE == (x)->type)
 
@@ -214,9 +216,12 @@ struct lisp_object_t {
 #define TABLE_SIZE(x) (theHASH_TABLE(x)->size)
 
 /* Package */
-#define TO_PACKAGE(x) ((Package)(x))
+/* thePACKAGE: Package -> package_t */
 #define thePACKAGE(x) ((x)->u.package)
 #define PACKAGE_P(x) (POINTER_P(x) && PACKAGE == (x)->type)
+
+#define PACKAGE_HASH_TABLE(x) (thePACKAGE(x)->table)
+#define PACKAGE_NAME(x) (thePACKAGE(x)->name)
 
 /* Stream */
 #define theSTREAM(x) ((x)->u.stream)
@@ -225,6 +230,7 @@ struct lisp_object_t {
 #define STREAM_FILE(x) (theSTREAM(x)->u.file)
 
 /* String */
+/* TO_STRING: string_t -> String */
 #define TO_STRING(x) ((LispObject)((int)(x) | STRING_TAG))
 #define theSTRING(x) ((string_t)UNTAG(x))
 #define STRING_P(x) (TAGOF(x) == STRING_TAG)
@@ -233,6 +239,7 @@ struct lisp_object_t {
 #define STRING_LENGTH(x) (theSTRING(x)->length)
 
 /* Symbol */
+/* TO_SYMBOL: symbol_t -> Symbol */
 #define TO_SYMBOL(x) ((LispObject)((int)(x) | SYMBOL_TAG))
 #define theSYMBOL(x) ((symbol_t)UNTAG(x))
 #define SYMBOL_P(x) (TAGOF(x) == SYMBOL_TAG)
@@ -252,5 +259,9 @@ struct lisp_object_t {
 /* Vector */
 #define theVECTOR(x) ((x)->u.vector)
 #define VECTOR_P(x) (POINTER_P(x) && VECTOR == (x)->type)
+
+#define ATOM_P(x) (!CONS_P(x))
+#define TAIL_P(x) (!CONS_P(x))
+#define eq(x, y) (x == y)
 
 #endif
