@@ -1,12 +1,16 @@
 #ifndef EVAL_SEXP_H
 #define EVAL_SEXP_H
 
+#include <setjmp.h>
+
+#include "edecls.h"
 #include "env_types.h"
 #include "types.h"
 
-extern LispObject eval_progn(Cons, Environment, Environment, BlockEnvironment, Environment);
-extern LispObject eval_sexp(Cons, Environment, Environment, BlockEnvironment, Environment);
-extern void describe_global_stack(void);
-extern void init_special_operators(void);
+extern DEFEVAL(eprogn, _);
+extern DEFEVAL(eval_operator, _);
+extern DEFEVAL(eval_sexp, _);
+
+extern jmp_buf escape;
 
 #endif
