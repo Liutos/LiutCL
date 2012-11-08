@@ -35,7 +35,7 @@ data.o: data.c edecls.h eval_sexp.h package.h
 
 environment.o: environment.c atom.h env_types.h print_sexp.h types.h
 
-eval_sexp.o: eval_sexp.c types.h environment.h atom.h primitives.h stream.h
+eval_sexp.o: eval_sexp.c types.h environment.h atom.h stream.h
 
 function.o: function.c types.h
 
