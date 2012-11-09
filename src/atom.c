@@ -12,7 +12,7 @@
 #include "cons.h"
 #include "env_types.h"
 #include "object.h"
-#include "symbol_table.h"
+#include "symbol.h"
 #include "types.h"
 
 Character make_char(char C_character)
@@ -23,6 +23,17 @@ Character make_char(char C_character)
 Fixnum make_fixnum(int C_integer)
 {
     return TO_FIXNUM(C_integer);
+}
+
+Float make_float(double C_float)
+{
+    Float f;
+
+    f = make_object();
+    f->type = FLOAT;
+    theFLOAT(f) = C_float;
+
+    return f;
 }
 
 String make_string(char *C_string)
