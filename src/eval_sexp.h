@@ -3,8 +3,8 @@
 
 #include <setjmp.h>
 
-#include "edecls.h"
 #include "env_types.h"
+#include "macro_def.h"
 #include "types.h"
 
 extern DEFEVAL(eprogn, _);
