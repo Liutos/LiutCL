@@ -5,6 +5,12 @@
 
 #include "decls.h"
 
+struct block_environment_t {
+    Symbol name;
+    jmp_buf context;
+    BlockEnvironment prev;
+};
+
 struct env_entry_t {
     Symbol symbol;
     LispObject value;
@@ -16,10 +22,10 @@ struct environment_t {
     Environment next;
 };
 
-struct block_environment_t {
-    Symbol name;
+struct go_environment_t {
+    List tags;
     jmp_buf context;
-    BlockEnvironment prev;
+    GoEnvironment prev;
 };
 
 #endif
