@@ -10,6 +10,7 @@ extern BOOL is_tail(LispObject);
 extern BOOL is_true_obj(LispObject);
 extern Character make_char(char);
 extern Fixnum make_fixnum(int);
+extern Float make_float(double);
 extern String make_string(char *);
 
 #endif
