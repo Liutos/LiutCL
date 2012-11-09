@@ -6,9 +6,11 @@
  * Copyright (C) 2012-10-03 liutos
  */
 #include <ctype.h>
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "atom.h"
 #include "cons.h"
@@ -43,28 +45,48 @@ char *get_next_token(char *string, int *offset)
     return strndup(string, i);
 }
 
-BOOL is_integer_token(char *token)
+BOOL is_fixnum_token(char *token)
 {
-    BOOL flag = TRUE;
-    int i;
-
-    flag = TRUE;
-    for (i = 0; token[i] != '\0'; i++)
+    if ('-' == *token)
+        token++;
+    for (int i = 0; token[i] != '\0'; i++)
 	if (isdigit(token[i]) == 0)
             return FALSE;
 
-    return flag;
+    return TRUE;
+}
+
+BOOL is_float_token(char *token)
+{
+    if ('-' == *token)
+        token++;
+    for (; *token != '\0' && *token != '.'; token++)
+	if (isdigit(*token) == 0)
+            return FALSE;
+    if ('.' == *token)
+        return is_fixnum_token(token + 1);
+    else
+        return TRUE;
 }
 
 BOOL is_string_token(char *token)
 {
-    return '"' == *token && '"' == token[strlen(token) - 1];
+    regex_t regex;
+
+    if (regcomp(&regex, "^\"([^\"\\]+|\\.)*\"$", REG_EXTENDED)) {
+        error_format("Could not compile regex\n");
+        exit(1);
+    }
+
+    return 0 == regexec(&regex, token, 0, NULL, 0)? TRUE: FALSE;
 }
 
 LispType token_type(char *token)
 {
-    if (is_integer_token(token))
+    if (is_fixnum_token(token))
 	return FIXNUM;
+    if (is_float_token(token))
+        return FLOAT;
     if (is_string_token(token))
         return STRING;
 
@@ -91,6 +113,8 @@ Atom parse_atom(char *token, Package pkg)
     switch (type) {
     case FIXNUM:
         return make_fixnum(atoi(token));
+    case FLOAT:
+        return make_float(atof(token));
     case STRING:
         return make_string(strndup(token + 1, strlen(token) - 2));
     case SYMBOL:
