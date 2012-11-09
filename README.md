@@ -6,6 +6,9 @@
 
 ## 实现的功能
 
+* 2012年11月8日
+  * tagbody和go特殊操作符
+  * rplaca、rplacd、list等函数。
 * 2012年11月5日
   * 将Lisp级别的特殊操作符lt/catch和lt/throw修改为catch和throw，将lt\_begin修改为lt\_progn。
   * 去掉了lt/dynamic的C和Lisp级别的定义
