@@ -89,6 +89,11 @@ void write_file_stream_fixnum(Stream stream, int number)
     fprintf(STREAM_FILE(stream), "%d", number);
 }
 
+void write_file_stream_float(Stream stream, double f)
+{
+    fprintf(STREAM_FILE(stream), "%f", f);
+}
+
 void write_address(Stream stream, LispObject object)
 {
     fprintf(STREAM_FILE(stream), "%p", thePOINTER(object));
@@ -104,12 +109,15 @@ void write_fixnum(Stream stream, Fixnum number)
     write_file_stream_fixnum(stream, theFIXNUM(number));
 }
 
-void write_format(Stream dest, const char *format, ...)
+void write_float(Stream stream, Float f)
 {
-    va_list ap;
+    write_file_stream_float(stream, theFLOAT(f));
+}
+
+void write_format_aux(Stream dest, const char *format, va_list ap)
+{
     char c;
 
-    va_start(ap, format);
     while ((c = *format++))
         if ('%' == c)
             switch (*format++) {
@@ -137,6 +145,22 @@ void write_format(Stream dest, const char *format, ...)
             }
         else
             write_char(dest, TO_CHAR(c));
+}
+
+void error_format(const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    write_format_aux(standard_error, format, ap);
+}
+
+void write_format(Stream dest, const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    write_format_aux(dest, format, ap);
 }
 
 Character read_file_stream_char(Stream file_stream)
