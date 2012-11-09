@@ -7,10 +7,11 @@
  */
 #include <stdlib.h>
 
+#include "atom.h"
 #include "cons.h"
-#include "edecls.h"
 #include "environment.h"
 #include "eval_sexp.h"
+#include "macro_def.h"
 #include "object.h"
 #include "package.h"
 #include "pdecls.h"
@@ -33,6 +34,11 @@ PHEAD(lt_cdr)
 PHEAD(lt_cons)
 {
     RETURN(make_cons(ARG1, ARG2));
+}
+
+PHEAD(lt_list)
+{
+    RETURN(ARGS);
 }
 
 PHEAD(lt_rplaca)
@@ -69,6 +75,27 @@ PHEAD(lt_find_package)
         RETURN(lt_nil);
 }
 
+PHEAD(lt_package_name)
+{
+    Package pkg;
+
+    pkg = ARG1;
+    RETURN(make_string(PACKAGE_NAME(pkg)));
+}
+
+/* String operations */
+PHEAD(lt_char)
+{
+    String string;
+    char *content;
+    int index;
+
+    string = ARG1;
+    index = theFIXNUM(ARG2);
+    content = STRING_CONTENT(string);
+    RETURN(TO_CHAR(content[index]));
+}
+
 /* Other operations */
 PHEAD(lt_eq)
 {
@@ -90,7 +117,8 @@ PHEAD(lt_type_of)
         case_type(STRING);
         case_type(SYMBOL);
     default :
-        write_format(standard_error, "Unknown data type %d. How can you define that?\n", type_of(ARG1));
+        error_format("Unknown data type %d. How can you define that?\n",
+                     type_of(ARG1));
         exit(1);
     }
 }
