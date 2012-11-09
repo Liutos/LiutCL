@@ -25,6 +25,9 @@ void print_atom(Atom atom, Stream output)
     case FIXNUM:
         write_fixnum(output, atom);
 	break;
+    case FLOAT:
+        write_float(output, atom);
+        break;
     case FUNCTION:
 	if (TRUE == FUNCTION_CFLAG(atom))
             write_format(output, "#<FUNCTION C %p>", atom);
