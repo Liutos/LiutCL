@@ -12,10 +12,10 @@
 
 #include "atom.h"
 #include "cons.h"
-#include "edecls.h"
 #include "env_types.h"
 #include "environment.h"
 #include "function.h"
+#include "macro_def.h"
 #include "object.h"
 #include "print_sexp.h"
 #include "stream.h"
@@ -147,7 +147,7 @@ DEFEVAL(eval_cons, exps)
             args = CALL_EVAL(eval_args, args);
         check_arity_pattern(ARITY(op), args);
 
-        return invoke_function(op, args, lenv, denv, benv, fenv);
+        return invoke_function(op, args, lenv, denv, fenv, benv, genv);
     }
     default :
         write_format(standard_error, "%! isn't a functional object.\n", op);
@@ -155,27 +155,24 @@ DEFEVAL(eval_cons, exps)
     }
 }
 
-LispObject eval_atom(Atom exp, Environment lenv, Environment denv)
+LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
 {
-    if (SYMBOL_P(exp)) {
-	LispObject tmp;
+    LispObject value;
 
-        /* Search in the global constant environment */
-        tmp = get_value(exp, global_constant_env);
-	if (tmp != NULL)
-	    return tmp;
-        /* Search in the current lexical scope environment */
-        else if ((tmp = get_value(exp, lenv)) != NULL)
-            return tmp;
-        /* Search in the current dynamic scope environment */
-        else if ((tmp = get_value(exp, denv)) != NULL)
-            return tmp;
-	else {
-            write_format(standard_error, "No binding of symbol %!\n", exp);
-	    exit(0);
-	}
-    } else
-	return exp;
+    /* Search in the global constant environment */
+    value = get_value(sym, global_constant_env);
+    if (value != NULL)
+        return value;
+    /* Search in the current lexical scope environment */
+    else if ((value = get_value(sym, lenv)) != NULL)
+        return value;
+    /* Search in the current dynamic scope environment */
+    else if ((value = get_value(sym, denv)) != NULL)
+        return value;
+    else {
+        write_format(standard_error, "No binding of symbol %!\n", sym);
+        exit(0);
+    }
 }
 
 DEFEVAL(eval_sexp, exp)
@@ -184,6 +181,8 @@ DEFEVAL(eval_sexp, exp)
         return NULL;
     if (CONS_P(exp))
         return CALL_EVAL(eval_cons, exp);
-    else
-        return eval_atom(exp, lenv, denv);
+    else if (SYMBOL_P(exp))
+        return eval_symbol(exp, lenv, denv);
+    else                        /* Self-evaluating objects. */
+        return exp;
 }
