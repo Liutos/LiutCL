@@ -31,11 +31,11 @@ atom.o: atom.c cons.h object.h types.h
 
 cons.o: cons.c types.h
 
-data.o: data.c edecls.h eval_sexp.h package.h
+data.o: data.c eval_sexp.h package.h
 
-environment.o: environment.c atom.h env_types.h print_sexp.h types.h
+environment.o: atom.h environment.c env_types.h print_sexp.h types.h
 
-eval_sexp.o: eval_sexp.c types.h environment.h atom.h stream.h
+eval_sexp.o: eval_sexp.c atom.h environment.h stream.h types.h
 
 function.o: function.c types.h
 
