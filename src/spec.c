@@ -27,10 +27,10 @@ PHEAD(lt_block)
     name = ARG1;
     val = setjmp(block_context);
     if (0 == val)
-        return eprogn(CDR(args), lenv, denv,
-                      make_block_env(name, block_context, benv), fenv);
+        RETURN(eprogn(CDR(args), lenv, denv,
+                      fenv, make_block_env(name, block_context, benv), genv));
     else
-        return (LispObject)val;
+        RETURN((LispObject)val);
 }
 
 PHEAD(lt_catch)
@@ -48,15 +48,14 @@ PHEAD(lt_catch)
 
         value = CALL_EVAL(eprogn, CDR(args));
         memcpy(escape, catch_context, sizeof(jmp_buf));
-
-        return value;
+        RETURN(value);
     } else {                    /* Returns from a invokation of THROW */
         Cons cons;
 
         cons = (Cons)val;
         memcpy(escape, catch_context, sizeof(jmp_buf));
         if (eq(CAR(cons), tag))
-            return CDR(cons);
+            RETURN(CDR(cons));
         else
             longjmp(escape, val);
     }
@@ -75,8 +74,7 @@ PHEAD(lt_defvar)
         SYMBOL_VALUE(name) = value;
         global_dynamic_env = extend_env(name, value, global_dynamic_env);
     }
-
-    return name;
+    RETURN(name);
 }
 
 PHEAD(lt_fset)
@@ -85,26 +83,44 @@ PHEAD(lt_fset)
 
     name = CALL_EVAL(eval_sexp, ARG1);
     extend_env(name, CALL_EVAL(eval_sexp, SECOND(args)), fenv);
-
-    return lt_nil;
+    RETURN(lt_nil);
 }
 
 PHEAD(lt_function)
 {
-    return get_value(ARG1, fenv);
+    RETURN(get_value(ARG1, fenv));
+}
+
+PHEAD(lt_go)
+{
+    LispObject tag;
+
+    tag = ARG1;
+    while (genv != NULL) {
+        if (is_go_able(tag, genv))
+            longjmp(genv->context, (int)tag);
+        genv = genv->prev;
+    }
+    error_format("GO: no tag named %! is currently visible", tag);
+    exit(1);
 }
 
 PHEAD(lt_if)
 {
     if (lt_nil != CALL_EVAL(eval_sexp, ARG1))
-        return CALL_EVAL(eval_sexp, ARG2);
+        RETURN(CALL_EVAL(eval_sexp, ARG2));
     else
-        return CALL_EVAL(eval_sexp, ARG3);
+        RETURN(CALL_EVAL(eval_sexp, ARG3));
 }
 
 PHEAD(lt_lambda)
 {
-    return make_Lisp_function(CAR(args), CDR(args), lenv, denv, benv, fenv);
+    RETURN(CALL_MK(make_Lisp_function, ARG1, CDR(args)));
+}
+
+PHEAD(lt_mk_macro)
+{
+    RETURN(CALL_MK(make_Lisp_macro, ARG1, CDR(args)));
 }
 
 PHEAD(lt_progn)
@@ -128,6 +144,22 @@ PHEAD(lt_quote)
     RETURN(ARG1);
 }
 
+PHEAD(lt_return_from)
+{
+    LispObject result;
+    Symbol name;
+
+    result = CALL_EVAL(eval_sexp, SECOND(args));
+    name = FIRST(args);
+    while (benv != NULL) {
+        if (benv->name == name)
+            longjmp(benv->context, (int)result);
+        benv = benv->prev;
+    }
+    write_format(standard_error, "No such a block contains name %!\n", name);
+    exit(1);
+}
+
 PHEAD(lt_setq)
 {
     LispObject form, pairs, value, var;
@@ -148,20 +180,52 @@ PHEAD(lt_setq)
     RETURN(value);
 }
 
-PHEAD(lt_return_from)
+PHEAD(lt_tagbody)
 {
-    LispObject result;
-    Symbol name;
+    Cons expr;
+    List cur, pre, tags;
+    int val;
+    jmp_buf context;
 
-    result = CALL_EVAL(eval_sexp, SECOND(args));
-    name = FIRST(args);
-    while (benv != NULL) {
-        if (benv->name == name)
-            longjmp(benv->context, (int)result);
-        benv = benv->prev;
+    expr = ARGS;
+    pre = tags = make_cons(lt_nil, lt_nil);
+    while (CONS_P(expr)) {
+        if (ATOM_P(CAR(expr))) {
+            cur = make_cons(CAR(expr), lt_nil);
+            _CDR(pre) = cur;
+            pre = cur;
+        }
+        expr = CDR(expr);
     }
-    write_format(standard_error, "No such a block contains name %!\n", name);
-    exit(1);
+    pre = tags;
+    tags = CDR(tags);
+    free_cons(pre);
+    val = setjmp(context);
+    genv = make_go_env(tags, context, genv);
+    if (0 == val) {
+        expr = ARGS;
+        while (CONS_P(expr)) {
+            if (!ATOM_P(CAR(expr)))
+                CALL_EVAL(eval_sexp, CAR(expr));
+            expr = CAR(expr);
+        }
+    } else {                    /* Come from a GO invokation */
+        LispObject tag;
+
+        expr = ARGS;
+        tag = (LispObject)val;
+        while (CONS_P(expr))
+            if (!eq(tag, CAR(expr)))
+                expr = CDR(expr);
+            else
+                break;
+        while (CONS_P(expr)) {
+            if (!ATOM_P(CAR(expr)))
+                CALL_EVAL(eval_sexp, CAR(expr));
+            expr = CDR(expr);
+        }
+    }
+    RETURN(lt_nil);
 }
 
 PHEAD(lt_throw)
