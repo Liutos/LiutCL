@@ -8,21 +8,14 @@
 #include <stdlib.h>
 
 #include "cons.h"
-#include "edecls.h"
 #include "environment.h"
 #include "eval_sexp.h"
+#include "macro_def.h"
 #include "package.h"
+#include "print_sexp.h"
 #include "stream.h"
 #include "symbol.h"
 #include "types.h"
-
-#define DEFINVOKE(fn_name, fn)                  \
-    LispObject fn_name(Function fn,             \
-                       List args,               \
-                       Environment lenv,        \
-                       Environment denv,        \
-                       BlockEnvironment benv,   \
-                       Environment fenv)        \
 
 Function make_function_aux(void)
 {
@@ -121,13 +114,14 @@ Arity make_arity(List parms)
     return make_arity_t(req_count, opt_count, rest_flag, key_count != 0, key_count, lt_nil);
 }
 
-Function make_Lisp_function(parms, expr, lenv, denv, benv, fenv)
+LispObject make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv)
      List parms;
      LispObject expr;
      Environment lenv;
      Environment denv;
-     BlockEnvironment benv;
      Environment fenv;
+     BlockEnvironment benv;
+     BlockEnvironment genv;
 {
     Function fn;
 
@@ -137,6 +131,7 @@ Function make_Lisp_function(parms, expr, lenv, denv, benv, fenv)
     FDEFINITION_ENV(fn) = fenv;
     FUNCTION_CFLAG(fn) = FALSE;
     FTYPE(fn) = REGULAR;
+    GO_ENV(fn) = genv;
     EXPRESSION(fn) = expr;
     LEXICAL_ENV(fn) = lenv;
     PARAMETERS(fn) = parms;
@@ -144,14 +139,32 @@ Function make_Lisp_function(parms, expr, lenv, denv, benv, fenv)
     return fn;
 }
 
+Function make_Lisp_macro(parms, expr, lenv, denv, fenv, benv, genv)
+     List parms;
+     LispObject expr;
+     Environment lenv;
+     Environment denv;
+     Environment fenv;
+     BlockEnvironment benv;
+     BlockEnvironment genv;
+{
+    Function fn;
+
+    fn = make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv);
+    FTYPE(fn) = MACRO;
+
+    return fn;
+}
+
 DEFINVOKE(invoke_C_function, C_fn)
 {
-    return PRIMITIVE(C_fn)(args, lenv, denv, benv, fenv);
+    return PRIMITIVE(C_fn)(args, lenv, denv, fenv, benv, genv);
 }
 
 LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment denv)
 {
     BlockEnvironment benv = BLOCK_ENV(Lisp_function);
+    BlockEnvironment genv = GO_ENV(Lisp_function);
     Environment fenv = FDEFINITION_ENV(Lisp_function);
     Environment lenv =
         make_new_env(PARAMETERS(Lisp_function),
@@ -161,10 +174,37 @@ LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment d
     return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
 }
 
+DEFINVOKE(invoke_Lisp_macro, macro_fn)
+{
+    BlockEnvironment _benv, _genv;
+    Environment _fenv, _lenv;
+    LispObject expanded_expr;
+
+    _benv = benv;
+    _genv = genv;
+    _fenv = fenv;
+    _lenv = lenv;
+    benv = BLOCK_ENV(macro_fn);
+    fenv = FDEFINITION_ENV(macro_fn);
+    lenv = make_new_env(PARAMETERS(macro_fn),
+                        args,
+                        LEXICAL_ENV(macro_fn));
+    expanded_expr = CALL_EVAL(eprogn, EXPRESSION(macro_fn));
+    print_object(expanded_expr, standard_output);
+    benv = _benv;
+    genv = _genv;
+    fenv = _fenv;
+    lenv = _lenv;
+    
+    return CALL_EVAL(eval_sexp, expanded_expr);
+}
+
 DEFINVOKE(invoke_function, function)
 {
     if (TRUE == FUNCTION_CFLAG(function))
-	return invoke_C_function(function, args, lenv, denv, benv, fenv);
-    else
+	return CALL_INVOKE(invoke_C_function, function, args);
+    else if (REGULAR == FTYPE(function))
 	return invoke_Lisp_function(function, args, denv);
+    else
+        return CALL_INVOKE(invoke_Lisp_macro, function, args);
 }
