@@ -40,8 +40,9 @@ typedef struct function_t {
 	    Cons parameters;
 	    LispObject body;
 	    Environment lexical_env;
-            BlockEnvironment block_env;
             Environment fdefinition_env;
+            BlockEnvironment block_env;
+            BlockEnvironment go_env;
 	} s;
     } u;
 } *function_t;
@@ -67,6 +68,12 @@ typedef struct package_t {
     char *name;
     hash_table_t table;
 } *package_t;
+
+/* Rational definition */
+typedef struct ratio_t {
+    int numerator;
+    int denominator;
+} *ratio_t;
 
 /* Stream definition */
 typedef enum {
@@ -133,9 +140,10 @@ typedef enum {
 struct lisp_object_t {
     LispType type;
     union {
-        float f;
+        double f;
         hash_table_t hash_table;
         package_t package;
+        ratio_t r;
         stream_t stream;
         vector_t vector;
     } u;
@@ -184,7 +192,7 @@ struct lisp_object_t {
 #define theFIXNUM(x) ((int)(x) >> 3)
 #define FIXNUM_P(x) (TAGOF(x) == FIXNUM_TAG)
 
-/* Single floating point number */
+/* Double floating point number */
 #define theFLOAT(x) ((x)->u.f)
 
 /* Function */
@@ -199,6 +207,7 @@ struct lisp_object_t {
 #define FDEFINITION_ENV(x) (theFUNCTION(x)->u.s.fdefinition_env)
 #define FTYPE(x) (theFUNCTION(x)->type)
 #define FUNCTION_CFLAG(x) (theFUNCTION(x)->is_C_function)
+#define GO_ENV(x) (theFUNCTION(x)->u.s.go_env)
 #define LEXICAL_ENV(x) (theFUNCTION(x)->u.s.lexical_env)
 #define PARAMETERS(x) (theFUNCTION(x)->u.s.parameters)
 #define PRIMITIVE(x) (theFUNCTION(x)->u.fptr)
@@ -223,6 +232,12 @@ struct lisp_object_t {
 #define PACKAGE_HASH_TABLE(x) (thePACKAGE(x)->table)
 #define PACKAGE_NAME(x) (thePACKAGE(x)->name)
 
+/* Rational */
+#define theRATIONAL(x) ((x)->u.r)
+
+#define DENOMINATOR(x) (theRATIONAL(x)->denominator)
+#define NUMERATOR(x) (theRATIONAL(x)->numerator)
+
 /* Stream */
 #define theSTREAM(x) ((x)->u.stream)
 #define STREAM_P(x) (POINTER_P(x) && STREAM == (x)->type)
@@ -232,6 +247,7 @@ struct lisp_object_t {
 /* String */
 /* TO_STRING: string_t -> String */
 #define TO_STRING(x) ((LispObject)((int)(x) | STRING_TAG))
+/* theSTRING: String -> string_t */
 #define theSTRING(x) ((string_t)UNTAG(x))
 #define STRING_P(x) (TAGOF(x) == STRING_TAG)
 
