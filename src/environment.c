@@ -142,3 +142,29 @@ BlockEnvironment make_block_env(Symbol name, jmp_buf context, BlockEnvironment p
 
     return block_env;
 }
+
+GoEnvironment make_go_env(List tags, jmp_buf context, GoEnvironment prev_go_env)
+{
+    GoEnvironment go_env;
+
+    go_env = malloc(sizeof(struct go_environment_t));
+    go_env->tags = tags;
+    *go_env->context = *context;
+    go_env->prev = prev_go_env;
+
+    return go_env;
+}
+
+BOOL is_go_able(LispObject tag, GoEnvironment genv)
+{
+    List tags;
+
+    tags = genv->tags;
+    while (CONS_P(tags)) {
+        if (eq(tag, CAR(tags)))
+            return TRUE;
+        tags = CDR(tags);
+    }
+
+    return FALSE;
+}
