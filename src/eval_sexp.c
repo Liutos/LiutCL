@@ -12,13 +12,13 @@
 
 #include "atom.h"
 #include "cons.h"
-#include "env_types.h"
 #include "environment.h"
 #include "function.h"
 #include "macro_def.h"
 #include "object.h"
 #include "print_sexp.h"
 #include "stream.h"
+#include "symbol.h"
 #include "types.h"
 
 DEFEVAL(eval_cons, _);
@@ -26,6 +26,8 @@ DEFEVAL(eval_progn, _);
 DEFEVAL(eval_sexp, _);
 
 jmp_buf escape;
+/* Variable `toplevel' should not be changed. */
+jmp_buf toplevel;
 
 DEFEVAL(eprogn, exps)
 {
@@ -56,14 +58,16 @@ void check_arity_pattern(Arity arity, List args)
     for (int i = 0; i < req_count; ++i) {
         if (!CONS_P(args)) {
             write_format(standard_error, "Two few arguments\n");
-            exit(1);
+            /* exit(1); */
+            longjmp(toplevel, 1);
         }
         args = CDR(args);
     }
     if (CONS_P(args) &&
         0 == opt_count && FALSE == key_flag && FALSE == rest_flag) {
         write_format(standard_error, "Two many arguments\n");
-        exit(1);
+        /* exit(1); */
+        longjmp(toplevel, 1);
     }
     for (int i = 0; i < opt_count; ++i) {
         if (!CONS_P(args))
@@ -72,14 +76,16 @@ void check_arity_pattern(Arity arity, List args)
     }
     if (CONS_P(args) && FALSE == key_flag && FALSE == rest_flag) {
         write_format(standard_error, "Two many arguments\n");
-        exit(1);
+        /* exit(1); */
+        longjmp(toplevel, 1);
     }
     if (TRUE == rest_flag && FALSE == key_flag)
         return;
     for (int i = 0; i < key_count; ++i) {
         if (CONS_P(args) && !CONS_P(CDR(args))) {
             write_format(standard_error, "keyword arguments in ($!) should occur pairwise.\n", CAR(args));
-            exit(1);
+            /* exit(1); */
+            longjmp(toplevel, 1);
         }
         if (CONS_P(args) && CONS_P(CDR(args)))
             args = CDDR(args);
@@ -96,7 +102,8 @@ DEFEVAL(eval_operator, op)
 	    return tmp;
 	else {
             write_format(standard_error, "No binding of symbol %!\n", op);
-	    exit(1);
+	    /* exit(1); */
+            longjmp(toplevel, 1);
 	}
     } else
 	return CALL_EVAL(eval_cons, op);
@@ -132,14 +139,16 @@ DEFEVAL(eval_cons, exps)
         op = CALL_EVAL(eval_cons, op);
         if (!FUNCTION_P(op)) {
             write_format(standard_error, "%! isn't a functional object.\n", op);
-            exit(1);
+            /* exit(1); */
+            longjmp(toplevel, 1);
         } else
             goto LABEL;
     case SYMBOL:
         op = CALL_EVAL(eval_operator, op);
         if (!FUNCTION_P(op)) {
             write_format(standard_error, "%! isn't a functional object.\n", op);
-            exit(1);
+            /* exit(1); */
+            longjmp(toplevel, 1);
         }
     LABEL:
     case FUNCTION: {
@@ -147,11 +156,12 @@ DEFEVAL(eval_cons, exps)
             args = CALL_EVAL(eval_args, args);
         check_arity_pattern(ARITY(op), args);
 
-        return invoke_function(op, args, lenv, denv, fenv, benv, genv);
+        return invoke_function(op, cons2frame(args, ARITY(op)), lenv, denv, fenv, benv, genv);
     }
     default :
         write_format(standard_error, "%! isn't a functional object.\n", op);
-        exit(1);
+        /* exit(1); */
+        longjmp(toplevel, 1);
     }
 }
 
@@ -159,9 +169,10 @@ LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
 {
     LispObject value;
 
+    if (is_keyword(sym))
+        return sym;
     /* Search in the global constant environment */
-    value = get_value(sym, global_constant_env);
-    if (value != NULL)
+    if ((value = get_value(sym, global_constant_env)) != NULL)
         return value;
     /* Search in the current lexical scope environment */
     else if ((value = get_value(sym, lenv)) != NULL)
@@ -170,8 +181,9 @@ LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
     else if ((value = get_value(sym, denv)) != NULL)
         return value;
     else {
-        write_format(standard_error, "No binding of symbol %!\n", sym);
-        exit(0);
+        error_format("No binding of symbol %!\n", sym);
+        /* exit(0); */
+        longjmp(toplevel, 1);
     }
 }
 
