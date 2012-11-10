@@ -12,9 +12,18 @@
 #include "cons.h"
 #include "object.h"
 #include "stream.h"
+#include "symbol.h"
 #include "types.h"
 
 void print_object_notln(LispObject, Stream);
+
+void print_symbol(Symbol sym, Stream output)
+{
+    if (is_keyword(sym))
+        write_format(output, ":%s", make_string(SYMBOL_NAME(sym)));
+    else
+        write_string(output, make_string(SYMBOL_NAME(sym)));
+}
 
 void print_atom(Atom atom, Stream output)
 {
@@ -47,7 +56,7 @@ void print_atom(Atom atom, Stream output)
         write_format(output, "\"%s\"", atom);
         break;
     case SYMBOL:
-        write_string(output, make_string(SYMBOL_NAME(atom)));
+        print_symbol(atom, output);
 	break;
     default :
         write_format(output, "Unknown type %d\n", TO_FIXNUM(type_of(atom)));
