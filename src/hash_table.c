@@ -1,7 +1,7 @@
 /*
  * hash_table.c
  *
- *
+ * Creation, search and update operations on hash table.
  *
  * Copyright (C) 2012-11-04 liutos <mat.liutos@gmail.com>
  */
@@ -96,6 +96,11 @@ void *search_key(void *key, hash_table_t table)
         return NULL;
 }
 
+unsigned int hash_ptr(void *ptr, unsigned int size)
+{
+    return (int)ptr % size;
+}
+
 unsigned int hash_string(void *ptr, unsigned int size)
 /* Algorithm from _Data Structures and Algorithm Analysis in C_. */
 {
@@ -109,7 +114,29 @@ unsigned int hash_string(void *ptr, unsigned int size)
     return val % size;
 }
 
+BOOL ptr_cmp(void *p1, void *p2)
+{
+    return p1 == p2;
+}
+
 BOOL string_cmp(void *s1, void *s2)
 {
     return 0 == strcmp((char *)s1, (char *)s2)? TRUE: FALSE;
+}
+
+void hash_table_iterate(hash_table_t table, void (*fn)(void *, void *))
+{
+    int count, i;
+    table_entry_t element;
+
+    for (i = table->size, count = table->count; i >= 0; i--) {
+        if (0 == count)
+            break;
+        element = table->elements[i];
+        while (element != NULL) {
+            fn(element->key, element->value);
+            element = element->next;
+            count--;
+        }
+    }
 }
