@@ -1,7 +1,7 @@
 /*
  * symbol.c
  *
- *
+ * Creation of symbols and symbol table.
  *
  * Copyright (C) 2012-11-07 liutos <mat.liutos@gmail.com>
  */
@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "hash_table.h"
+#include "package.h"
 #include "types.h"
 
 Symbol lt_t, lt_nil;
@@ -19,7 +20,7 @@ Symbol get_symbol(char *name, hash_table_t table)
     return (Symbol)search_key(name, table);
 }
 
-symbol_t make_symbol_aux(char *name)
+symbol_t make_symbol_aux(char *name, Package pkg)
 {
     symbol_t symbol;
 
@@ -27,14 +28,14 @@ symbol_t make_symbol_aux(char *name)
     symbol->name = name;
     symbol->value = NULL;
     symbol->function = NULL;
-    symbol->package = NULL;
+    symbol->package = pkg;
 
     return symbol;
 }
 
-Symbol make_symbol(char *name)
+Symbol make_symbol(char *name, Package pkg)
 {
-    return TO_SYMBOL(make_symbol_aux(name));
+    return TO_SYMBOL(make_symbol_aux(name, pkg));
 }
 
 void put_symbol(Symbol symbol, hash_table_t table)
@@ -46,19 +47,24 @@ void put_symbol(Symbol symbol, hash_table_t table)
 }
 
 /* Ensure the symbol with name `name' exists uniquely in the hash table `table'. */
-Symbol ensure_symbol_exists(char *name, hash_table_t table)
+Symbol ensure_symbol_exists(char *name, Package pkg)
 {
     Symbol symbol;
 
-    symbol = get_symbol(name, table);
+    symbol = get_symbol(name, PACKAGE_HASH_TABLE(pkg));
     if (symbol != NULL)
 	return symbol;
     else {
-	symbol = make_symbol(name);
-	put_symbol(symbol, table);
+	symbol = make_symbol(name, pkg);
+	put_symbol(symbol, PACKAGE_HASH_TABLE(pkg));
 
 	return symbol;
     }
+}
+
+BOOL is_keyword(Symbol sym)
+{
+    return eq(pkg_kw, SYMBOL_PACKAGE(sym));
 }
 
 hash_table_t make_symbol_table(unsigned int size)
