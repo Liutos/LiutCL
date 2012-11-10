@@ -7,7 +7,6 @@
  */
 #include <stdio.h>
 
-#include "env_types.h"
 #include "environment.h"
 #include "eval_sexp.h"
 #include "init.h"
@@ -22,8 +21,8 @@
 int main(int argc, char *argv[])
 {
     BlockEnvironment benv;
-    Environment lenv;
-    Environment fenv;
+    Environment fenv, lenv;
+    GoEnvironment genv;
     LispObject sexp, result;
     char *input;
 
@@ -37,17 +36,19 @@ int main(int argc, char *argv[])
     global_dynamic_env = init_dvars(global_dynamic_env);
 
     benv = NULL;
+    genv = NULL;
     fenv = make_empty_env();
     fenv = init_primitives(fenv);
     lenv = make_empty_env();
+    setjmp(toplevel);
 
     do {
         write_format(standard_output, "CL-USER> ");
-        fflush(stdout);
+        fflush(STREAM_FILE(standard_output));
 
         input = read_sexp(stdin);
         sexp = parse_sexp(input, pkg_cl);
-        result = eval_sexp(sexp, lenv, global_dynamic_env, benv, fenv);
+        result = eval_sexp(sexp, lenv, global_dynamic_env, fenv, benv, genv);
         print_object(result, standard_output);
     } while (1);
 
