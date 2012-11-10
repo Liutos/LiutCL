@@ -9,6 +9,7 @@
 #include "function.h"
 #include "hash_table.h"
 #include "package.h"
+#include "parse_sexp.h"
 #include "stream.h"
 #include "symbol.h"
 #include "types.h"
@@ -20,6 +21,8 @@
 #include "logic.h"
 #include "spec.h"
 
+#define cfreg(name, prim, arity) freg(name, pkg_cl, prim, arity)
+#define csreg(name, prim, arity) sreg(name, pkg_cl, prim, arity)
 #define freg(name, pkg, prim, arity) reg(name, pkg, prim, arity, REGULAR)
 #define reg(name, pkg, prim, arity, type)                \
     env = reg_primitive(name, pkg, prim, arity, type, env)
@@ -58,6 +61,7 @@ void init_packages(void)
 {
     packages = make_hash_table_aux(5, hash_string, string_cmp);
     pkg_cl = make_package("COMMON-LISP");
+    pkg_kw = make_package("KEYWORD");
     pkg_lt = make_package("LIUTOS-LISP");
 }
 
@@ -78,12 +82,19 @@ Environment reg_primitive(char *fn_name,
 Environment init_primitives(Environment env)
 {
     Arity req1 = make_arity_t(1, 0, FALSE, FALSE, 0, lt_nil);
+    Arity req1opt1 = make_arity_t(1, 1, FALSE, FALSE, 0, lt_nil);
     Arity req1opt2 = make_arity_t(1, 2, FALSE, FALSE, 0, lt_nil);
     Arity req1opt4 = make_arity_t(1, 4, FALSE, FALSE, 0, lt_nil);
     Arity req1rest = make_arity_t(1, 0, TRUE, FALSE, 0, lt_nil);
     Arity req2 = make_arity_t(2, 0, FALSE, FALSE, 0, lt_nil);
     Arity req2opt1 = make_arity_t(2, 1, FALSE, FALSE, 0, lt_nil);
     Arity rest = make_arity_t(0, 0, TRUE, FALSE, 0, lt_nil);
+    /* Arity structure with keywords appear only once. */
+    /* For function MAKE-LIST. */
+    Arity make_list_a = make_arity_kw(1, 0, FALSE, "INITIAL-ELEMENT", NULL);
+    /* For function MAKE-STRING */
+    Arity make_string_a = make_arity_kw(1, 0, FALSE, "INITIAL-ELEMENT", "ELEMENT-TYPE", NULL);
+
     /* Register regular functions */
     freg("ADD", pkg_cl, add, req2);
     freg("MUL", pkg_cl, mul, req2);
@@ -93,40 +104,60 @@ Environment init_primitives(Environment env)
     freg("DIV", pkg_cl, div, req2);
     freg("OR2", pkg_cl, or2, req2);
     freg("FIXNUM-EQ", pkg_cl, fixnum_eq, req2);
-    freg("EQ", pkg_cl, lt_eq, req2);
-    freg("SPECIAL-OPERATOR-P", pkg_cl, lt_special_operator_p, req1);
-    freg("TYPE-OF", pkg_cl, lt_type_of, req1);
+    cfreg("SPECIAL-OPERATOR-P", lt_special_operator_p, req1);
+    cfreg("TYPE-OF", lt_type_of, req1);
     freg("WRITE-A-CHAR", pkg_cl, lt_write_a_char, req1);
+    /* Comparison operations */
+    cfreg("EQ", lt_eq, req2);
+    freg("EQL", pkg_cl, lt_eql, req2);
     /* Cons operations */
-    freg("CAR", pkg_cl, lt_car, req1);
-    freg("CDR", pkg_cl, lt_cdr, req1);
-    freg("CONS", pkg_cl, lt_cons, req2);
-    freg("LIST", pkg_cl, lt_list, rest);
-    freg("RPLACA", pkg_cl, lt_rplaca, req2);
-    freg("REPACD", pkg_cl, lt_rplacd, req2);
+    cfreg("CAR", lt_car, req1);
+    cfreg("CDR", lt_cdr, req1);
+    cfreg("CONS", lt_cons, req2);
+    cfreg("CONSP", lt_consp, req1);
+    cfreg("LIST", lt_list, rest);
+    cfreg("MAKE-LIST", lt_make_list, make_list_a);
+    cfreg("NTH", lt_nth, req2);
+    cfreg("NTHCDR", lt_nthcdr, req2);
+    cfreg("RPLACA", lt_rplaca, req2);
+    cfreg("REPACD", lt_rplacd, req2);
+    /* Function operations */
+    cfreg("FUNCALL", lt_funcall, req1rest);
+    cfreg("FUNCTIONP", lt_functionp, req1);
     /* IO operations */
-    freg("READ-CHAR", pkg_cl, lt_read_char, req1opt4);
+    cfreg("READ-CHAR", lt_read_char, req1opt4);
+    cfreg("READ-LINE", lt_read_line, req1opt4);
     /* Package operations */
-    freg("FIND-PACKAGE", pkg_cl, lt_find_package, req1);
-    freg("PACKAGE-NAME", pkg_cl, lt_package_name, req1);
+    cfreg("FIND-PACKAGE", lt_find_package, req1);
+    cfreg("PACKAGE-NAME", lt_package_name, req1);
     /* String operations */
-    freg("CHAR", pkg_cl, lt_char, req2);
+    cfreg("CHAR", lt_char, req2);
+    cfreg("MAKE-STRING", lt_make_string, make_string_a);
+    cfreg("STRINGP", lt_stringp, req1);
+    /* Symbol operations */
+    cfreg("INTERN", lt_intern, req1opt1);
+    cfreg("KEYWORDP", lt_keywordp, req1);
+    cfreg("SET", lt_set, req2);
+    cfreg("SYMBOL-NAME", lt_symbol_name, req1);
+    cfreg("SYMBOL-PACKAGE", lt_symbol_package, req1);
+    cfreg("SYMBOL-VALUE", lt_symbol_value, req1);
+    cfreg("SYMBOLP", lt_symbolp, req1);
     /* Register special operators */
-    sreg("BLOCK", pkg_cl, lt_block, req1rest);
-    sreg("CATCH", pkg_cl, lt_catch, req1rest);
-    sreg("DEFVAR", pkg_cl, lt_defvar, req1opt2);
-    sreg("FSET", pkg_cl, lt_fset, req2);
-    sreg("FUNCTION", pkg_cl, lt_function, req1);
-    sreg("GO", pkg_cl, lt_go, req1);
-    sreg("IF", pkg_cl, lt_if, req2opt1);
-    sreg("LAMBDA", pkg_cl, lt_lambda, req1rest);
-    sreg("MK-MACRO", pkg_cl, lt_mk_macro, req1rest);
-    sreg("PROGN", pkg_cl, lt_progn, rest);
-    sreg("QUOTE", pkg_cl, lt_quote, req1);
-    sreg("RETURN-FROM", pkg_cl, lt_return_from, req2);
-    sreg("SETQ", pkg_cl, lt_setq, rest);
-    sreg("TAGBODY", pkg_cl, lt_tagbody, rest);
-    sreg("THROW", pkg_cl, lt_throw, req2);
+    csreg("BLOCK", lt_block, req1rest);
+    csreg("CATCH", lt_catch, req1rest);
+    csreg("DEFVAR", lt_defvar, req1opt2);
+    sreg("FSET", pkg_lt, lt_fset, req2);
+    csreg("FUNCTION", lt_function, req1);
+    csreg("GO", lt_go, req1);
+    csreg("IF", lt_if, req2opt1);
+    csreg("LAMBDA", lt_lambda, req1rest);
+    csreg("MK-MACRO", lt_mk_macro, req1rest);
+    csreg("PROGN", lt_progn, rest);
+    csreg("QUOTE", lt_quote, req1);
+    csreg("RETURN-FROM", lt_return_from, req2);
+    csreg("SETQ", lt_setq, rest);
+    csreg("TAGBODY", lt_tagbody, rest);
+    csreg("THROW", lt_throw, req2);
 
     return env;
 }
