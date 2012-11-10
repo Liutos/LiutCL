@@ -1,7 +1,7 @@
 /*
  * stream.c
  *
- * 
+ * Read and write operations on stream objects.
  *
  * Copyright (C) 2012-10-31 liutos <mat.liutos@gmail.com>
  */
@@ -145,6 +145,7 @@ void write_format_aux(Stream dest, const char *format, va_list ap)
             }
         else
             write_char(dest, TO_CHAR(c));
+    va_end(ap);
 }
 
 void error_format(const char *format, ...)
