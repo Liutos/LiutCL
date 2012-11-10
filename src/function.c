@@ -1,10 +1,11 @@
 /*
  * function.c
  *
- *
+ * Creation and application of Lisp function and its relative stuff.
  *
  * Copyright (C) 2012-11-06 liutos <mat.liutos@gmail.com>
  */
+#include <stdarg.h>
 #include <stdlib.h>
 
 #include "cons.h"
@@ -16,6 +17,24 @@
 #include "stream.h"
 #include "symbol.h"
 #include "types.h"
+
+Frame cons2frame(Cons args, Arity arity)
+{
+    size_t quantity;
+    Frame frame;
+
+    quantity = arity->req_count + arity->opt_count;
+    frame = malloc(sizeof(struct frame_t));
+    frame->quantity = quantity;
+    frame->rargs = malloc(quantity * sizeof(LispObject));
+    for (int i = 0; i < quantity; i++) {
+        frame->rargs[i] = CAR(args);
+        args = CDR(args);
+    }
+    frame->rest_or_kws = args;
+
+    return frame;
+}
 
 Function make_function_aux(void)
 {
@@ -53,6 +72,44 @@ arity_t make_arity_t(req_cnt, opt_cnt, rest_flag, key_flag, key_cnt, keywords)
     arity->keywords = keywords;
 
     return arity;
+}
+
+List make_keywords_aux(va_list ap)
+{
+    Cons cur, head, pre;
+    char *name;
+
+    name = va_arg(ap, char *);
+    pre = head = make_cons(lt_nil, lt_nil);
+    while (name != NULL) {
+        cur = make_cons(gen_pkg_sym(name, pkg_kw), lt_nil);
+        _CDR(pre) = cur;
+        pre = cur;
+        name = va_arg(ap, char *);
+    }
+    va_end(ap);
+
+    return CDR(head);
+}
+
+List make_keywords(int _, ...)
+{
+    va_list ap;
+
+    va_start(ap, _);
+
+    return make_keywords_aux(ap);
+}
+
+Arity make_arity_kw(int req_cnt, int opt_cnt, BOOL rest_flag, ...)
+{
+    List kws;
+    va_list ap;
+
+    va_start(ap, rest_flag);
+    kws = make_keywords_aux(ap);
+
+    return make_arity_t(req_cnt, opt_cnt, rest_flag, TRUE, cons_length(kws), kws);
 }
 
 Arity make_arity(List parms)
@@ -114,14 +171,15 @@ Arity make_arity(List parms)
     return make_arity_t(req_count, opt_count, rest_flag, key_count != 0, key_count, lt_nil);
 }
 
-LispObject make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv)
-     List parms;
-     LispObject expr;
-     Environment lenv;
-     Environment denv;
-     Environment fenv;
-     BlockEnvironment benv;
-     BlockEnvironment genv;
+/* LispObject make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv) */
+/*      List parms; */
+/*      LispObject expr; */
+/*      Environment lenv; */
+/*      Environment denv; */
+/*      Environment fenv; */
+/*      BlockEnvironment benv; */
+/*      GoEnvironment genv; */
+DEFMK(make_Lisp_function)
 {
     Function fn;
 
@@ -139,18 +197,19 @@ LispObject make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv)
     return fn;
 }
 
-Function make_Lisp_macro(parms, expr, lenv, denv, fenv, benv, genv)
-     List parms;
-     LispObject expr;
-     Environment lenv;
-     Environment denv;
-     Environment fenv;
-     BlockEnvironment benv;
-     BlockEnvironment genv;
+/* Function make_Lisp_macro(parms, expr, lenv, denv, fenv, benv, genv) */
+/*      List parms; */
+/*      List expr; */
+/*      Environment lenv; */
+/*      Environment denv; */
+/*      Environment fenv; */
+/*      BlockEnvironment benv; */
+/*      BlockEnvironment genv; */
+DEFMK(make_Lisp_macro)
 {
     Function fn;
 
-    fn = make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv);
+    fn = CALL_MK(make_Lisp_function, parms, expr);
     FTYPE(fn) = MACRO;
 
     return fn;
@@ -161,23 +220,43 @@ DEFINVOKE(invoke_C_function, C_fn)
     return PRIMITIVE(C_fn)(args, lenv, denv, fenv, benv, genv);
 }
 
-LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment denv)
+List frame2cons(Frame frame)
 {
-    BlockEnvironment benv = BLOCK_ENV(Lisp_function);
-    BlockEnvironment genv = GO_ENV(Lisp_function);
-    Environment fenv = FDEFINITION_ENV(Lisp_function);
-    Environment lenv =
-        make_new_env(PARAMETERS(Lisp_function),
-                     args,
-                     LEXICAL_ENV(Lisp_function));
+    Cons cur, head, pre;
+
+    pre = head = make_cons(lt_nil, lt_nil);
+    for (int i = 0; i < frame->quantity; i++) {
+        cur = make_cons(frame->rargs[i], lt_nil);
+        _CDR(pre) = cur;
+        pre = cur;
+    }
+    _CDR(pre) = frame->rest_or_kws;
+
+    return CDR(head);
+}
+
+LispObject invoke_Lisp_function(Function Lisp_function, frame_t args, Environment denv)
+{
+    BlockEnvironment benv;
+    Environment fenv;
+    Environment lenv;
+    GoEnvironment genv;
+
+    benv = BLOCK_ENV(Lisp_function);
+    fenv = FDEFINITION_ENV(Lisp_function);
+    lenv = make_new_env(PARAMETERS(Lisp_function),
+                        frame2cons(args),
+                        LEXICAL_ENV(Lisp_function));
+    genv = GO_ENV(Lisp_function);
     
     return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
 }
 
 DEFINVOKE(invoke_Lisp_macro, macro_fn)
 {
-    BlockEnvironment _benv, _genv;
+    BlockEnvironment _benv;
     Environment _fenv, _lenv;
+    GoEnvironment _genv;
     LispObject expanded_expr;
 
     _benv = benv;
@@ -187,7 +266,7 @@ DEFINVOKE(invoke_Lisp_macro, macro_fn)
     benv = BLOCK_ENV(macro_fn);
     fenv = FDEFINITION_ENV(macro_fn);
     lenv = make_new_env(PARAMETERS(macro_fn),
-                        args,
+                        frame2cons(args),
                         LEXICAL_ENV(macro_fn));
     expanded_expr = CALL_EVAL(eprogn, EXPRESSION(macro_fn));
     print_object(expanded_expr, standard_output);
