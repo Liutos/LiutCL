@@ -1,7 +1,7 @@
 /*
  * read-sexp.c
  *
- * 
+ * Parses text input and generates the inner structures.
  *
  * Copyright (C) 2012-10-03 liutos
  */
@@ -19,6 +19,8 @@
 #include "symbol.h"
 #include "stream.h"
 #include "types.h"
+
+LispObject parse_sexp(char *, Package);
 
 char *get_next_token(char *string, int *offset)
 {
@@ -105,6 +107,45 @@ char *toupper_string(char *origin)
     return target;
 }
 
+BOOL is_keyword_token(char *token)
+{
+    return ':' == *token;
+}
+
+BOOL is_qualified(char *token, char **pkg_name, char **sym_name)
+{
+    int i;
+
+    for (i = 0; token[i] != '\0' && token[i] != ':'; i++);
+    /* Character colon `:' doesn't exist. */
+    if ('\0' == token[i])
+        return FALSE;
+    /* Find colon `:'. */
+    *pkg_name = strndup(token, i);
+    if (':' == token[i + 1])
+        i++;
+    *sym_name = strdup(token + i + 1);
+
+    return TRUE;
+}
+
+Symbol parse_symbol(char *token, Package pkg)
+{
+    char *pkg_name, *sym_name;
+
+    token = toupper_string(token);
+    if (is_keyword_token(token))
+        return gen_pkg_sym(token + 1, pkg_kw);
+    if (is_qualified(token, &pkg_name, &sym_name)) {
+        Package pkg;
+
+        pkg = find_package(pkg_name);
+
+        return gen_pkg_sym(sym_name, pkg);
+    } else
+        return gen_pkg_sym(token, pkg);
+}
+
 Atom parse_atom(char *token, Package pkg)
 {
     LispType type;
@@ -118,7 +159,7 @@ Atom parse_atom(char *token, Package pkg)
     case STRING:
         return make_string(strndup(token + 1, strlen(token) - 2));
     case SYMBOL:
-	return gen_pkg_sym(toupper_string(token), pkg);
+        return parse_symbol(token, pkg);
     default :
         write_format(standard_error, "Don't know how to parse token %!.\n", token);
 	exit(0);
@@ -147,6 +188,24 @@ Cons parse_cons_aux(char *string, int *offset, Package pkg)
             free_cons(head);
 
 	    return pre;
+        case '\'': {
+            Symbol quote;
+            LispObject obj;
+
+            quote = gen_pkg_sym("QUOTE", pkg_cl);
+            /* The following is a cons. */
+            if ('(' == string[i + 1]) {
+                obj = parse_cons_aux(string + i + 1, &step, pkg);
+                cur = make_cons(make_cons(quote, obj), lt_nil);
+            } else {
+                /* The following is an atom. */
+                token = get_next_token(string + i + 1, &step);
+                obj = parse_atom(token, pkg);
+                cur = make_cons(make_cons(quote, make_cons(obj, lt_nil)), lt_nil);
+            }
+            step++;
+            break;
+        }
 	default :
 	    token = get_next_token(string + i, &step);
 	    cur = make_cons(parse_atom(token, pkg), lt_nil);
@@ -177,6 +236,12 @@ LispObject parse_sexp(char *input, Package pkg)
         return NULL;
     if ('(' == input[0])
 	return parse_cons(input, pkg);
-    else
+    else if ('\'' == input[0]) {
+        Symbol quote;
+
+        quote = gen_pkg_sym("QUOTE", pkg_cl);
+
+        return make_cons(quote, make_cons(parse_sexp(input + 1, pkg), lt_nil));
+    } else
         return parse_atom(get_next_token(input, &trash), pkg);
 }
