@@ -1,11 +1,12 @@
 /*
  * spec.c
  *
- *
+ * Function implementation of special operators in Common Lisp
  *
  * Copyright (C) 2012-11-05 liutos <mat.liutos@gmail.com>
  */
 #include <assert.h>
+#include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +15,7 @@
 #include "environment.h"
 #include "eval_sexp.h"
 #include "function.h"
+#include "macro_def.h"
 #include "pdecls.h"
 #include "stream.h"
 #include "types.h"
@@ -26,10 +28,10 @@ PHEAD(lt_block)
 
     name = ARG1;
     val = setjmp(block_context);
-    if (0 == val)
-        RETURN(eprogn(CDR(args), lenv, denv,
-                      fenv, make_block_env(name, block_context, benv), genv));
-    else
+    if (0 == val) {
+        benv = make_block_env(name, block_context, benv);
+        RETURN(CALL_EVAL(eprogn, RK));
+    } else
         RETURN((LispObject)val);
 }
 
@@ -46,7 +48,7 @@ PHEAD(lt_catch)
     if (0 == val) {
         LispObject value;
 
-        value = CALL_EVAL(eprogn, CDR(args));
+        value = CALL_EVAL(eprogn, RK);
         memcpy(escape, catch_context, sizeof(jmp_buf));
         RETURN(value);
     } else {                    /* Returns from a invokation of THROW */
@@ -70,19 +72,23 @@ PHEAD(lt_defvar)
     if (NULL == get_value(name, global_dynamic_env)) {
         LispObject value;
 
-        value = CALL_EVAL(eval_sexp, SECOND(args));
+        value = CALL_EVAL(eval_sexp, ARG2);
         SYMBOL_VALUE(name) = value;
-        global_dynamic_env = extend_env(name, value, global_dynamic_env);
+        /* global_dynamic_env = extend_env(name, value, global_dynamic_env); */
+        update_env(name, value, global_dynamic_env);
     }
     RETURN(name);
 }
 
 PHEAD(lt_fset)
 {
-    LispObject name;
+    LispObject form, name, value;
 
+    form = ARG2;
     name = CALL_EVAL(eval_sexp, ARG1);
-    extend_env(name, CALL_EVAL(eval_sexp, SECOND(args)), fenv);
+    value = CALL_EVAL(eval_sexp, form);
+    extend_env(name, value, fenv);
+    SYMBOL_FUNCTION(name) = value;
     RETURN(lt_nil);
 }
 
@@ -102,7 +108,8 @@ PHEAD(lt_go)
         genv = genv->prev;
     }
     error_format("GO: no tag named %! is currently visible", tag);
-    exit(1);
+    /* exit(1); */
+    longjmp(toplevel, 1);
 }
 
 PHEAD(lt_if)
@@ -115,28 +122,30 @@ PHEAD(lt_if)
 
 PHEAD(lt_lambda)
 {
-    RETURN(CALL_MK(make_Lisp_function, ARG1, CDR(args)));
+    RETURN(CALL_MK(make_Lisp_function, ARG1, RK));
 }
 
 PHEAD(lt_mk_macro)
 {
-    RETURN(CALL_MK(make_Lisp_macro, ARG1, CDR(args)));
+    RETURN(CALL_MK(make_Lisp_macro, ARG1, RK));
 }
 
 PHEAD(lt_progn)
 {
-    if (!CONS_P(args))
-	return lt_nil;
-    if (!CONS_P(CDR(args)))
-	return CALL_EVAL(eval_sexp, CAR(args));
-    while (CONS_P(args)) {
-	if (!CONS_P(CDR(args)))
-	    break;
-	CALL_EVAL(eval_sexp, CAR(args));
-	args = CDR(args);
-    }
+    List form;
 
-    return CALL_EVAL(eval_sexp, CAR(args));
+    form = RK;
+    if (!CONS_P(form))
+	RETURN(lt_nil);
+    if (!CONS_P(CDR(form)))
+	RETURN(CALL_EVAL(eval_sexp, CAR(form)));
+    while (CONS_P(form)) {
+	if (!CONS_P(CDR(form)))
+	    break;
+	CALL_EVAL(eval_sexp, CAR(form));
+	form = CDR(form);
+    }
+    RETURN(CALL_EVAL(eval_sexp, CAR(form)));
 }
 
 PHEAD(lt_quote)
@@ -149,32 +158,35 @@ PHEAD(lt_return_from)
     LispObject result;
     Symbol name;
 
-    result = CALL_EVAL(eval_sexp, SECOND(args));
-    name = FIRST(args);
+    result = CALL_EVAL(eval_sexp, ARG2);
+    name = ARG1;
     while (benv != NULL) {
         if (benv->name == name)
             longjmp(benv->context, (int)result);
         benv = benv->prev;
     }
-    write_format(standard_error, "No such a block contains name %!\n", name);
-    exit(1);
+    error_format("RETURN-FROM: No such a block contains name %!.\n", name);
+    /* exit(1); */
+    longjmp(toplevel, 1);
 }
 
 PHEAD(lt_setq)
 {
     LispObject form, pairs, value, var;
 
-    pairs = args;
+    pairs = RK;
     while (!TAIL_P(pairs)) {
         var = CAR(pairs);
         pairs = CDR(pairs);
         if (TAIL_P(pairs)) {
-            write_format(standard_error, "Odd number of arguments %!", ARG1);
-            exit(1);
+            error_format("SETQ: Odd number of arguments %!.\n", ARG1);
+            /* exit(1); */
+            longjmp(toplevel, 1);
         }
         form = CAR(pairs);
         value = CALL_EVAL(eval_sexp, form);
-        extend_env(var, value, lenv);
+        /* extend_env(var, value, lenv); */
+        update_env(var, value, lenv);
         pairs = CDR(pairs);
     }
     RETURN(value);
@@ -187,7 +199,7 @@ PHEAD(lt_tagbody)
     int val;
     jmp_buf context;
 
-    expr = ARGS;
+    expr = RK;
     pre = tags = make_cons(lt_nil, lt_nil);
     while (CONS_P(expr)) {
         if (ATOM_P(CAR(expr))) {
@@ -203,7 +215,7 @@ PHEAD(lt_tagbody)
     val = setjmp(context);
     genv = make_go_env(tags, context, genv);
     if (0 == val) {
-        expr = ARGS;
+        expr = RK;
         while (CONS_P(expr)) {
             if (!ATOM_P(CAR(expr)))
                 CALL_EVAL(eval_sexp, CAR(expr));
@@ -212,7 +224,7 @@ PHEAD(lt_tagbody)
     } else {                    /* Come from a GO invokation */
         LispObject tag;
 
-        expr = ARGS;
+        expr = RK;
         tag = (LispObject)val;
         while (CONS_P(expr))
             if (!eq(tag, CAR(expr)))
@@ -233,7 +245,7 @@ PHEAD(lt_throw)
     LispObject result;
     LispObject tag;
 
-    result = CALL_EVAL(eval_sexp, SECOND(args));
-    tag = CALL_EVAL(eval_sexp, FIRST(args));
+    result = CALL_EVAL(eval_sexp, ARG2);
+    tag = CALL_EVAL(eval_sexp, ARG1);
     longjmp(escape, (int)make_cons(tag, result));
 }
