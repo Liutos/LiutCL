@@ -1,11 +1,43 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <setjmp.h>
 #include <stdio.h>
 
 #include "decls.h"
 
 enum bool_t { FALSE, TRUE};
+
+struct block_environment_t {
+    Symbol name;
+    jmp_buf context;
+    BlockEnvironment prev;
+};
+
+struct env_entry_t {
+    Symbol symbol;
+    LispObject value;
+    env_entry_t next;
+};
+
+struct environment_t {
+    /* env_entry_t map; */
+    hash_table_t map;
+    Environment next;
+};
+
+/* Place for storing arguments. */
+typedef struct frame_t {
+    size_t quantity;            /* The length of `rargs'. */
+    LispObject *rargs;         /* Required and optional arguments in array form. */
+    List rest_or_kws;           /* Rest or keyword arguments. */
+} *frame_t;
+
+struct go_environment_t {
+    List tags;
+    jmp_buf context;
+    GoEnvironment prev;
+};
 
 /* Cons definition */
 typedef struct cons_t {
@@ -42,7 +74,7 @@ typedef struct function_t {
 	    Environment lexical_env;
             Environment fdefinition_env;
             BlockEnvironment block_env;
-            BlockEnvironment go_env;
+            GoEnvironment go_env;
 	} s;
     } u;
 } *function_t;
@@ -55,13 +87,13 @@ struct table_entry_t {
     table_entry_t next;
 };
 
-typedef struct hash_table_t {
+struct hash_table_t {
     table_entry_t *elements;
     unsigned int (*hash_fn)(void *, unsigned int);
     BOOL (*compare_fn)(void *, void *);
     unsigned int size;
-    unsigned int count;
-} *hash_table_t;
+    unsigned int count;         /* The quantity of valid objects. */
+};
 
 /* Package definition */
 typedef struct package_t {
@@ -96,7 +128,8 @@ typedef struct stream_t {
 /* String definition */
 typedef struct string_t {
     char *content;
-    unsigned int length;
+    unsigned int length;        /* The number of contained characters. */
+    unsigned int size;          /* Total space size */
 } *string_t;
 
 /* Symbol definition */
@@ -139,6 +172,7 @@ typedef enum {
 
 struct lisp_object_t {
     LispType type;
+    int refcnt;
     union {
         double f;
         hash_table_t hash_table;
@@ -168,6 +202,7 @@ struct lisp_object_t {
 /* Character */
 /* TO_CHAR: char -> Character */
 #define TO_CHAR(x) ((LispObject)(((int)(x) << 3) | CHARACTER_TAG))
+/* theCHAR: Character -> char */
 #define theCHAR(x) ((int)(x) >> 3)
 #define CHAR_P(x) (TAGOF(x) == CHARACTER_TAG)
 
@@ -193,7 +228,9 @@ struct lisp_object_t {
 #define FIXNUM_P(x) (TAGOF(x) == FIXNUM_TAG)
 
 /* Double floating point number */
+/* theFLOAT: Float -> double */
 #define theFLOAT(x) ((x)->u.f)
+#define FLOAT_P(x) (POINTER_P(x) && (FLOAT == (x)->type))
 
 /* Function */
 /* TO_FUNCTION: function_t -> Function */
@@ -253,6 +290,7 @@ struct lisp_object_t {
 
 #define STRING_CONTENT(x) (theSTRING(x)->content)
 #define STRING_LENGTH(x) (theSTRING(x)->length)
+#define STRING_SIZE(x) (theSTRING(x)->size)
 
 /* Symbol */
 /* TO_SYMBOL: symbol_t -> Symbol */
@@ -260,6 +298,7 @@ struct lisp_object_t {
 #define theSYMBOL(x) ((symbol_t)UNTAG(x))
 #define SYMBOL_P(x) (TAGOF(x) == SYMBOL_TAG)
 
+#define SYMBOL_FUNCTION(x) (theSYMBOL(x)->function)
 #define SYMBOL_NAME(x) (theSYMBOL(x)->name)
 #define SYMBOL_PACKAGE(x) (theSYMBOL(x)->package)
 #define SYMBOL_VALUE(x) (theSYMBOL(x)->value)
@@ -277,6 +316,7 @@ struct lisp_object_t {
 #define VECTOR_P(x) (POINTER_P(x) && VECTOR == (x)->type)
 
 #define ATOM_P(x) (!CONS_P(x))
+#define NUMBER_P(x) (FIXNUM_P(x) || FLOAT_P(x))
 #define TAIL_P(x) (!CONS_P(x))
 #define eq(x, y) (x == y)
 
