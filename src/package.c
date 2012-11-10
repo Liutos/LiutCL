@@ -10,10 +10,11 @@
 #include "hash_table.h"
 #include "object.h"
 #include "symbol.h"
-#include "types.h"
+#include "typeso.h"
 
 Package pkg_cl;                     /* Package :common-lisp */
-Package pkg_lt;                 /* Package :liutcl */
+Package pkg_kw;                     /* Package :keyword */
+Package pkg_lt;                 /* Package :liutos-lisp */
 hash_table_t packages;          /* A hash table contains all packages */
 
 package_t make_package_aux(char *name)
@@ -46,5 +47,10 @@ Package find_package(char *name)
 
 Symbol gen_pkg_sym(char *name, Package pkg)
 {
-    return ensure_symbol_exists(name, PACKAGE_HASH_TABLE(pkg));
+    return ensure_symbol_exists(name, pkg);
+}
+
+Symbol gen_keyword(char *name)
+{
+    return gen_pkg_sym(name, pkg_kw);
 }
