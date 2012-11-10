@@ -10,7 +10,8 @@
 
 #include "types.h"
 
-extern Symbol ensure_symbol_exists(char *, hash_table_t);
+extern Symbol ensure_symbol_exists(char *, Package);
+extern Symbol is_keyword(Symbol);
 extern hash_table_t make_symbol_table(unsigned int);
 
 #endif

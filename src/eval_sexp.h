@@ -3,7 +3,6 @@
 
 #include <setjmp.h>
 
-#include "env_types.h"
 #include "macro_def.h"
 #include "types.h"
 
