@@ -1,11 +1,15 @@
-# LiutCL - A Common Lisp Implementation from Scratch
+# LiutCL - A Approximate Common Lisp Implementation from Scratch
 
 ## 简介
 
-一个简单的、针对个人Lisp方言的解释器。
+自认为是一个Common Lisp实现
 
 ## 实现的功能
 
+* 2012年11月10日
+  * 函数化特殊操作符
+  * 用Frame而不是普通的列表传递函数参数
+  * 对浮点数、关键字符号和qualified符号的支持。
 * 2012年11月8日
   * tagbody和go特殊操作符
   * rplaca、rplacd、list等函数。
