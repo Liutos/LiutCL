@@ -10,10 +10,28 @@
 #include <string.h>
 
 #include "cons.h"
-#include "env_types.h"
 #include "object.h"
-#include "symbol.h"
 #include "types.h"
+
+BOOL is_atom_object(LispObject object)
+{
+    return !CONS_P(object);
+}
+
+BOOL is_tail(LispObject object)
+{
+    return is_atom_object(object);
+}
+
+BOOL is_true_obj(LispObject obj)
+{
+    return lt_nil != obj;
+}
+
+BOOL is_symbol(LispObject object)
+{
+    return SYMBOL_P(object);
+}
 
 Character make_char(char C_character)
 {
@@ -38,30 +56,39 @@ Float make_float(double C_float)
 
 String make_string(char *C_string)
 {
-    string_t object = malloc(sizeof(struct string_t));
+    string_t object;
 
+    object = malloc(sizeof(struct string_t));
     object->content = strdup(C_string);
     object->length = strlen(C_string);
+    object->size = object->length;
 
     return TO_STRING(object);
 }
 
-BOOL is_true_obj(LispObject obj)
+/* The caller must ensure the argument `n' and `m' have same type. */
+BOOL numeric_eq(Number n, Number m)
 {
-    return lt_nil != obj;
+    if (FIXNUM_P(n))
+        return n == m;
+    if (FLOAT_P(n))
+        return theFLOAT(n) == theFLOAT(m);
+
+    return FALSE;
 }
 
-BOOL is_atom_object(LispObject object)
+String str_add_char(String str, Character ch)
 {
-    return !CONS_P(object);
-}
+    unsigned int index, size;
 
-BOOL is_tail(LispObject object)
-{
-    return is_atom_object(object);
-}
+    index = STRING_LENGTH(str); /* The position to inserted. */
+    size = STRING_SIZE(str);
+    /* Enhance the storage space of the string. */
+    if (index == size) {
+        size = size * 2;
+        STRING_CONTENT(str) = realloc(STRING_CONTENT(str), size * sizeof(char));
+    }
+    STRING_CONTENT(str)[index++] = theCHAR(ch);
 
-BOOL is_symbol(LispObject object)
-{
-    return SYMBOL_P(object);
+    return str;
 }
