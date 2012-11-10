@@ -27,6 +27,15 @@ PHEAD(fixnum_eq)
     RETURN(n1 == n2 ? lt_t: lt_nil);
 }
 
+PHEAD(float_eq)
+{
+    double f1, f2;
+
+    f1 = theFLOAT(ARG1);
+    f2 = theFLOAT(ARG2);
+    RETURN(f1 == f2? lt_t: lt_nil);
+}
+
 PHEAD(gt)
 {
     int n1, n2;
