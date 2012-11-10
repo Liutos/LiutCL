@@ -31,17 +31,17 @@ atom.o: atom.c cons.h object.h types.h
 
 cons.o: cons.c types.h
 
-data.o: data.c eval_sexp.h package.h
+data.o: data.c eval_sexp.h macro_def.h package.h symbol.h
 
-environment.o: atom.h environment.c env_types.h print_sexp.h types.h
+environment.o: atom.h environment.c env_types.h hash_table.h print_sexp.h types.h
 
-eval_sexp.o: eval_sexp.c atom.h environment.h stream.h types.h
+eval_sexp.o: eval_sexp.c atom.h environment.h macro_def.h stream.h types.h
 
-function.o: function.c types.h
+function.o: function.c decls.h types.h
 
 hash_table.o: hash_table.c object.h types.h
 
-init.o: init.c atom.h arit.h data.h environment.h io.h logic.h stream.h types.h
+init.o: init.c atom.h arit.h data.h environment.h io.h logic.h macro_def.h stream.h types.h
 
 io.o: io.c atom.h cons.h stream.h types.h
 
@@ -55,7 +55,7 @@ parse_sexp.o: parse_sexp.c atom.h cons.h object.h types.h
 
 print_sexp.o: print_sexp.c atom.h object.h stream.h types.h
 
-spec.o: spec.c cons.h types.h
+spec.o: spec.c cons.h macro_def.h types.h
 
 read_sexp.o: read_sexp.c
 
