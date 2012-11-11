@@ -58,7 +58,6 @@ void check_arity_pattern(Arity arity, List args)
     for (int i = 0; i < req_count; ++i) {
         if (!CONS_P(args)) {
             write_format(standard_error, "Two few arguments\n");
-            /* exit(1); */
             longjmp(toplevel, 1);
         }
         args = CDR(args);
@@ -66,7 +65,6 @@ void check_arity_pattern(Arity arity, List args)
     if (CONS_P(args) &&
         0 == opt_count && FALSE == key_flag && FALSE == rest_flag) {
         write_format(standard_error, "Two many arguments\n");
-        /* exit(1); */
         longjmp(toplevel, 1);
     }
     for (int i = 0; i < opt_count; ++i) {
@@ -76,15 +74,14 @@ void check_arity_pattern(Arity arity, List args)
     }
     if (CONS_P(args) && FALSE == key_flag && FALSE == rest_flag) {
         write_format(standard_error, "Two many arguments\n");
-        /* exit(1); */
         longjmp(toplevel, 1);
     }
     if (TRUE == rest_flag && FALSE == key_flag)
         return;
     for (int i = 0; i < key_count; ++i) {
         if (CONS_P(args) && !CONS_P(CDR(args))) {
-            write_format(standard_error, "keyword arguments in ($!) should occur pairwise.\n", CAR(args));
-            /* exit(1); */
+            error_format("keyword arguments in ($!) should occur pairwise.\n",
+                         CAR(args));
             longjmp(toplevel, 1);
         }
         if (CONS_P(args) && CONS_P(CDR(args)))
@@ -102,7 +99,6 @@ DEFEVAL(eval_operator, op)
 	    return tmp;
 	else {
             write_format(standard_error, "No binding of symbol %!\n", op);
-	    /* exit(1); */
             longjmp(toplevel, 1);
 	}
     } else
@@ -139,7 +135,6 @@ DEFEVAL(eval_cons, exps)
         op = CALL_EVAL(eval_cons, op);
         if (!FUNCTION_P(op)) {
             write_format(standard_error, "%! isn't a functional object.\n", op);
-            /* exit(1); */
             longjmp(toplevel, 1);
         } else
             goto LABEL;
@@ -147,7 +142,6 @@ DEFEVAL(eval_cons, exps)
         op = CALL_EVAL(eval_operator, op);
         if (!FUNCTION_P(op)) {
             write_format(standard_error, "%! isn't a functional object.\n", op);
-            /* exit(1); */
             longjmp(toplevel, 1);
         }
     LABEL:
@@ -160,7 +154,6 @@ DEFEVAL(eval_cons, exps)
     }
     default :
         write_format(standard_error, "%! isn't a functional object.\n", op);
-        /* exit(1); */
         longjmp(toplevel, 1);
     }
 }
@@ -182,7 +175,6 @@ LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
         return value;
     else {
         error_format("No binding of symbol %!\n", sym);
-        /* exit(0); */
         longjmp(toplevel, 1);
     }
 }

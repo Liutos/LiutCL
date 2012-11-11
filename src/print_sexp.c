@@ -16,6 +16,7 @@
 #include "types.h"
 
 void print_object_notln(LispObject, Stream);
+void print_object(LispObject, Stream);
 
 void print_symbol(Symbol sym, Stream output)
 {
@@ -97,6 +98,12 @@ void print_object_notln(LispObject object, Stream output)
 	print_atom(object, output);
 }
 
+void print_values(values_t vals, Stream output)
+{
+    for (int i = 0; i < vals->count; i++)
+        print_object(vals->objs[i], output);
+}
+
 /* Print the string representation of `object' to `output'. */
 void print_object(LispObject object, Stream output)
 {
@@ -104,6 +111,9 @@ void print_object(LispObject object, Stream output)
         write_string(output, TO_STRING("; No value\n"));
         return;
     }
-    print_object_notln(object, output);
+    if (VALUES_P(object))
+        print_values(theVALUES(object), output);
+    else
+        print_object_notln(object, output);
     write_char(output, TO_CHAR('\n'));
 }

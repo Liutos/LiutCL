@@ -27,6 +27,7 @@ typedef LispObject Ratio;
 typedef LispObject Stream;
 typedef LispObject String;
 typedef LispObject Symbol;
+typedef LispObject Values;
 typedef LispObject Vector;
 typedef LispObject (*primitive_t)(Frame, Environment, Environment, Environment, BlockEnvironment, GoEnvironment);
 

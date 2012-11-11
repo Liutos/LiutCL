@@ -7,6 +7,7 @@
 
 extern LispObject make_object(void);
 extern LispType type_of(LispObject);
+extern Values cons2values(Cons);
 extern stream_t make_C_file_stream(FILE *);
 extern stream_t make_C_string_stream(char *);
 

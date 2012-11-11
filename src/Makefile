@@ -33,7 +33,7 @@ cons.o: cons.c types.h
 
 data.o: data.c eval_sexp.h macro_def.h package.h symbol.h
 
-environment.o: atom.h environment.c env_types.h hash_table.h print_sexp.h types.h
+environment.o: atom.h environment.c hash_table.h print_sexp.h types.h
 
 eval_sexp.o: eval_sexp.c atom.h environment.h macro_def.h stream.h types.h
 
@@ -66,7 +66,7 @@ symbol.o: symbol.c hash_table.h types.h
 vm_stack.o: vm_stack.c atom.h stream.h types.h
 
 # Executables
-liutcl.o: liutcl.c env_types.h eval_sexp.h environment.h init.h parse_sexp.h print_sexp.h read_sexp.h stream.h types.h
+liutcl.o: liutcl.c eval_sexp.h environment.h init.h parse_sexp.h print_sexp.h read_sexp.h stream.h types.h
 
 liutcl: liutcl.o $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@

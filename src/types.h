@@ -142,7 +142,7 @@ typedef struct symbol_t {
 
 /* Multiple values cell definition */
 typedef struct values_t {
-    LispObject *values;
+    LispObject *objs;         /* Objects in array form. */
     int count;
 } *values_t;
 
@@ -304,11 +304,12 @@ struct lisp_object_t {
 #define SYMBOL_VALUE(x) (theSYMBOL(x)->value)
 
 /* Multiple values cell */
+/* TO_VALUES: values_t -> Values */
 #define TO_VALUES(x) ((LispObject)((int)(x) | VALUES_TAG))
 #define theVALUES(x) ((values_t)UNTAG(x))
 #define VALUES_P(x) (TAGOF(x) == VALUES_TAG)
 
-#define _VALUES(x) (theVALUES(x)->values)
+#define _VALUES(x) (theVALUES(x)->objs)
 #define PRIMARY_VALUE(x) (_VALUES(x)[0])
 
 /* Vector */

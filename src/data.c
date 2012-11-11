@@ -287,7 +287,6 @@ PHEAD(lt_type_of)
     default :
         error_format("Unknown data type %d. How can you define that?\n",
                      type_of(ARG1));
-        /* exit(1); */
         longjmp(toplevel, 1);
     }
 }

@@ -1,7 +1,7 @@
 /*
  * package.c
  *
- *
+ * Creation, search and intern operations on package.
  *
  * Copyright (C) 2012-11-08 liutos <mat.liutos@gmail.com>
  */
@@ -10,7 +10,7 @@
 #include "hash_table.h"
 #include "object.h"
 #include "symbol.h"
-#include "typeso.h"
+#include "types.h"
 
 Package pkg_cl;                     /* Package :common-lisp */
 Package pkg_kw;                     /* Package :keyword */

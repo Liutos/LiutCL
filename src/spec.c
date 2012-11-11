@@ -74,7 +74,6 @@ PHEAD(lt_defvar)
 
         value = CALL_EVAL(eval_sexp, ARG2);
         SYMBOL_VALUE(name) = value;
-        /* global_dynamic_env = extend_env(name, value, global_dynamic_env); */
         update_env(name, value, global_dynamic_env);
     }
     RETURN(name);
