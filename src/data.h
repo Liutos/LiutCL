@@ -45,5 +45,6 @@ extern PHEAD(lt_symbolp);
 /* Others */
 extern PHEAD(lt_special_operator_p);
 extern PHEAD(lt_type_of);
+extern PHEAD(lt_values);
 
 #endif
