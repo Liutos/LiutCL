@@ -21,6 +21,8 @@
 #include "symbol.h"
 #include "types.h"
 
+#define VALUES(x) process_values(x, is_need_mv)
+
 DEFEVAL(eval_cons, _);
 DEFEVAL(eval_progn, _);
 DEFEVAL(eval_sexp, _);
@@ -123,6 +125,29 @@ DEFEVAL(eval_args, args)
     return CDR(head);
 }
 
+LispObject process_values(LispObject value, BOOL is_need_mv)
+{
+    if (is_need_mv) {
+        if (VALUES_P(value))
+            return value;
+        else {
+            values_t vals;
+
+            vals = malloc(sizeof(struct values_t));
+            vals->count = 1;
+            vals->objs = malloc(sizeof(LispObject));
+            vals->objs[0] = value;
+
+            return TO_VALUES(vals);
+        }
+    } else {
+        if (VALUES_P(value))
+            return PRIMARY_VALUE(value);
+        else
+            return value;
+    }
+}
+
 DEFEVAL(eval_cons, exps)
 {
     Cons args;
@@ -146,11 +171,14 @@ DEFEVAL(eval_cons, exps)
         }
     LABEL:
     case FUNCTION: {
+        LispObject value;
+
         if (REGULAR == FTYPE(op))
             args = CALL_EVAL(eval_args, args);
         check_arity_pattern(ARITY(op), args);
+        value = CALL_MK(invoke_function, op, cons2frame(args, ARITY(op)));
 
-        return invoke_function(op, cons2frame(args, ARITY(op)), lenv, denv, fenv, benv, genv);
+        return VALUES(value);
     }
     default :
         write_format(standard_error, "%! isn't a functional object.\n", op);
@@ -184,7 +212,7 @@ DEFEVAL(eval_sexp, exp)
     if (NULL == exp)
         return NULL;
     if (CONS_P(exp))
-        return CALL_EVAL(eval_cons, exp);
+        return MMCALL_EVAL(eval_cons, exp);
     else if (SYMBOL_P(exp))
         return eval_symbol(exp, lenv, denv);
     else                        /* Self-evaluating objects. */
