@@ -8,8 +8,8 @@
 #ifndef MACRO_DEF_H
 #define MACRO_DEF_H
 
-#define CALL_EVAL(eval_fn, arg)                 \
-    eval_fn(arg, lenv, denv, fenv, benv, genv)
+#define CALL_EVAL(eval_fn, arg)                         \
+    eval_fn(arg, lenv, denv, fenv, benv, genv, FALSE)
 #define CALL_INVOKE(invoker, fn, args)                  \
     invoker(fn, args, lenv, denv, fenv, benv, genv)
 #define CALL_MK(maker, arg1, arg2)                      \
@@ -20,7 +20,8 @@
                     Environment denv,           \
                     Environment fenv,           \
                     BlockEnvironment benv,      \
-                    GoEnvironment genv)
+                    GoEnvironment genv,         \
+                    BOOL is_need_mv)
 #define DEFINVOKE(fn_name, fn)                  \
     LispObject fn_name(Function fn,             \
                        Frame args,              \
@@ -37,5 +38,9 @@
                        Environment fenv,        \
                        BlockEnvironment benv,   \
                        GoEnvironment genv)
+#define MMCALL_EVAL(eval_fn, arg)                               \
+    eval_fn(arg, lenv, denv, fenv, benv, genv, is_need_mv)
+#define MVCALL_EVAL(eval_fn, arg)                       \
+    eval_fn(arg, lenv, denv, fenv, benv, genv, TRUE)
 
 #endif
