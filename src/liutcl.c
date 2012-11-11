@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
         input = read_sexp(stdin);
         sexp = parse_sexp(input, pkg_cl);
-        result = eval_sexp(sexp, lenv, global_dynamic_env, fenv, benv, genv);
+        result = eval_sexp(sexp, lenv, global_dynamic_env, fenv, benv, genv, TRUE);
         print_object(result, standard_output);
     } while (1);
 
