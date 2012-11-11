@@ -113,7 +113,8 @@ void print_object(LispObject object, Stream output)
     }
     if (VALUES_P(object))
         print_values(theVALUES(object), output);
-    else
+    else {
         print_object_notln(object, output);
-    write_char(output, TO_CHAR('\n'));
+        write_char(output, TO_CHAR('\n'));
+    }
 }
