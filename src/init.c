@@ -107,6 +107,7 @@ Environment init_primitives(Environment env)
     cfreg("SPECIAL-OPERATOR-P", lt_special_operator_p, req1);
     cfreg("TYPE-OF", lt_type_of, req1);
     freg("WRITE-A-CHAR", pkg_cl, lt_write_a_char, req1);
+    cfreg("VALUES", lt_values, rest);
     /* Comparison operations */
     cfreg("EQ", lt_eq, req2);
     freg("EQL", pkg_cl, lt_eql, req2);
