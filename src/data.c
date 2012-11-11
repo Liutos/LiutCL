@@ -290,3 +290,11 @@ PHEAD(lt_type_of)
         longjmp(toplevel, 1);
     }
 }
+
+PHEAD(lt_values)
+{
+    List objs;
+
+    objs = RK;
+    RETURN(cons2values(objs));
+}
