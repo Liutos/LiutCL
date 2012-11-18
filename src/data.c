@@ -252,8 +252,8 @@ PHEAD(lt_find_symbol)
     Symbol symbol;
 
     string = ARG1;
-    if (is_unbound(pkg = ARG2))
-        pkg = package;
+    /* if (is_unbound(pkg = ARG2)) */
+    /*     pkg = package; */
     symbol = get_symbol(STRING_CONTENT(theSTRING(string)),
                         PACKAGE_HASH_TABLE(pkg));
     if (NULL == symbol)
