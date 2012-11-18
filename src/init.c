@@ -10,11 +10,14 @@
 #include "hash_table.h"
 #include "macro_def.h"
 #include "package.h"
+#include "parse_sexp.h"
+#include "pdecls.h"
 #include "stream.h"
 #include "symbol.h"
 #include "types.h"
 
 #define INIT(fn) do {extern void init_##fn(Environment); init_##fn(env);} while(0)
+#define RI(fn, exprs)
 
 Environment init_cvars(Environment lenv)
 {
@@ -77,4 +80,11 @@ Environment init_primitives(Environment env)
     INIT(spec);
 
     return env;
+}
+
+void init_init_exprs(void)
+{
+    init_exprs = make_hash_table_t(47, hash_ptr, ptr_cmp);
+    PHEAD(lt_find_symbol);
+    add_key_value(lt_find_symbol, parse_input("(*package*)"), init_exprs);
 }
