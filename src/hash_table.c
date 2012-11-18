@@ -12,7 +12,7 @@
 #include "object.h"
 #include "types.h"
 
-hash_table_t make_hash_table_aux(unsigned int size, unsigned int (*hash_fn)(void *, unsigned int), BOOL (*compare_fn)(void *, void *))
+hash_table_t make_hash_table_t(unsigned int size, unsigned int (*hash_fn)(void *, unsigned int), BOOL (*compare_fn)(void *, void *))
 {
     hash_table_t tbl;
 
@@ -31,7 +31,7 @@ HashTable make_hash_table(unsigned int size, unsigned int (*hash_fn)(void *, uns
     HashTable object;
 
     object = make_object();
-    theHASH_TABLE(object) = make_hash_table_aux(size, hash_fn, compare_fn);
+    /* theHASH_TABLE(object) = make_hash_table_aux(size, hash_fn, compare_fn); */
 
     return object;
 }

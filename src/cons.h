@@ -6,6 +6,7 @@
 extern Cons make_cons(LispObject, LispObject);
 extern Cons nth_cdr(unsigned int, List);
 extern LispObject get_by_key(LispObject, List);
+extern LispObject get_by_keyword(char *, List);
 extern LispObject nth_car(unsigned int, List);
 extern List make_list(int, LispObject);
 extern int cons_length(Cons);

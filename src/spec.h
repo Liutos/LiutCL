@@ -13,6 +13,7 @@ extern PHEAD(lt_go);
 extern PHEAD(lt_if);
 extern PHEAD(lt_lambda);
 extern PHEAD(lt_mk_macro);
+extern PHEAD(lt_multiple_value_list);
 extern PHEAD(lt_progn);
 extern PHEAD(lt_quote);
 extern PHEAD(lt_return_from);

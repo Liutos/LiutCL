@@ -26,8 +26,8 @@ symbol_t make_symbol_aux(char *name, Package pkg)
 
     symbol = malloc(sizeof(struct symbol_t));
     symbol->name = name;
-    symbol->value = NULL;
-    symbol->function = NULL;
+    symbol->value = gunbound;
+    symbol->function = gunbound;
     symbol->package = pkg;
 
     return symbol;
@@ -71,7 +71,17 @@ hash_table_t make_symbol_table(unsigned int size)
 {
     hash_table_t tbl;
 
-    tbl = make_hash_table_aux(size, hash_string, string_cmp);
+    tbl = make_hash_table_t(size, hash_string, string_cmp);
 
     return tbl;
+}
+
+Symbol gen_symbol(char *name, Package pkg)
+{
+    return ensure_symbol_exists(name, pkg);
+}
+
+Symbol gen_keyword(char *name)
+{
+    return gen_symbol(name, pkg_kw);
 }

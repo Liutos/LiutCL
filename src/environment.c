@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "atom.h"
 #include "cons.h"
 #include "eval_sexp.h"
 #include "hash_table.h"
@@ -24,16 +23,6 @@ Environment global_dynamic_env;
 
 table_entry_t get_value_aux(Symbol symbol, Environment env)
 {
-    /* table_entry_t ent; */
-
-    /* ent = env->map; */
-    /* while (ent != NULL) { */
-    /*     if (ent->symbol == symbol) */
-    /*         return ent; */
-    /*     ent = ent->next; */
-    /* } */
-
-    /* return NULL; */
     return find_table_entry(symbol, env->map);
 }
 
@@ -64,15 +53,6 @@ LispObject get_value(Symbol symbol, Environment env)
 
 Environment extend_env(Symbol symbol, LispObject value, Environment env)
 {
-    /* env_entry_t node; */
-
-    /* node = malloc(sizeof(struct env_entry_t)); */
-    /* node->symbol = symbol; */
-    /* node->value = value; */
-    /* node->next = env->map->next; */
-    /* env->map->next = node; */
-
-    /* return env; */
     add_key_value(symbol, value, env->map);
 
     return env;
@@ -93,14 +73,13 @@ Environment extend_env_by_kvs(Cons symbols, Cons values, Environment env)
 	return env;
     else {
 	error_format("Too much symbols.\n");
-	/* exit(1); */
         longjmp(toplevel, 1);
     }
 }
 
 Environment extend_env_by_name(char *name, Package pkg, LispObject value, Environment env)
 {
-    return extend_env(gen_pkg_sym(name, pkg), value, env);
+    return extend_env(gen_symbol(name, pkg), value, env);
 }
 
 Environment make_empty_env(void)
@@ -108,9 +87,7 @@ Environment make_empty_env(void)
     Environment env;
 
     env = malloc(sizeof(struct environment_t));
-    env->map = make_hash_table_aux(47, hash_ptr, ptr_cmp);
-    /* env->map = malloc(sizeof(struct env_entry_t)); */
-    /* env->map->next = NULL; */
+    env->map = make_hash_table_t(47, hash_ptr, ptr_cmp);
     env->next = NULL;
 
     return env;
@@ -137,18 +114,6 @@ void describe_env_aux(Environment env, Stream stream)
 
     map = env->map;
     hash_table_iterate(map, print_kv);
-    /* env_entry_t map; */
-
-    /* map = env->map->next; */
-    /* while (map != NULL) { */
-    /*     write_format(stream, "$!\t->\t", map->symbol); */
-    /*     if (!CONS_P(map->value)) */
-    /*         print_atom(map->value, stream); */
-    /*     else */
-    /*         printf("%p", map->value); */
-    /*     write_char(standard_output, make_char('\n')); */
-    /*     map = map->next; */
-    /* } */
 }
 
 void describe_env(Environment env, Stream stream)

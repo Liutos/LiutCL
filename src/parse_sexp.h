@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-extern LispObject parse_sexp(char *, Package);
+extern LispObject parse_input(char *);
 
 #endif

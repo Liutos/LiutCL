@@ -27,16 +27,14 @@ DEFEVAL(eval_cons, _);
 DEFEVAL(eval_progn, _);
 DEFEVAL(eval_sexp, _);
 
+LispObject return_value;
+
 jmp_buf escape;
 /* Variable `toplevel' should not be changed. */
 jmp_buf toplevel;
 
 DEFEVAL(eprogn, exps)
 {
-    if (!CONS_P(exps))
-	return lt_nil;
-    if (!CONS_P(CDR(exps)))
-	return CALL_EVAL(eval_sexp, CAR(exps));
     while (CONS_P(exps)) {
 	if (!CONS_P(CDR(exps)))
 	    break;
@@ -44,7 +42,7 @@ DEFEVAL(eprogn, exps)
 	exps = CDR(exps);
     }
 
-    return CALL_EVAL(eval_sexp, CAR(exps));
+    return MVCALL_EVAL(eval_sexp, CAR(exps));
 }
 
 void check_arity_pattern(Arity arity, List args)
@@ -57,18 +55,20 @@ void check_arity_pattern(Arity arity, List args)
     key_count = arity->key_count;
     req_count = arity->req_count;
     opt_count = arity->opt_count;
+    /* Checks the required arguments. */
     for (int i = 0; i < req_count; ++i) {
         if (!CONS_P(args)) {
             write_format(standard_error, "Two few arguments\n");
-            longjmp(toplevel, 1);
+            longjmp(toplevel, TOO_FEW_ARGUMENTS);
         }
         args = CDR(args);
     }
     if (CONS_P(args) &&
         0 == opt_count && FALSE == key_flag && FALSE == rest_flag) {
         write_format(standard_error, "Two many arguments\n");
-        longjmp(toplevel, 1);
+        longjmp(toplevel, TOO_MANY_ARGUMENTS);
     }
+    /* Checks the optional arguments. */
     for (int i = 0; i < opt_count; ++i) {
         if (!CONS_P(args))
             break;
@@ -76,10 +76,11 @@ void check_arity_pattern(Arity arity, List args)
     }
     if (CONS_P(args) && FALSE == key_flag && FALSE == rest_flag) {
         write_format(standard_error, "Two many arguments\n");
-        longjmp(toplevel, 1);
+        longjmp(toplevel, TOO_MANY_ARGUMENTS);
     }
     if (TRUE == rest_flag && FALSE == key_flag)
         return;
+    /* Checks the keyword arguments. */
     for (int i = 0; i < key_count; ++i) {
         if (CONS_P(args) && !CONS_P(CDR(args))) {
             error_format("keyword arguments in ($!) should occur pairwise.\n",
@@ -89,22 +90,6 @@ void check_arity_pattern(Arity arity, List args)
         if (CONS_P(args) && CONS_P(CDR(args)))
             args = CDDR(args);
     }
-}
-
-DEFEVAL(eval_operator, op)
-{
-    if (SYMBOL_P(op)) {
-	LispObject tmp;
-
-        tmp = get_value(op, fenv);
-	if (tmp != NULL)
-	    return tmp;
-	else {
-            write_format(standard_error, "No binding of symbol %!\n", op);
-            longjmp(toplevel, 1);
-	}
-    } else
-	return CALL_EVAL(eval_cons, op);
 }
 
 DEFEVAL(eval_args, args)
@@ -141,9 +126,13 @@ LispObject process_values(LispObject value, BOOL is_need_mv)
             return TO_VALUES(vals);
         }
     } else {
-        if (VALUES_P(value))
-            return PRIMARY_VALUE(value);
-        else
+        if (VALUES_P(value)) {
+            /* Returns NIL when no values */
+            if (0 == theVALUES(value)->count)
+                return lt_nil;
+            else
+                return PRIMARY_VALUE(value);
+        } else
             return value;
     }
 }
@@ -151,39 +140,25 @@ LispObject process_values(LispObject value, BOOL is_need_mv)
 DEFEVAL(eval_cons, exps)
 {
     Cons args;
-    LispObject op;
+    LispObject op, value;
 
     args = CDR(exps);
     op = FIRST(exps);
-    switch (type_of(op)) {
-    case CONS:
+    if (CONS_P(op))
         op = CALL_EVAL(eval_cons, op);
-        if (!FUNCTION_P(op)) {
-            write_format(standard_error, "%! isn't a functional object.\n", op);
-            longjmp(toplevel, 1);
-        } else
-            goto LABEL;
-    case SYMBOL:
-        op = CALL_EVAL(eval_operator, op);
-        if (!FUNCTION_P(op)) {
-            write_format(standard_error, "%! isn't a functional object.\n", op);
-            longjmp(toplevel, 1);
-        }
-    LABEL:
-    case FUNCTION: {
-        LispObject value;
-
-        if (REGULAR == FTYPE(op))
-            args = CALL_EVAL(eval_args, args);
-        check_arity_pattern(ARITY(op), args);
-        value = CALL_MK(invoke_function, op, cons2frame(args, ARITY(op)));
-
-        return VALUES(value);
+    else if (SYMBOL_P(op))
+        op = get_value(op, fenv);
+    if (!FUNCTION_P(op)) {
+        error_format("%! isn't a funcallable object.\n", op);
+        longjmp(toplevel, TYPE_ERROR);
     }
-    default :
-        write_format(standard_error, "%! isn't a functional object.\n", op);
-        longjmp(toplevel, 1);
-    }
+    /* Evaluates the arguments and check. */
+    if (REGULAR == FTYPE(op))
+        args = CALL_EVAL(eval_args, args);
+    check_arity_pattern(ARITY(op), args);
+    value = CALL_INVOKE(invoke_function, op, args);
+
+    return VALUES(value);
 }
 
 LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
@@ -203,7 +178,7 @@ LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
         return value;
     else {
         error_format("No binding of symbol %!\n", sym);
-        longjmp(toplevel, 1);
+        longjmp(toplevel, UNBOUND_VARIABLE);
     }
 }
 

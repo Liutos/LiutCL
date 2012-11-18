@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2012-10-05 liutos
  */
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,19 +26,29 @@ LispType type_of(LispObject object)
         return TAGOF(object);
 }
 
-Values cons2values(Cons objs)
+Values make_values_aux(int cnt, va_list ap)
 {
-    size_t count;
     values_t vals;
+    LispObject obj;
 
-    count = cons_length(objs);
     vals = malloc(sizeof(struct values_t));
-    vals->count = count;
-    vals->objs = malloc(count * sizeof(LispObject));
-    for (int i = 0; i < count; i++) {
-        vals->objs[i] = CAR(objs);
-        objs = CDR(objs);
+    vals->count = cnt;
+    vals->objs = malloc(cnt * sizeof(LispObject));
+    obj = va_arg(ap, LispObject);
+    for (int i = 0; i < cnt; i++) {
+        vals->objs[i] = obj;
+        obj = va_arg(ap, LispObject);
     }
+    va_end(ap);
 
     return TO_VALUES(vals);
+}
+
+Values make_values(int _, ...)
+{
+    va_list ap;
+
+    va_start(ap, _);
+
+    return make_values_aux(_, ap);
 }

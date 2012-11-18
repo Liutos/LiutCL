@@ -6,6 +6,7 @@
  * Copyright (C) 2012-10-03 liutos
  */
 #include <ctype.h>
+#include <gmp.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,13 +15,15 @@
 
 #include "atom.h"
 #include "cons.h"
+#include "number.h"
 #include "object.h"
 #include "package.h"
-#include "symbol.h"
 #include "stream.h"
+#include "symbol.h"
 #include "types.h"
 
-LispObject parse_sexp_aux(char *, Package, int *);
+LispObject parse_input(char *);
+LispObject parse_sexp(char *, int *);
 
 char *get_next_token(char *string, int *offset)
 {
@@ -47,64 +50,54 @@ char *get_next_token(char *string, int *offset)
     return strndup(string, i);
 }
 
+/* Tokens classifier */
+BOOL is_match_regex(char *src, char *pattern)
+{
+    regex_t regex;
+
+    if (regcomp(&regex, pattern, REG_EXTENDED)) {
+        fprintf(stderr, "Couldn't compile regex %s.\n", pattern);
+        exit(1);
+    }
+
+    return 0 == regexec(&regex, src, 0, NULL, 0);
+}
+
 BOOL is_fixnum_token(char *token)
 {
-    if ('-' == *token)
-        token++;
-    for (int i = 0; token[i] != '\0'; i++)
-	if (isdigit(token[i]) == 0)
-            return FALSE;
+    int sum;
+
+    sum = 0;
+    if ('-' == *token) {
+        for (int i = 0; token[i] != '\0'; i++) {
+            if (sum > MAX_FIXNUM)
+                return FALSE;
+            sum = sum * 10 + token[i] - '0';
+        }
+    } else {
+        for (int i = 0; token[i] != '\0'; i++) {
+            if (sum < MIN_FIXNUM)
+                return FALSE;
+            sum = sum * 10 - (token[i] - '0');
+        }
+    }
 
     return TRUE;
 }
 
-BOOL is_float_token(char *token)
+/* Tell whether the `token' means an integer and needs other functions to tell
+   more precise subtype of Integer. */
+BOOL is_integer_token(char *token)
 {
-    if ('-' == *token)
-        token++;
-    for (; *token != '\0' && *token != '.'; token++)
-	if (isdigit(*token) == 0)
-            return FALSE;
-    if ('.' == *token)
-        return is_fixnum_token(token + 1);
-    else
-        return TRUE;
-}
+    /* regex_t regex; */
 
-BOOL is_string_token(char *token)
-{
-    regex_t regex;
+    /* if (regcomp(&regex, "^-?[0-9]+\\.?$", REG_EXTENDED)) { */
+    /*     error_format("Couldn't compile regex.\n"); */
+    /*     exit(1); */
+    /* } */
 
-    if (regcomp(&regex, "^\"([^\"\\]+|\\.)*\"$", REG_EXTENDED)) {
-        error_format("Could not compile regex\n");
-        exit(1);
-    }
-
-    return 0 == regexec(&regex, token, 0, NULL, 0)? TRUE: FALSE;
-}
-
-LispType token_type(char *token)
-{
-    if (is_fixnum_token(token))
-	return FIXNUM;
-    if (is_float_token(token))
-        return FLOAT;
-    if (is_string_token(token))
-        return STRING;
-
-    return SYMBOL;
-}
-
-char *toupper_string(char *origin)
-{
-    char *target;
-    int i;
-
-    target = strdup(origin);
-    for (i = 0; target[i] != '\0'; ++i)
-        target[i] = toupper(target[i]);
-
-    return target;
+    /* return 0 == regexec(&regex, token, 0, NULL, 0); */
+    return is_match_regex(token, "^-?[0-9]+\\.?$");
 }
 
 BOOL is_keyword_token(char *token)
@@ -129,53 +122,138 @@ BOOL is_qualified(char *token, char **pkg_name, char **sym_name)
     return TRUE;
 }
 
+BOOL is_ratio_token(char *token)
+{
+    /* regex_t regex; */
+
+    /* if (regcomp(&regex, "^-?[0-9]+/[0-9]+$", REG_EXTENDED)) { */
+    /*     error_format("Couldn't compile regex.\n"); */
+    /*     exit(1); */
+    /* } */
+
+    /* return 0 == regexec(&regex, token, 0, NULL, 0); */
+    return is_match_regex(token, "^-?[0-9]+/[0-9]+$");
+}
+
+BOOL is_string_token(char *token)
+{
+    /* regex_t regex; */
+
+    /* if (regcomp(&regex, "^\"([^\"\\]+|\\.)*\"$", REG_EXTENDED)) { */
+    /*     error_format("Could not compile regex\n"); */
+    /*     exit(1); */
+    /* } */
+
+    /* return 0 == regexec(&regex, token, 0, NULL, 0)? TRUE: FALSE; */
+    return is_match_regex(token, "^\"([^\"\\]+|\\.)*\"$");
+}
+
+char *toupper_string(char *origin)
+{
+    char *target;
+    int i;
+
+    target = strdup(origin);
+    for (i = 0; target[i] != '\0'; ++i)
+        target[i] = toupper(target[i]);
+
+    return target;
+}
+
+/* Generators */
+Bignum parse_bignum(char *token)
+{
+    mpz_t x;
+
+    mpz_init(x);
+    mpz_set_str(x, token, 10);
+
+    return make_bignum(x);
+}
+
+Integer parse_integer(char *token)
+{
+    Integer n;
+
+    if (is_fixnum_token(token))
+        n = make_fixnum(atoi(token));
+    else
+        n = parse_bignum(token);
+    free(token);
+
+    return n;
+}
+
+Ratio parse_ratio(char *token)
+{
+    int i;
+    ratio_t ratio;
+
+    for (i = 0; token[i] != '\0'; i++) {
+        if ('/' == token[i]) {
+            token[i] = '\0';
+            break;
+        }
+    }
+    ratio = malloc(sizeof(ratio_t));
+    ratio->numerator = parse_input(token);
+    ratio->denominator = parse_input(token + i + 1);
+    free(token);
+
+    return make_ratio(ratio);
+}
+
+String parse_string(char *token)
+{
+    String str;
+
+    str = make_string(strndup(token + 1, strlen(token) - 2));
+    free(token);
+
+    return str;
+}
+
 Symbol parse_symbol(char *token, Package pkg)
 {
     char *pkg_name, *sym_name;
 
     token = toupper_string(token);
     if (is_keyword_token(token))
-        return gen_pkg_sym(token + 1, pkg_kw);
+        /* return gen_symbol(token + 1, pkg_kw); */
+        return gen_keyword(token + 1);
     if (is_qualified(token, &pkg_name, &sym_name)) {
         Package pkg;
 
         pkg = find_package(pkg_name);
 
-        return gen_pkg_sym(sym_name, pkg);
+        return gen_symbol(sym_name, pkg);
     } else
-        return gen_pkg_sym(token, pkg);
+        return gen_symbol(token, pkg);
 }
 
-Atom parse_atom_aux(char *token, Package pkg)
+Atom parse_atom_aux(char *token)
 {
-    LispType type;
+    if (is_integer_token(token))
+        return parse_integer(token);
+    if (is_ratio_token(token))
+        return parse_ratio(token);
+    if (is_string_token(token))
+        return parse_string(token);
 
-    type = token_type(token);
-    switch (type) {
-    case FIXNUM:
-        return make_fixnum(atoi(token));
-    case FLOAT:
-        return make_float(atof(token));
-    case STRING:
-        return make_string(strndup(token + 1, strlen(token) - 2));
-    case SYMBOL:
-        return parse_symbol(token, pkg);
-    default :
-        write_format(standard_error, "Don't know how to parse token %!.\n", token);
-	exit(0);
-    }
+    return parse_symbol(token, package);
 }
 
-Atom parse_atom(char *input, Package pkg, int *offset)
+Atom parse_atom(char *input, int *offset)
 {
     char *token;
 
     token = get_next_token(input, offset);
+    /* `token' is a brand-new string and the callee use it for assignment. */
 
-    return parse_atom_aux(token, pkg);
+    return parse_atom_aux(token);
 }
 
-Cons parse_cons(char *string, Package pkg, int *offset)
+Cons parse_cons(char *string, int *offset)
 {
     Cons cur, head, pre;
     int step;
@@ -184,7 +262,7 @@ Cons parse_cons(char *string, Package pkg, int *offset)
     for (int i = 0; string[i] != '\0'; i += step) {
 	switch (string[i]) {
 	case '(':
-	    cur = make_cons(parse_cons(string + i + 1, pkg, &step), lt_nil);
+	    cur = make_cons(parse_cons(string + i + 1, &step), lt_nil);
 	    break;
 	case ' ':
         case '\n':
@@ -200,23 +278,15 @@ Cons parse_cons(char *string, Package pkg, int *offset)
             Symbol quote;
             LispObject obj;
 
-            quote = gen_pkg_sym("QUOTE", pkg_cl);
-            /* The following is a cons. */
-            /* if ('(' == string[i + 1]) { */
-            /*     obj = parse_cons(string + i + 2, pkg, &step); */
-            /* } else { */
-            /*     /\* The following is an atom. *\/ */
-            /*     /\* token = get_next_token(string + i + 1, &step); *\/ */
-            /*     obj = parse_atom(string + i + 1, pkg, &step); */
-            /* } */
-            obj = parse_sexp_aux(string + i + 1, pkg, &step);
+            /* quote = gen_symbol("QUOTE", pkg_cl); */
+            quote = S("QUOTE");
+            obj = parse_sexp(string + i + 1, &step);
             cur = make_cons(make_cons(quote, make_cons(obj, lt_nil)), lt_nil);
             step++;
             break;
         }
 	default :
-	    /* token = get_next_token(string + i, &step); */
-	    cur = make_cons(parse_atom(string + i, pkg, &step), lt_nil);
+	    cur = make_cons(parse_atom(string + i, &step), lt_nil);
 	}
 	_CDR(pre) = cur;
 	pre = cur;
@@ -227,36 +297,38 @@ Cons parse_cons(char *string, Package pkg, int *offset)
     return pre;
 }
 
-/* Cons parse_cons(char *input, Package pkg) */
-/* { */
-/*     int tmp; */
-
-/*     return parse_cons_aux(input + 1, &tmp, pkg); */
-/* } */
-
-LispObject parse_sexp_aux(char *input, Package pkg, int *offset)
+/* The `input' will be free. Don't assign it directly. */
+LispObject parse_sexp(char *input, int *offset)
 {
-    /* int trash; */
-
     if ('\0' == *input)
         return NULL;
     while ('\0' != *input && isblank(*input))
         input++;
+    if ('\'' == *input) {
+        LispObject obj;
+        Symbol quote;
+
+        /* quote = gen_symbol("QUOTE", pkg_cl); */
+        quote = S("QUOTE");
+        obj = parse_input(input + 1);
+
+        return make_cons(quote, make_cons(obj, lt_nil));
+    }
     if ('(' == input[0]) {
         Cons cons;
 
-        cons = parse_cons(input + 1, pkg, offset);
+        cons = parse_cons(input + 1, offset);
         (*offset)++;
 
 	return cons;
     } else
-        /* return parse_atom(get_next_token(input, offset), pkg); */
-        return parse_atom(input, pkg, offset);
+        return parse_atom(input, offset);
 }
 
-LispObject parse_sexp(char *input, Package pkg)
+/* The `input' will be free in the future. */
+LispObject parse_input(char *input)
 {
     int trash;
 
-    return parse_sexp_aux(input, pkg, &trash);
+    return parse_sexp(input, &trash);
 }

@@ -47,9 +47,10 @@ int main(int argc, char *argv[])
         fflush(STREAM_FILE(standard_output));
 
         input = read_sexp(stdin);
-        sexp = parse_sexp(input, pkg_cl);
+        sexp = parse_input(input);
         result = eval_sexp(sexp, lenv, global_dynamic_env, fenv, benv, genv, TRUE);
         print_object(result, standard_output);
+        free_sexp(input);
     } while (1);
 
     return 0;

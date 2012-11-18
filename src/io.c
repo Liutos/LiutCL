@@ -9,8 +9,11 @@
 
 #include "atom.h"
 #include "cons.h"
-#include "stream.h"
+#include "function.h"
+#include "object.h"
+#include "package.h"
 #include "pdecls.h"
+#include "stream.h"
 #include "types.h"
 
 PHEAD(lt_read_char)
@@ -49,19 +52,26 @@ PHEAD(lt_read_line)
         str_add_char(line, ch);
         ch = read_char(stream);
     }
-    if (TO_CHAR(-1) == ch) {
-        if (eq(lt_t, eof_error_p)) {
-            error_format("READ-LINE: End of file.\n");
-            longjmp(toplevel, 1);
-        } else
-            RETURN(eof_value);
+    if (TO_CHAR(-1) == ch && eq(lt_t, eof_error_p)) {
+        error_format("READ-LINE: End of file.\n");
+        longjmp(toplevel, END_OF_FILE);
     }
-    str_add_char(line, TO_CHAR('\0'));
-    RETURN(line);
+    if (eq(lt_nil, eof_error_p) && TO_CHAR(-1) == ch &&
+        (0 == STRING_LENGTH(line)))
+        line = eof_value;
+    else
+        str_add_char(line, TO_CHAR('\0'));
+    RETURN(make_values(2, line, TO_CHAR(-1) == ch? lt_t: lt_nil));
 }
 
 PHEAD(lt_write_a_char)
 {
     write_char(ARG2, ARG1);
     RETURN(lt_nil);
+}
+
+void init_io(Environment env)
+{
+    cfreg("READ-CHAR", lt_read_char, req1opt4);
+    cfreg("READ-LINE", lt_read_line, req1opt4);
 }

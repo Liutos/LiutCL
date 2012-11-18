@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2012-10-31 liutos <mat.liutos@gmail.com>
  */
+#include <gmp.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,24 +21,25 @@ Stream standard_output;
 
 extern void print_object_notln(LispObject, Stream);
 
-stream_t make_C_file_stream(FILE *fp)
+stream_t make_C_file_stream(FILE *fp, MODE mode)
 {
     stream_t stream;
 
     stream = malloc(sizeof(struct stream_t));
     stream->type = FILE_STREAM;
+    stream->mode = mode;
     stream->u.file = fp;
 
     return stream;
 }
 
-Stream make_file_stream(FILE *fp)
+Stream make_file_stream(FILE *fp, MODE mode)
 {
     Stream object;
 
     object = make_object();
     object->type = STREAM;
-    theSTREAM(object) = make_C_file_stream(fp);
+    theSTREAM(object) = make_C_file_stream(fp, mode);
 
     return object;
 }
@@ -99,6 +101,11 @@ void write_address(Stream stream, LispObject object)
     fprintf(STREAM_FILE(stream), "%p", thePOINTER(object));
 }
 
+void write_bignum(Stream stream, Bignum bn)
+{
+    mpz_out_str(STREAM_FILE(stream), 10, theBIGNUM(bn));
+}
+
 void write_char(Stream stream, Character c)
 {
     write_file_stream_char(stream, theCHAR(c));
@@ -109,9 +116,9 @@ void write_fixnum(Stream stream, Fixnum number)
     write_file_stream_fixnum(stream, theFIXNUM(number));
 }
 
-void write_float(Stream stream, Float f)
+void write_single_float(Stream stream, SingleFloat f)
 {
-    write_file_stream_float(stream, theFLOAT(f));
+    write_file_stream_float(stream, theSINGLE_FLOAT(f));
 }
 
 void write_format_aux(Stream dest, const char *format, va_list ap)

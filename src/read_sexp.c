@@ -44,3 +44,8 @@ char *read_sexp(FILE *fp)
 
     return str;
 }
+
+void free_sexp(char *input)
+{
+    free(input);
+}

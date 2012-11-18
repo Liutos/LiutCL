@@ -12,14 +12,42 @@
 #include "environment.h"
 #include "eval_sexp.h"
 #include "function.h"
+#include "hash_table.h"
 #include "macro_def.h"
+#include "number.h"
 #include "object.h"
 #include "package.h"
 #include "pdecls.h"
+#include "print_sexp.h"
 #include "stream.h"
 #include "symbol.h"
+#include "types.h"
 
-#define case_type(name) case name: RETURN(gen_pkg_sym(""#name"", pkg_cl)); break
+#define case_type(name) case name: RETURN(S(""#name"")); break
+
+/* Comparison operations */
+PHEAD(lt_eq)
+{
+    RETURN(eq(ARG1, ARG2)? lt_t: lt_nil);
+}
+
+PHEAD(lt_eql)
+{
+    LispObject x, y;
+
+    x = ARG1;
+    y = ARG2;
+    /* If implements the Fixnum and Character as tagged pointer, objects
+       of these two types can compare by eq. */
+    if (eq(x, y))
+        RETURN(lt_t);
+    if (NUMBER_P(x) && NUMBER_P(y) &&
+        (type_of(x) == type_of(y)) &&
+        numeric_eq(x, y))
+        RETURN(lt_t);
+    RETURN(lt_nil);
+}
+
 
 /* Cons/List operations */
 PHEAD(lt_car)
@@ -47,15 +75,15 @@ PHEAD(lt_list)
     RETURN(RK);
 }
 
+/* (MAKE-LIST size &key initial-element) */
 PHEAD(lt_make_list)
 {
     Fixnum size;
     LispObject init;
-    Symbol k1;
 
     size = ARG1;
-    k1 = gen_keyword("INITIAL-ELEMENT");
-    init = get_by_key(k1, RK);
+    if (is_unbound(init = KV("INITIAL-ELEMENT")))
+        init = lt_nil;
     RETURN(make_list(theFIXNUM(size), init));
 }
 
@@ -102,15 +130,36 @@ PHEAD(lt_rplacd)
 }
 
 /* Function operations */
+PHEAD(lt_apply)
+{
+    Function fn;
+    LispObject arg;
+    List argv;
+
+    fn = ARG1;
+    arg = ARG2;
+    argv = RK;
+    {
+        Cons head, pre;
+
+        pre = head = make_cons(arg, lt_nil);
+        while (CONS_P(argv)) {
+            _CDR(pre) = make_cons(CAR(argv), lt_nil);
+            pre = CDR(pre);
+            argv = CDR(argv);
+        }
+        RETURN(CALL_INVOKE(invoke_function, fn, head));
+    }
+}
+
 PHEAD(lt_funcall)
 {
     Function fn;
 
     fn = ARG1;
-    /* args = CDR(ARGS); */
     args->rargs = args->rargs + 1;
     args->quantity--;
-    RETURN(CALL_INVOKE(invoke_function, fn, args));
+    RETURN(CALL_INVOKE(invoke_function, fn, frame2cons(args)));
 }
 
 PHEAD(lt_functionp)
@@ -128,6 +177,17 @@ PHEAD(lt_find_package)
         RETURN(pkg);
     else
         RETURN(lt_nil);
+}
+
+PHEAD(lt_in_package)
+{
+    String name;
+    Package pkg;
+
+    name = ARG1;
+    pkg = find_package(STRING_CONTENT(theSTRING(name)));
+    package = pkg;
+    RETURN(pkg);
 }
 
 PHEAD(lt_package_name)
@@ -151,19 +211,20 @@ PHEAD(lt_char)
     RETURN(make_char(content[index]));
 }
 
+/* (MAKE-STRING size &key initial-element element-type) */
 PHEAD(lt_make_string)
 {
     Character init;
     Fixnum size;
     LispObject type;
     String string;
-    Symbol k1, k2;
 
     size = ARG1;
-    k1 = gen_keyword("INITIAL-ELEMENT");
-    k2 = gen_keyword("ELEMENT-TYPE");
-    init = get_by_key(k1, RK);
-    type = get_by_key(k2, RK);
+    /* if (is_unbound(init = KV("INITIAL-ELEMENT"))) */
+    /*     init = make_char('\0'); */
+    VOI(init, "INITIAL-ELEMENT", make_char('\0'));
+    if (is_unbound(type = KV("ELEMENT-TYPE")))
+        type = S("CHARACTER");
     string = make_string("");
     for (int n = theFIXNUM(size); n != 0; n--)
         str_add_char(string, init);
@@ -175,10 +236,31 @@ PHEAD(lt_stringp)
     LispObject obj;
 
     obj = ARG1;
-    RETURN(STRING_P(obj)? lt_t: lt_nil);
+    RETURN(B(STRING_P(obj)));
 }
 
 /* Symbol operations */
+PHEAD(lt_boundp)
+{
+    RETURN(B(is_unbound(SYMBOL_VALUE(ARG1))));
+}
+
+PHEAD(lt_find_symbol)
+{
+    String string;
+    Package pkg;
+    Symbol symbol;
+
+    string = ARG1;
+    if (is_unbound(pkg = ARG2))
+        pkg = package;
+    symbol = get_symbol(STRING_CONTENT(theSTRING(string)),
+                        PACKAGE_HASH_TABLE(pkg));
+    if (NULL == symbol)
+        symbol = lt_nil;
+    RETURN(make_values(2, symbol, lt_nil)); /* ---TODO: The secondary return value shouldn't always be NIL. */
+}
+
 PHEAD(lt_intern)
 {
     Package pkg;
@@ -186,7 +268,7 @@ PHEAD(lt_intern)
 
     str = ARG1;
     pkg = ARG2;
-    RETURN(gen_pkg_sym(STRING_CONTENT(str), pkg));
+    RETURN(gen_symbol(STRING_CONTENT(str), pkg));
 }
 
 PHEAD(lt_keywordp)
@@ -194,7 +276,7 @@ PHEAD(lt_keywordp)
     LispObject object;
 
     object = ARG1;
-    RETURN((SYMBOL_P(object) && pkg_kw == SYMBOL_PACKAGE(object))? lt_t: lt_nil);
+    RETURN(B(SYMBOL_P(object) && is_keyword(object)));
 }
 
 PHEAD(lt_set)
@@ -237,37 +319,23 @@ PHEAD(lt_symbolp)
     Symbol sym;
 
     sym = ARG1;
-    RETURN(SYMBOL_P(sym)? lt_t: lt_nil);
+    RETURN(B(SYMBOL_P(sym)));
 }
 
 /* Other operations */
-PHEAD(lt_eq)
+PHEAD(lt_atom)
 {
-    RETURN(eq(ARG1, ARG2)? lt_t: lt_nil);
+    RETURN(B(ATOM_P(ARG1)));
 }
 
-PHEAD(lt_eql)
+PHEAD(lt_null)
 {
-    LispObject x, y;
-
-    x = ARG1;
-    y = ARG2;
-    /* If implements the Fixnum and Character as tagged pointer, objects
-       of these two types can compare by eq. */
-    if (eq(x, y))
-        RETURN(lt_t);
-    if (NUMBER_P(x) && NUMBER_P(y) &&
-        (type_of(x) == type_of(y)) &&
-        numeric_eq(x, y))
-        RETURN(lt_t);
-    if (CHAR_P(x) && CHAR_P(y) && eq(x, y))
-        RETURN(lt_t);
-    RETURN(lt_nil);
+    RETURN(B(lt_t == ARG1));
 }
 
 PHEAD(lt_special_operator_p)
 {
-    RETURN(SPECIAL_P(CALL_EVAL(eval_operator, ARG1))? lt_t: lt_nil);
+    RETURN(B(SPECIAL_P(get_value(ARG1, fenv))));
 }
 
 PHEAD(lt_type_of)
@@ -291,10 +359,84 @@ PHEAD(lt_type_of)
     }
 }
 
+Values cons2values(Cons objs)
+{
+    size_t count;
+    values_t vals;
+
+    count = cons_length(objs);
+    vals = malloc(sizeof(struct values_t));
+    vals->count = count;
+    vals->objs = malloc(count * sizeof(LispObject));
+    for (int i = 0; i < count; i++) {
+        vals->objs[i] = CAR(objs);
+        objs = CDR(objs);
+    }
+
+    return TO_VALUES(vals);
+}
+
+/* This function can implemented by VALUES-LIST. */
 PHEAD(lt_values)
 {
     List objs;
 
     objs = RK;
     RETURN(cons2values(objs));
+}
+
+PHEAD(lt_values_list)
+{
+    List list;
+
+    list = ARG1;
+    RETURN(cons2values(list));
+}
+
+void init_data(Environment env)
+{
+    /* Comparison operations */
+    cfreg("EQ", lt_eq, req2);
+    cfreg("EQL", lt_eql, req2);
+    /* Cons operations */
+    cfreg("CAR", lt_car, req1);
+    cfreg("CDR", lt_cdr, req1);
+    cfreg("CONS", lt_cons, req2);
+    cfreg("CONSP", lt_consp, req1);
+    cfreg("LIST", lt_list, rest);
+    cfreg("MAKE-LIST", lt_make_list,
+          new_with_kws(req1, "INITIAL-ELEMENT", NULL));
+    cfreg("NTH", lt_nth, req2);
+    cfreg("NTHCDR", lt_nthcdr, req2);
+    cfreg("RPLACA", lt_rplaca, req2);
+    cfreg("REPACD", lt_rplacd, req2);
+    /* Function operations */
+    cfreg("APPLY", lt_apply, req1rest);
+    cfreg("FUNCALL", lt_funcall, req1rest);
+    cfreg("FUNCTIONP", lt_functionp, req1);
+    /* Package operations */
+    cfreg("FIND-PACKAGE", lt_find_package, req1);
+    cfreg("IN-PACKAGE", lt_in_package, req1);
+    cfreg("PACKAGE-NAME", lt_package_name, req1);
+    /* String operations */
+    cfreg("CHAR", lt_char, req2);
+    cfreg("MAKE-STRING", lt_make_string,
+          new_with_kws(req1, "INITIAL-ELEMENT", "ELEMENT-TYPE", NULL));
+    cfreg("STRINGP", lt_stringp, req1);
+    /* Symbol operations */
+    cfreg("FIND-SYMBOL", lt_find_symbol, req1opt1);
+    cfreg("INTERN", lt_intern, req1opt1);
+    cfreg("KEYWORDP", lt_keywordp, req1);
+    cfreg("SET", lt_set, req2);
+    cfreg("SYMBOL-NAME", lt_symbol_name, req1);
+    cfreg("SYMBOL-PACKAGE", lt_symbol_package, req1);
+    cfreg("SYMBOL-VALUE", lt_symbol_value, req1);
+    cfreg("SYMBOLP", lt_symbolp, req1);
+    /* Other operations */
+    cfreg("ATOM", lt_atom, req1);
+    cfreg("NULL", lt_null, req1);
+    cfreg("SPECIAL-OPERATOR-P", lt_special_operator_p, req1);
+    cfreg("TYPE-OF", lt_type_of, req1);
+    cfreg("VALUES", lt_values, rest);
+    cfreg("VALUES-LIST", lt_values_list, req1);
 }

@@ -1,7 +1,7 @@
 /*
  * print_sexp.c
  *
- * 
+ * Print the objects to given stream as text.
  *
  * Copyright (C) 2012-10-03 liutos
  */
@@ -29,6 +29,9 @@ void print_symbol(Symbol sym, Stream output)
 void print_atom(Atom atom, Stream output)
 {
     switch (type_of(atom)) {
+    case BIGNUM:
+        write_bignum(output, atom);
+        break;
     case CHARACTER:
         write_format(output, "#\\%c", atom);
         break;
@@ -36,7 +39,7 @@ void print_atom(Atom atom, Stream output)
         write_fixnum(output, atom);
 	break;
     case FLOAT:
-        write_float(output, atom);
+        write_single_float(output, atom);
         break;
     case FUNCTION:
 	if (TRUE == FUNCTION_CFLAG(atom))
@@ -49,6 +52,9 @@ void print_atom(Atom atom, Stream output)
 	break;
     case PACKAGE:
         write_format(output, "#<PACKAGE %!>", make_string(PACKAGE_NAME(atom)));
+        break;
+    case RATIO:
+        write_format(output, "%!/%!", NUMERATOR(atom), DENOMINATOR(atom));
         break;
     case STREAM:
         write_format(output, "#<STREAM %p>", atom);
@@ -100,6 +106,9 @@ void print_object_notln(LispObject object, Stream output)
 
 void print_values(values_t vals, Stream output)
 {
+    if (0 == vals->count) {
+        write_format(output, "; No value\n");
+    }
     for (int i = 0; i < vals->count; i++)
         print_object(vals->objs[i], output);
 }

@@ -7,30 +7,47 @@
  */
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "atom.h"
 #include "cons.h"
 #include "environment.h"
 #include "eval_sexp.h"
 #include "macro_def.h"
-#include "package.h"
 #include "print_sexp.h"
 #include "stream.h"
 #include "symbol.h"
 #include "types.h"
 
+Arity req1;
+Arity req1opt1;
+Arity req1opt2;
+Arity req1opt4;
+Arity req1rest;
+Arity req2;
+Arity req2opt1;
+Arity rest;
+Arity make_list_a;
+Arity make_string_a;
+
+/* cons2frame所生成的Frame中的数组长度与`arity'中的req_count与opt_count的和一样长，
+   并且可选参数的值如果没有实参对应，那么均为lt_nil。 */
 Frame cons2frame(Cons args, Arity arity)
 {
     size_t quantity;
     Frame frame;
+    int i;
 
     quantity = arity->req_count + arity->opt_count;
     frame = malloc(sizeof(struct frame_t));
     frame->quantity = quantity;
     frame->rargs = malloc(quantity * sizeof(LispObject));
-    for (int i = 0; i < quantity; i++) {
+    for (i = 0; CONS_P(args) && i <quantity; i++) {
         frame->rargs[i] = CAR(args);
         args = CDR(args);
     }
+    for (; i < quantity; i++)
+        frame->rargs[i] = gunbound; /* 设置为NULL表示这些值没有绑定 */
     frame->rest_or_kws = args;
 
     return frame;
@@ -53,7 +70,7 @@ Function make_C_function(primitive_t prim, Arity arity, FunctionType type)
     return fn;
 }
 
-arity_t make_arity_t(req_cnt, opt_cnt, rest_flag, key_flag, key_cnt, keywords)
+Arity make_arity(req_cnt, opt_cnt, rest_flag, key_flag, key_cnt, keywords)
      int req_cnt;
      int opt_cnt;
      BOOL rest_flag;
@@ -82,7 +99,7 @@ List make_keywords_aux(va_list ap)
     name = va_arg(ap, char *);
     pre = head = make_cons(lt_nil, lt_nil);
     while (name != NULL) {
-        cur = make_cons(gen_pkg_sym(name, pkg_kw), lt_nil);
+        cur = make_cons(gen_symbol(name, pkg_kw), lt_nil);
         _CDR(pre) = cur;
         pre = cur;
         name = va_arg(ap, char *);
@@ -109,18 +126,35 @@ Arity make_arity_kw(int req_cnt, int opt_cnt, BOOL rest_flag, ...)
     va_start(ap, rest_flag);
     kws = make_keywords_aux(ap);
 
-    return make_arity_t(req_cnt, opt_cnt, rest_flag, TRUE, cons_length(kws), kws);
+    return make_arity(req_cnt, opt_cnt, rest_flag, TRUE, cons_length(kws), kws);
 }
 
-Arity make_arity(List parms)
+Arity new_with_kws(Arity tmpl, ...)
+{
+    Arity new;
+    va_list ap;
+    List kws;
+
+    new = malloc(sizeof(struct arity_t));
+    memcpy(new, tmpl, sizeof(struct arity_t));
+    va_start(ap, tmpl);
+    kws = make_keywords_aux(ap);
+    new->key_flag = TRUE;
+    new->key_count = cons_length(kws);
+    new->keywords = kws;
+
+    return new;
+}
+
+Arity parse_arity(List parms)
 {
     BOOL rest_flag;
     Symbol key, opt, rest;
     int key_count, opt_count, req_count;
 
-    key = gen_pkg_sym("&KEY", pkg_cl);
-    opt = gen_pkg_sym("&OPTIONAL", pkg_cl);
-    rest = gen_pkg_sym("&REST", pkg_cl);
+    key = S("&key");
+    opt = S("&optional");
+    rest = S("&rest");
     key_count = opt_count = req_count = 0;
     /* Required parameters */
     while (CONS_P(parms)) {
@@ -168,23 +202,15 @@ Arity make_arity(List parms)
         }
     }
 
-    return make_arity_t(req_count, opt_count, rest_flag, key_count != 0, key_count, lt_nil);
+    return make_arity(req_count, opt_count, rest_flag, key_count != 0, key_count, lt_nil);
 }
 
-/* LispObject make_Lisp_function(parms, expr, lenv, denv, fenv, benv, genv) */
-/*      List parms; */
-/*      LispObject expr; */
-/*      Environment lenv; */
-/*      Environment denv; */
-/*      Environment fenv; */
-/*      BlockEnvironment benv; */
-/*      GoEnvironment genv; */
 DEFMK(make_Lisp_function)
 {
     Function fn;
 
     fn = make_function_aux();
-    ARITY(fn) = make_arity(parms);
+    ARITY(fn) = parse_arity(parms);
     BLOCK_ENV(fn) = benv;
     FDEFINITION_ENV(fn) = fenv;
     FUNCTION_CFLAG(fn) = FALSE;
@@ -197,14 +223,6 @@ DEFMK(make_Lisp_function)
     return fn;
 }
 
-/* Function make_Lisp_macro(parms, expr, lenv, denv, fenv, benv, genv) */
-/*      List parms; */
-/*      List expr; */
-/*      Environment lenv; */
-/*      Environment denv; */
-/*      Environment fenv; */
-/*      BlockEnvironment benv; */
-/*      BlockEnvironment genv; */
 DEFMK(make_Lisp_macro)
 {
     Function fn;
@@ -215,7 +233,7 @@ DEFMK(make_Lisp_macro)
     return fn;
 }
 
-DEFINVOKE(invoke_C_function, C_fn)
+DEFINVOKE(invoke_C_function, C_fn, Frame)
 {
     return PRIMITIVE(C_fn)(args, lenv, denv, fenv, benv, genv);
 }
@@ -235,7 +253,7 @@ List frame2cons(Frame frame)
     return CDR(head);
 }
 
-LispObject invoke_Lisp_function(Function Lisp_function, frame_t args, Environment denv)
+LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment denv)
 {
     BlockEnvironment benv;
     Environment fenv;
@@ -245,45 +263,39 @@ LispObject invoke_Lisp_function(Function Lisp_function, frame_t args, Environmen
     benv = BLOCK_ENV(Lisp_function);
     fenv = FDEFINITION_ENV(Lisp_function);
     lenv = make_new_env(PARAMETERS(Lisp_function),
-                        frame2cons(args),
+                        args,
                         LEXICAL_ENV(Lisp_function));
     genv = GO_ENV(Lisp_function);
     
     return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
 }
 
-DEFINVOKE(invoke_Lisp_macro, macro_fn)
-{
-    BlockEnvironment _benv;
-    Environment _fenv, _lenv;
-    GoEnvironment _genv;
-    LispObject expanded_expr;
-
-    _benv = benv;
-    _genv = genv;
-    _fenv = fenv;
-    _lenv = lenv;
-    benv = BLOCK_ENV(macro_fn);
-    fenv = FDEFINITION_ENV(macro_fn);
-    lenv = make_new_env(PARAMETERS(macro_fn),
-                        frame2cons(args),
-                        LEXICAL_ENV(macro_fn));
-    expanded_expr = CALL_EVAL(eprogn, EXPRESSION(macro_fn));
-    print_object(expanded_expr, standard_output);
-    benv = _benv;
-    genv = _genv;
-    fenv = _fenv;
-    lenv = _lenv;
-    
-    return CALL_EVAL(eval_sexp, expanded_expr);
-}
-
-DEFINVOKE(invoke_function, function)
+DEFINVOKE(invoke_function, function, Cons)
 {
     if (TRUE == FUNCTION_CFLAG(function))
-	return CALL_INVOKE(invoke_C_function, function, args);
+	return CALL_INVOKE(invoke_C_function, function, cons2frame(args, ARITY(function)));
     else if (REGULAR == FTYPE(function))
 	return invoke_Lisp_function(function, args, denv);
-    else
-        return CALL_INVOKE(invoke_Lisp_macro, function, args);
+    else {
+        LispObject form;
+
+        form = invoke_Lisp_function(function, args, denv);
+
+        /* return CALL_INVOKE(invoke_Lisp_macro, function, args); */
+        return CALL_EVAL(eval_sexp, form);
+    }
+}
+
+Environment reg_primitive(char *fn_name,
+                          Package pkg,
+                          primitive_t prim,
+                          Arity arity,
+                          FunctionType type,
+                          Environment env)
+{
+    Function fn;
+
+    fn = make_C_function(prim, arity, type);
+
+    return extend_env(gen_symbol(fn_name, pkg), fn, env);
 }

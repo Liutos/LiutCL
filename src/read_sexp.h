@@ -4,5 +4,6 @@
 #include <stdio.h>
 
 extern char *read_sexp(FILE *);
+extern void *free_sexp(char *);
 
 #endif

@@ -8,9 +8,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "atom.h"
 #include "object.h"
+#include "package.h"
 #include "stream.h"
+#include "symbol.h"
 #include "types.h"
 
 unsigned int cons_length(Cons cons)
@@ -38,7 +39,12 @@ LispObject get_by_key(LispObject key, List list)
         list = CDR(CDR(list));
     }
 
-    return lt_nil;
+    return gunbound;
+}
+
+LispObject get_by_keyword(char *name, List kws)
+{
+    return get_by_key(gen_keyword(name), kws);
 }
 
 Cons make_cons(LispObject car, LispObject cdr)

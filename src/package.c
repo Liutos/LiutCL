@@ -15,6 +15,7 @@
 Package pkg_cl;                     /* Package :common-lisp */
 Package pkg_kw;                     /* Package :keyword */
 Package pkg_lt;                 /* Package :liutos-lisp */
+Package package;                /* Current package */
 hash_table_t packages;          /* A hash table contains all packages */
 
 package_t make_package_aux(char *name)
@@ -43,14 +44,4 @@ Package make_package(char *name)
 Package find_package(char *name)
 {
     return (Package)search_key(name, packages);
-}
-
-Symbol gen_pkg_sym(char *name, Package pkg)
-{
-    return ensure_symbol_exists(name, pkg);
-}
-
-Symbol gen_keyword(char *name)
-{
-    return gen_pkg_sym(name, pkg_kw);
 }

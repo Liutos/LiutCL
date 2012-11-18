@@ -9,49 +9,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cons.h"
 #include "object.h"
 #include "types.h"
 
-BOOL is_atom_object(LispObject object)
+LispObject gunbound;
+
+BOOL is_unbound(LispObject obj)
 {
-    return !CONS_P(object);
+    return obj == gunbound;
 }
 
-BOOL is_tail(LispObject object)
-{
-    return is_atom_object(object);
-}
-
-BOOL is_true_obj(LispObject obj)
-{
-    return lt_nil != obj;
-}
-
-BOOL is_symbol(LispObject object)
-{
-    return SYMBOL_P(object);
-}
-
+/* Constructors */
 Character make_char(char C_character)
 {
     return TO_CHAR(C_character);
-}
-
-Fixnum make_fixnum(int C_integer)
-{
-    return TO_FIXNUM(C_integer);
-}
-
-Float make_float(double C_float)
-{
-    Float f;
-
-    f = make_object();
-    f->type = FLOAT;
-    theFLOAT(f) = C_float;
-
-    return f;
 }
 
 String make_string(char *C_string)
@@ -61,20 +32,9 @@ String make_string(char *C_string)
     object = malloc(sizeof(struct string_t));
     object->content = strdup(C_string);
     object->length = strlen(C_string);
-    object->size = object->length;
+    object->size = object->length + 1;
 
     return TO_STRING(object);
-}
-
-/* The caller must ensure the argument `n' and `m' have same type. */
-BOOL numeric_eq(Number n, Number m)
-{
-    if (FIXNUM_P(n))
-        return n == m;
-    if (FLOAT_P(n))
-        return theFLOAT(n) == theFLOAT(m);
-
-    return FALSE;
 }
 
 String str_add_char(String str, Character ch)
@@ -84,11 +44,12 @@ String str_add_char(String str, Character ch)
     index = STRING_LENGTH(str); /* The position to inserted. */
     size = STRING_SIZE(str);
     /* Enhance the storage space of the string. */
-    if (index == size) {
-        size = size * 2;
+    if (index >= size) {
+        size = index * 2;
         STRING_CONTENT(str) = realloc(STRING_CONTENT(str), size * sizeof(char));
     }
-    STRING_CONTENT(str)[index++] = theCHAR(ch);
+    STRING_CONTENT(str)[index] = theCHAR(ch);
+    STRING_LENGTH(str)++;
 
     return str;
 }

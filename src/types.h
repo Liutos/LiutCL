@@ -1,6 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <gmp.h>
 #include <setjmp.h>
 #include <stdio.h>
 
@@ -8,20 +9,25 @@
 
 enum bool_t { FALSE, TRUE};
 
+enum error_t {
+    END_OF_FILE,
+    MISSING_BLOCK_NAME,
+    MISSING_CATCH_TAG,
+    MISSING_GO_TAG,
+    TOO_FEW_ARGUMENTS,
+    TOO_MANY_ARGUMENTS,
+    TYPE_ERROR,
+    UNBOUND_VARIABLE,
+    UNDEFINED_FUNCTION,
+};
+
 struct block_environment_t {
     Symbol name;
     jmp_buf context;
     BlockEnvironment prev;
 };
 
-struct env_entry_t {
-    Symbol symbol;
-    LispObject value;
-    env_entry_t next;
-};
-
 struct environment_t {
-    /* env_entry_t map; */
     hash_table_t map;
     Environment next;
 };
@@ -53,14 +59,14 @@ typedef enum {
 } FunctionType;
 
 /* typedef int Arity; */
-typedef struct arity_t {
+struct arity_t {
     int req_count;
     int opt_count;
     BOOL rest_flag;
     BOOL key_flag;
     int key_count;
     List keywords;
-} *arity_t, *Arity;
+};
 
 typedef struct function_t {
     BOOL is_C_function;
@@ -87,6 +93,15 @@ struct table_entry_t {
     table_entry_t next;
 };
 
+typedef struct hash_table {
+    table_entry_t *elements;
+    Fixnum (*hash_fn)(LispObject *, unsigned int);
+    Boolean (*compare_fn)(LispObject *, LispObject *);
+    unsigned int size;
+    unsigned int count;
+} *hash_table;
+
+/* For inner use. */
 struct hash_table_t {
     table_entry_t *elements;
     unsigned int (*hash_fn)(void *, unsigned int);
@@ -101,10 +116,10 @@ typedef struct package_t {
     hash_table_t table;
 } *package_t;
 
-/* Rational definition */
+/* Ratio definition */
 typedef struct ratio_t {
-    int numerator;
-    int denominator;
+    Integer numerator;
+    Integer denominator;
 } *ratio_t;
 
 /* Stream definition */
@@ -114,8 +129,15 @@ typedef enum {
     BYTE_STREAM,
 } STREAM_TYPE;
 
+typedef enum {
+    READ,
+    WRITE,
+    RW,
+} MODE;
+
 typedef struct stream_t {
     STREAM_TYPE type;
+    MODE mode;
     union {
         FILE *file;
         struct {
@@ -143,7 +165,7 @@ typedef struct symbol_t {
 /* Multiple values cell definition */
 typedef struct values_t {
     LispObject *objs;         /* Objects in array form. */
-    int count;
+    size_t count;
 } *values_t;
 
 /* Vector definition */
@@ -163,9 +185,15 @@ typedef enum {
     SYMBOL,
     VALUES,
     /* Tagged union */
+    BIGNUM,
+    DOUBLE_FLOAT,
     FLOAT,
     HASH_TABLE,
+    LONG_FLOAT,
     PACKAGE,
+    RATIO,
+    SHORT_FLOAT,
+    SINGLE_FLOAT,
     STREAM,
     VECTOR,
 } LispType;
@@ -174,10 +202,12 @@ struct lisp_object_t {
     LispType type;
     int refcnt;
     union {
-        double f;
-        hash_table_t hash_table;
+        mpz_t bi;
+        double d;
+        float f;
+        hash_table hash_table;
         package_t package;
-        ratio_t r;
+        ratio_t ratio;
         stream_t stream;
         vector_t vector;
     } u;
@@ -198,6 +228,11 @@ struct lisp_object_t {
 
 #define POINTER_P(x) (TAGOF(x) == POINTER_TAG)
 #define thePOINTER(x) ((LispObject)UNTAG(x))
+
+/* Bignum */
+/* theBIGNUM: Bignum -> mpz_t */
+#define theBIGNUM(x) ((x)->u.bi)
+#define BIGNUM_P(x) (POINTER_P(x) && BIGNUM == (x)->type)
 
 /* Character */
 /* TO_CHAR: char -> Character */
@@ -221,16 +256,19 @@ struct lisp_object_t {
 #define SECOND(x) CAR(CDR(x))
 #define THIRD(x) CAR(CDDR(x))
 
+/* Double-float */
+/* theDOUBLE_FLOAT: DoubleFloat -> double */
+#define theDOUBLE_FLOAT(x) ((x)->u.d)
+#define DOUBLE_FLOAT_P(x) (POINTER_P(x) && DOUBLE_FLOAT == (x)->type)
+
 /* Fixnum */
 /* TO_FIXNUM: int -> Fixnum */
 #define TO_FIXNUM(x) ((LispObject)(((int)(x) << 3) | FIXNUM_TAG))
 #define theFIXNUM(x) ((int)(x) >> 3)
 #define FIXNUM_P(x) (TAGOF(x) == FIXNUM_TAG)
 
-/* Double floating point number */
-/* theFLOAT: Float -> double */
-#define theFLOAT(x) ((x)->u.f)
-#define FLOAT_P(x) (POINTER_P(x) && (FLOAT == (x)->type))
+#define MAX_FIXNUM 536870911
+#define MIN_FIXNUM -536870912
 
 /* Function */
 /* TO_FUNCTION: function_t -> Function */
@@ -270,10 +308,15 @@ struct lisp_object_t {
 #define PACKAGE_NAME(x) (thePACKAGE(x)->name)
 
 /* Rational */
-#define theRATIONAL(x) ((x)->u.r)
+#define theRATIO(x) ((x)->u.ratio)
 
-#define DENOMINATOR(x) (theRATIONAL(x)->denominator)
-#define NUMERATOR(x) (theRATIONAL(x)->numerator)
+#define DENOMINATOR(x) (theRATIO(x)->denominator)
+#define NUMERATOR(x) (theRATIO(x)->numerator)
+
+/* Single-float */
+/* theSINGLE_FLOAT: SingleFloat -> float */
+#define theSINGLE_FLOAT(x) ((x)->u.f)
+#define SINGLE_FLOAT_P(x) (POINTER_P(x) && (FLOAT == (x)->type))
 
 /* Stream */
 #define theSTREAM(x) ((x)->u.stream)
@@ -306,19 +349,26 @@ struct lisp_object_t {
 /* Multiple values cell */
 /* TO_VALUES: values_t -> Values */
 #define TO_VALUES(x) ((LispObject)((int)(x) | VALUES_TAG))
+/* theVALUES: Values -> values_t */
 #define theVALUES(x) ((values_t)UNTAG(x))
 #define VALUES_P(x) (TAGOF(x) == VALUES_TAG)
 
 #define _VALUES(x) (theVALUES(x)->objs)
+#define NO_VALUES_P(x) (theVALUES(x)->count == 0)
 #define PRIMARY_VALUE(x) (_VALUES(x)[0])
+#define SINGLE_VALUES_P(x) (theVALUES(x)->count == 1)
 
 /* Vector */
 #define theVECTOR(x) ((x)->u.vector)
 #define VECTOR_P(x) (POINTER_P(x) && VECTOR == (x)->type)
 
 #define ATOM_P(x) (!CONS_P(x))
-#define NUMBER_P(x) (FIXNUM_P(x) || FLOAT_P(x))
+#define FLOAT_P(x) (SINGLE_FLOAT_P(x) || DOUBLE_FLOAT_P(x))
+#define INTEGER_P(x) (BIGNUM_P(x) && FIXNUM_P(x))
+#define NUMBER_P(x) (INTEGER_P(x) || FLOAT_P(x))
 #define TAIL_P(x) (!CONS_P(x))
 #define eq(x, y) (x == y)
+
+#define B(x) ((x)? lt_t: lt_nil)
 
 #endif

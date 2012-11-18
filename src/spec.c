@@ -10,12 +10,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "atom.h"
 #include "cons.h"
 #include "environment.h"
 #include "eval_sexp.h"
 #include "function.h"
 #include "macro_def.h"
+#include "package.h"
 #include "pdecls.h"
 #include "stream.h"
 #include "types.h"
@@ -107,8 +107,7 @@ PHEAD(lt_go)
         genv = genv->prev;
     }
     error_format("GO: no tag named %! is currently visible", tag);
-    /* exit(1); */
-    longjmp(toplevel, 1);
+    longjmp(toplevel, MISSING_GO_TAG);
 }
 
 PHEAD(lt_if)
@@ -127,6 +126,61 @@ PHEAD(lt_lambda)
 PHEAD(lt_mk_macro)
 {
     RETURN(CALL_MK(make_Lisp_macro, ARG1, RK));
+}
+
+Cons values2cons(Values vals)
+{
+    Cons cur, head, pre;
+    values_t v;
+
+    pre = head = make_cons(lt_nil, lt_nil);
+    v = theVALUES(vals);
+    for (int i = 0; i < v->count; i++) {
+        cur = make_cons(v->objs[i], lt_nil);
+        _CDR(pre) = cur;
+        pre = cur;
+    }
+
+    return CDR(head);
+}
+
+PHEAD(lt_multiple_value_call)
+{
+    Function function;
+    List forms;
+    Cons cur, head, pre;
+
+    function = CALL_EVAL(eval_sexp, ARG1);
+    forms = RK;
+    pre = head = make_cons(lt_nil, lt_nil);
+    while (forms != lt_nil) {
+        LispObject value;
+
+        value = MVCALL_EVAL(eval_sexp, CAR(forms));
+        if (NO_VALUES_P(value))
+            continue;
+        if (SINGLE_VALUES_P(value)) {
+            cur = make_cons(PRIMARY_VALUE(value), lt_nil);
+            _CDR(pre) = cur;
+            pre = cur;
+        } else {
+            cur = values2cons(value);
+            _CDR(pre) = cur;
+            while (CDR(pre) != lt_nil)
+                pre = CDR(pre);
+        }
+    }
+    RETURN(CALL_INVOKE(invoke_function, function, CDR(head)));
+}
+
+PHEAD(lt_multiple_value_list)
+{
+    LispObject form;
+    Values vals;
+
+    form = ARG1;
+    vals = MVCALL_EVAL(eval_sexp, form);
+    RETURN(values2cons(vals));
 }
 
 PHEAD(lt_progn)
@@ -165,8 +219,7 @@ PHEAD(lt_return_from)
         benv = benv->prev;
     }
     error_format("RETURN-FROM: No such a block contains name %!.\n", name);
-    /* exit(1); */
-    longjmp(toplevel, 1);
+    longjmp(toplevel, MISSING_BLOCK_NAME);
 }
 
 PHEAD(lt_setq)
@@ -179,13 +232,12 @@ PHEAD(lt_setq)
         pairs = CDR(pairs);
         if (TAIL_P(pairs)) {
             error_format("SETQ: Odd number of arguments %!.\n", ARG1);
-            /* exit(1); */
             longjmp(toplevel, 1);
         }
         form = CAR(pairs);
         value = CALL_EVAL(eval_sexp, form);
-        /* extend_env(var, value, lenv); */
         update_env(var, value, lenv);
+        SYMBOL_VALUE(var) = value;
         pairs = CDR(pairs);
     }
     RETURN(value);
@@ -247,4 +299,31 @@ PHEAD(lt_throw)
     result = CALL_EVAL(eval_sexp, ARG2);
     tag = CALL_EVAL(eval_sexp, ARG1);
     longjmp(escape, (int)make_cons(tag, result));
+}
+
+void init_spec(Environment env)
+{
+    /* Arity req1 = make_arity(1, 0, FALSE, FALSE, 0, lt_nil); */
+    /* Arity req1opt2 = make_arity(1, 2, FALSE, FALSE, 0, lt_nil); */
+    /* Arity req1rest = make_arity(1, 0, TRUE, FALSE, 0, lt_nil); */
+    /* Arity req2 = make_arity(2, 0, FALSE, FALSE, 0, lt_nil); */
+    /* Arity req2opt1 = make_arity(2, 1, FALSE, FALSE, 0, lt_nil); */
+    /* Arity rest = make_arity(0, 0, TRUE, FALSE, 0, lt_nil); */
+
+    csreg("BLOCK", lt_block, req1rest);
+    csreg("CATCH", lt_catch, req1rest);
+    csreg("DEFVAR", lt_defvar, req1opt2);
+    sreg("FSET", pkg_lt, lt_fset, req2);
+    csreg("FUNCTION", lt_function, req1);
+    csreg("GO", lt_go, req1);
+    csreg("IF", lt_if, req2opt1);
+    csreg("LAMBDA", lt_lambda, req1rest);
+    csreg("MK-MACRO", lt_mk_macro, req1rest);
+    csreg("MULTIPLE-VALUE-LIST", lt_multiple_value_list, req1);
+    csreg("PROGN", lt_progn, rest);
+    csreg("QUOTE", lt_quote, req1);
+    csreg("RETURN-FROM", lt_return_from, req2);
+    csreg("SETQ", lt_setq, rest);
+    csreg("TAGBODY", lt_tagbody, rest);
+    csreg("THROW", lt_throw, req2);
 }
