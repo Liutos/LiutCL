@@ -13,6 +13,7 @@
 #include "cons.h"
 #include "environment.h"
 #include "eval_sexp.h"
+#include "hash_table.h"
 #include "macro_def.h"
 #include "print_sexp.h"
 #include "stream.h"
@@ -29,6 +30,8 @@ Arity req2opt1;
 Arity rest;
 Arity make_list_a;
 Arity make_string_a;
+
+hash_table_t init_exprs;
 
 /* cons2frame所生成的Frame中的数组长度与`arity'中的req_count与opt_count的和一样长，
    并且可选参数的值如果没有实参对应，那么均为lt_nil。 */
@@ -270,18 +273,57 @@ LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment d
     return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
 }
 
+List fn_init_exprs(Function fn)
+{
+    List exprs;
+
+    exprs = search_key(PRIMITIVE(fn), init_exprs);
+    if (NULL == exprs)
+        return lt_nil;
+    else
+        return exprs;
+}
+
+Frame fill_frame(Frame frame, Function fn, Environment lenv, Environment denv, Environment fenv, BlockEnvironment benv, GoEnvironment genv)
+{
+    Arity arity;
+    int nreq, nopt;
+    int i, j;
+    List init_exprs;
+
+    arity = ARITY(fn);
+    nreq = arity->req_count;
+    nopt = arity->opt_count;
+    init_exprs = fn_init_exprs(fn);
+    if (eq(lt_nil, init_exprs))
+        return frame;
+    if (nopt != 0) {
+        i = nreq;
+        for (j = 0; j < nopt; j++) {
+            frame->rargs[i + j] = CALL_EVAL(eval_sexp, CAR(init_exprs));
+            init_exprs = CDR(init_exprs);
+        }
+    }
+
+    return frame;
+}
+
 DEFINVOKE(invoke_function, function, Cons)
 {
-    if (TRUE == FUNCTION_CFLAG(function))
-	return CALL_INVOKE(invoke_C_function, function, cons2frame(args, ARITY(function)));
-    else if (REGULAR == FTYPE(function))
+    if (TRUE == FUNCTION_CFLAG(function)) {
+        Frame frame;
+
+        frame = cons2frame(args, ARITY(function));
+        frame = fill_frame(frame, function, lenv, denv, fenv, benv, genv);
+
+	return CALL_INVOKE(invoke_C_function, function, frame);
+    } else if (REGULAR == FTYPE(function))
 	return invoke_Lisp_function(function, args, denv);
     else {
         LispObject form;
 
         form = invoke_Lisp_function(function, args, denv);
 
-        /* return CALL_INVOKE(invoke_Lisp_macro, function, args); */
         return CALL_EVAL(eval_sexp, form);
     }
 }
