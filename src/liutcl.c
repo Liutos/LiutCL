@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
 
     /* Initialize the global symbol table */
     init_packages();
+    init_init_exprs();
     /* Initialize the global constant environment */
     global_constant_env = make_empty_env();
     global_constant_env = init_cvars(global_constant_env);
