@@ -9,9 +9,10 @@
 #define ARG1 (ARGS[0])
 #define ARG2 (ARGS[1])
 #define ARG3 (ARGS[2])
-#define RK (args->rest_or_kws)
+#define RK (args->rest)
+#define KWS (args->kws)
 
-#define KV(name) get_by_keyword(name, RK)
+#define KV(name) get_by_keyword(name, KWS)
 /* Function header line of primitive. */
 #define PHEAD(fn_name)                          \
     LispObject fn_name(Frame args,               \

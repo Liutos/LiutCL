@@ -9,6 +9,8 @@
 
 #include "environment.h"
 #include "eval_sexp.h"
+#include "function.h"
+#include "hash_table.h"
 #include "init.h"
 #include "package.h"
 #include "parse_sexp.h"
@@ -28,7 +30,7 @@ int main(int argc, char *argv[])
 
     /* Initialize the global symbol table */
     init_packages();
-    init_init_exprs();
+    init_exprs = make_hash_table_t(47, hash_ptr, ptr_cmp);
     /* Initialize the global constant environment */
     global_constant_env = make_empty_env();
     global_constant_env = init_cvars(global_constant_env);

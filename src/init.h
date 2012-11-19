@@ -4,7 +4,6 @@
 extern Environment init_dvars(Environment);
 extern Environment init_cvars(Environment);
 extern Environment init_primitives(Environment);
-extern void init_init_exprs(void);
 extern void init_packages(void);
 
 #endif

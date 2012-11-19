@@ -63,22 +63,6 @@ PHEAD(lt_catch)
     }
 }
 
-PHEAD(lt_defvar)
-{
-    Symbol name;
-
-    name = ARG1;
-    assert(SYMBOL_P(name));
-    if (NULL == get_value(name, global_dynamic_env)) {
-        LispObject value;
-
-        value = CALL_EVAL(eval_sexp, ARG2);
-        SYMBOL_VALUE(name) = value;
-        update_env(name, value, global_dynamic_env);
-    }
-    RETURN(name);
-}
-
 PHEAD(lt_fset)
 {
     LispObject form, name, value;
@@ -137,7 +121,8 @@ Cons values2cons(Values vals)
     v = theVALUES(vals);
     for (int i = 0; i < v->count; i++) {
         cur = make_cons(v->objs[i], lt_nil);
-        _CDR(pre) = cur;
+        /* _CDR(pre) = cur; */
+        set_cdr(pre, cur);
         pre = cur;
     }
 
@@ -161,11 +146,13 @@ PHEAD(lt_multiple_value_call)
             continue;
         if (SINGLE_VALUES_P(value)) {
             cur = make_cons(PRIMARY_VALUE(value), lt_nil);
-            _CDR(pre) = cur;
+            /* _CDR(pre) = cur; */
+            set_cdr(pre, cur);
             pre = cur;
         } else {
             cur = values2cons(value);
-            _CDR(pre) = cur;
+            /* _CDR(pre) = cur; */
+            set_cdr(pre, cur);
             while (CDR(pre) != lt_nil)
                 pre = CDR(pre);
         }
@@ -199,6 +186,18 @@ PHEAD(lt_progn)
 	form = CDR(form);
     }
     RETURN(CALL_EVAL(eval_sexp, CAR(form)));
+}
+
+PHEAD(lt_progv)
+{
+    List symbols, values;
+    List form;
+
+    symbols = CALL_EVAL(eval_sexp, ARG1);
+    values = CALL_EVAL(eval_sexp, ARG2);
+    form = RK;
+    denv = make_new_env(symbols, values, denv);
+    RETURN(CALL_EVAL(eprogn, form));
 }
 
 PHEAD(lt_quote)
@@ -255,7 +254,8 @@ PHEAD(lt_tagbody)
     while (CONS_P(expr)) {
         if (ATOM_P(CAR(expr))) {
             cur = make_cons(CAR(expr), lt_nil);
-            _CDR(pre) = cur;
+            /* _CDR(pre) = cur; */
+            set_cdr(pre, cur);
             pre = cur;
         }
         expr = CDR(expr);
@@ -303,24 +303,19 @@ PHEAD(lt_throw)
 
 void init_spec(Environment env)
 {
-    /* Arity req1 = make_arity(1, 0, FALSE, FALSE, 0, lt_nil); */
-    /* Arity req1opt2 = make_arity(1, 2, FALSE, FALSE, 0, lt_nil); */
-    /* Arity req1rest = make_arity(1, 0, TRUE, FALSE, 0, lt_nil); */
-    /* Arity req2 = make_arity(2, 0, FALSE, FALSE, 0, lt_nil); */
-    /* Arity req2opt1 = make_arity(2, 1, FALSE, FALSE, 0, lt_nil); */
-    /* Arity rest = make_arity(0, 0, TRUE, FALSE, 0, lt_nil); */
-
     csreg("BLOCK", lt_block, req1rest);
     csreg("CATCH", lt_catch, req1rest);
-    csreg("DEFVAR", lt_defvar, req1opt2);
     sreg("FSET", pkg_lt, lt_fset, req2);
     csreg("FUNCTION", lt_function, req1);
     csreg("GO", lt_go, req1);
     csreg("IF", lt_if, req2opt1);
+    reg_inits(lt_if, "(nil)", NULL);
     csreg("LAMBDA", lt_lambda, req1rest);
     csreg("MK-MACRO", lt_mk_macro, req1rest);
+    csreg("MULTIPLE-VALUE-CALL", lt_multiple_value_call, req1rest);
     csreg("MULTIPLE-VALUE-LIST", lt_multiple_value_list, req1);
     csreg("PROGN", lt_progn, rest);
+    csreg("PROGV", lt_progv, req2rest);
     csreg("QUOTE", lt_quote, req1);
     csreg("RETURN-FROM", lt_return_from, req2);
     csreg("SETQ", lt_setq, rest);

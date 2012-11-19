@@ -52,12 +52,12 @@ PHEAD(lt_eql)
 /* Cons/List operations */
 PHEAD(lt_car)
 {
-    RETURN(CAR(ARG1));
+    RETURN(car(ARG1));
 }
 
 PHEAD(lt_cdr)
 {
-    RETURN(CAR(ARG1));
+    RETURN(car(ARG1));
 }
 
 PHEAD(lt_cons)
@@ -75,6 +75,28 @@ PHEAD(lt_list)
     RETURN(RK);
 }
 
+PHEAD(lt_member)
+{
+    LispObject item;
+    List list;
+    Function key, test, test_not;
+
+    item = ARG1;
+    list = ARG2;
+    key = KV("KEY");
+    test = KV("TEST");
+    test_not = KV("TEST-NOT");
+    while (CONS_P(list)) {
+        LispObject obj;
+
+        obj = CAR(list);
+        if (eq(item, obj))
+            RETURN(list);
+        list = CDR(list);
+    }
+    RETURN(lt_nil);
+}
+
 /* (MAKE-LIST size &key initial-element) */
 PHEAD(lt_make_list)
 {
@@ -82,9 +104,9 @@ PHEAD(lt_make_list)
     LispObject init;
 
     size = ARG1;
-    if (is_unbound(init = KV("INITIAL-ELEMENT")))
-        init = lt_nil;
-    RETURN(make_list(theFIXNUM(size), init));
+    /* VOI(init, "INITIAL-ELEMENT", lt_nil); */
+    init = ARG2;
+    RETURN(make_list_aux(theFIXNUM(size), init));
 }
 
 PHEAD(lt_nth)
@@ -114,7 +136,8 @@ PHEAD(lt_rplaca)
 
     cons = ARG1;
     object = ARG2;
-    _CAR(cons) = object;
+    /* _CAR(cons) = object; */
+    set_car(cons, object);
     RETURN(cons);
 }
 
@@ -125,7 +148,8 @@ PHEAD(lt_rplacd)
 
     cons = ARG1;
     object = ARG2;
-    _CDR(cons) = object;
+    /* _CDR(cons) = object; */
+    set_cdr(cons, object);
     RETURN(cons);
 }
 
@@ -144,7 +168,8 @@ PHEAD(lt_apply)
 
         pre = head = make_cons(arg, lt_nil);
         while (CONS_P(argv)) {
-            _CDR(pre) = make_cons(CAR(argv), lt_nil);
+            /* _CDR(pre) = make_cons(CAR(argv), lt_nil); */
+            set_cdr(pre, make_cons(CAR(argv), lt_nil));
             pre = CDR(pre);
             argv = CDR(argv);
         }
@@ -220,11 +245,10 @@ PHEAD(lt_make_string)
     String string;
 
     size = ARG1;
-    /* if (is_unbound(init = KV("INITIAL-ELEMENT"))) */
-    /*     init = make_char('\0'); */
-    VOI(init, "INITIAL-ELEMENT", make_char('\0'));
-    if (is_unbound(type = KV("ELEMENT-TYPE")))
-        type = S("CHARACTER");
+    VOI(init, "INITIAL-ELEMENT", make_char('\0')); /* ---TODO: Do not set initial value of keyword parameters within the function body. */
+    /* if (is_unbound(type = KV("ELEMENT-TYPE"))) */
+    /*     type = S("CHARACTER"); */
+    VOI(type, "ELEMENT-TYPE", S("CHARACTER"));
     string = make_string("");
     for (int n = theFIXNUM(size); n != 0; n--)
         str_add_char(string, init);
@@ -252,6 +276,7 @@ PHEAD(lt_find_symbol)
     Symbol symbol;
 
     string = ARG1;
+    pkg = ARG2;
     /* if (is_unbound(pkg = ARG2)) */
     /*     pkg = package; */
     symbol = get_symbol(STRING_CONTENT(theSTRING(string)),
@@ -295,7 +320,7 @@ PHEAD(lt_symbol_name)
     Symbol sym;
 
     sym = ARG1;
-    RETURN(make_string(SYMBOL_NAME(sym)));
+    RETURN(make_string(symbol_name(sym)));
 }
 
 PHEAD(lt_symbol_package)
@@ -303,7 +328,7 @@ PHEAD(lt_symbol_package)
     Symbol sym;
 
     sym = ARG1;
-    RETURN(SYMBOL_PACKAGE(sym));
+    RETURN(symbol_package(sym));
 }
 
 PHEAD(lt_symbol_value)
@@ -344,9 +369,7 @@ PHEAD(lt_type_of)
         case_type(CHARACTER);
         case_type(CONS);
         case_type(FIXNUM);
-        case_type(FLOAT);
         case_type(FUNCTION);
-        case_type(HASH_TABLE);
         case_type(PACKAGE);
         case_type(STREAM);
         case_type(STRING);
@@ -406,6 +429,10 @@ void init_data(Environment env)
     cfreg("LIST", lt_list, rest);
     cfreg("MAKE-LIST", lt_make_list,
           new_with_kws(req1, "INITIAL-ELEMENT", NULL));
+    reg_inits(lt_make_list, NULL, "(nil)");
+    cfreg("MEMBER", lt_member,
+          new_with_kws(req2, "KEY", "TEST", "TEST-NOT", NULL));
+    reg_inits(lt_member, NULL, "((function eql) nil nil)");
     cfreg("NTH", lt_nth, req2);
     cfreg("NTHCDR", lt_nthcdr, req2);
     cfreg("RPLACA", lt_rplaca, req2);
@@ -421,11 +448,13 @@ void init_data(Environment env)
     /* String operations */
     cfreg("CHAR", lt_char, req2);
     cfreg("MAKE-STRING", lt_make_string,
-          new_with_kws(req1, "INITIAL-ELEMENT", "ELEMENT-TYPE", NULL));
+          new_with_kws(req1, "INITIAL-ELEMENT", "ELEMENT-TYPE", NULL)); /* ---TODO: The application of `reg_inits' for function `lt_make_string'. */
     cfreg("STRINGP", lt_stringp, req1);
     /* Symbol operations */
     cfreg("FIND-SYMBOL", lt_find_symbol, req1opt1);
+    reg_inits(lt_find_symbol, "(*package*)", NULL);
     cfreg("INTERN", lt_intern, req1opt1);
+    reg_inits(lt_intern, "(*package*)", NULL);
     cfreg("KEYWORDP", lt_keywordp, req1);
     cfreg("SET", lt_set, req2);
     cfreg("SYMBOL-NAME", lt_symbol_name, req1);

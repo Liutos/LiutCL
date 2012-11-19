@@ -116,10 +116,10 @@ void write_fixnum(Stream stream, Fixnum number)
     write_file_stream_fixnum(stream, theFIXNUM(number));
 }
 
-void write_single_float(Stream stream, SingleFloat f)
-{
-    write_file_stream_float(stream, theSINGLE_FLOAT(f));
-}
+/* void write_single_float(Stream stream, SingleFloat f) */
+/* { */
+/*     write_file_stream_float(stream, theSINGLE_FLOAT(f)); */
+/* } */
 
 void write_format_aux(Stream dest, const char *format, va_list ap)
 {

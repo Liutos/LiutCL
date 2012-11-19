@@ -45,7 +45,7 @@ DEFEVAL(eprogn, exps)
     return MVCALL_EVAL(eval_sexp, CAR(exps));
 }
 
-void check_arity_pattern(Arity arity, List args)
+void check_arity_pattern(arity_t arity, List args)
 {
     BOOL key_flag, rest_flag;
     int key_count, opt_count, req_count;
@@ -102,7 +102,7 @@ DEFEVAL(eval_args, args)
 
         val = CALL_EVAL(eval_sexp, CAR(args));
         cur = make_cons(val, lt_nil);
-        _CDR(pre) = cur;
+        set_cdr(pre, cur);
         pre = cur;
         args = CDR(args);
     }
@@ -143,7 +143,7 @@ DEFEVAL(eval_cons, exps)
     LispObject op, value;
 
     args = CDR(exps);
-    op = FIRST(exps);
+    op = car(exps);
     if (CONS_P(op))
         op = CALL_EVAL(eval_cons, op);
     else if (SYMBOL_P(op))

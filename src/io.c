@@ -28,7 +28,8 @@ PHEAD(lt_read_char)
     Lisp_char = read_char(ARG1);
     if (eq(TO_CHAR(-1), Lisp_char) && eq(lt_t, eof_error_p)) {
         error_format("READ-CHAR: End of file.\n");
-        exit(1);
+        /* exit(1); */
+        longjmp(toplevel, END_OF_FILE);
     }
     RETURN(Lisp_char);
 }
@@ -64,14 +65,23 @@ PHEAD(lt_read_line)
     RETURN(make_values(2, line, TO_CHAR(-1) == ch? lt_t: lt_nil));
 }
 
-PHEAD(lt_write_a_char)
+PHEAD(lt_write_char)
 {
-    write_char(ARG2, ARG1);
+    Character ch;
+    Stream output;
+
+    ch = ARG1;
+    output = ARG2;
+    write_char(output, ch);
     RETURN(lt_nil);
 }
 
 void init_io(Environment env)
 {
     cfreg("READ-CHAR", lt_read_char, req1opt4);
+    reg_inits(lt_read_char, "(*standard-input* t nil nil)", NULL);
     cfreg("READ-LINE", lt_read_line, req1opt4);
+    reg_inits(lt_read_line, "(*standard-input* t nil nil)", NULL);
+    cfreg("WRITE-CHAR", lt_write_char, req1opt1);
+    reg_inits(lt_write_char, "(*standard-output*)", NULL);
 }

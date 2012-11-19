@@ -22,6 +22,7 @@ print_sexp.o \
 read_sexp.o \
 spec.o \
 stream.o \
+string.o \
 symbol.o \
 vm_stack.o
 

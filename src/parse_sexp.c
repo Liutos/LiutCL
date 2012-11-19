@@ -89,14 +89,6 @@ BOOL is_fixnum_token(char *token)
    more precise subtype of Integer. */
 BOOL is_integer_token(char *token)
 {
-    /* regex_t regex; */
-
-    /* if (regcomp(&regex, "^-?[0-9]+\\.?$", REG_EXTENDED)) { */
-    /*     error_format("Couldn't compile regex.\n"); */
-    /*     exit(1); */
-    /* } */
-
-    /* return 0 == regexec(&regex, token, 0, NULL, 0); */
     return is_match_regex(token, "^-?[0-9]+\\.?$");
 }
 
@@ -124,27 +116,11 @@ BOOL is_qualified(char *token, char **pkg_name, char **sym_name)
 
 BOOL is_ratio_token(char *token)
 {
-    /* regex_t regex; */
-
-    /* if (regcomp(&regex, "^-?[0-9]+/[0-9]+$", REG_EXTENDED)) { */
-    /*     error_format("Couldn't compile regex.\n"); */
-    /*     exit(1); */
-    /* } */
-
-    /* return 0 == regexec(&regex, token, 0, NULL, 0); */
     return is_match_regex(token, "^-?[0-9]+/[0-9]+$");
 }
 
 BOOL is_string_token(char *token)
 {
-    /* regex_t regex; */
-
-    /* if (regcomp(&regex, "^\"([^\"\\]+|\\.)*\"$", REG_EXTENDED)) { */
-    /*     error_format("Could not compile regex\n"); */
-    /*     exit(1); */
-    /* } */
-
-    /* return 0 == regexec(&regex, token, 0, NULL, 0)? TRUE: FALSE; */
     return is_match_regex(token, "^\"([^\"\\]+|\\.)*\"$");
 }
 
@@ -219,7 +195,6 @@ Symbol parse_symbol(char *token, Package pkg)
 
     token = toupper_string(token);
     if (is_keyword_token(token))
-        /* return gen_symbol(token + 1, pkg_kw); */
         return gen_keyword(token + 1);
     if (is_qualified(token, &pkg_name, &sym_name)) {
         Package pkg;
@@ -275,20 +250,20 @@ Cons parse_cons(char *string, int *offset)
 
 	    return pre;
         case '\'': {
-            Symbol quote;
+            /* Symbol quote; */
             LispObject obj;
 
-            /* quote = gen_symbol("QUOTE", pkg_cl); */
-            quote = S("QUOTE");
+            /* quote = S("QUOTE"); */
             obj = parse_sexp(string + i + 1, &step);
-            cur = make_cons(make_cons(quote, make_cons(obj, lt_nil)), lt_nil);
+            /* cur = make_cons(make_cons(S("QUOTE"), make_cons(obj, lt_nil)), lt_nil); */
+            cur = make_cons(make_list(S("QUOTE"), obj), lt_nil);
             step++;
             break;
         }
 	default :
 	    cur = make_cons(parse_atom(string + i, &step), lt_nil);
 	}
-	_CDR(pre) = cur;
+        set_cdr(pre, cur);
 	pre = cur;
     }
     pre = CDR(head);
@@ -306,13 +281,13 @@ LispObject parse_sexp(char *input, int *offset)
         input++;
     if ('\'' == *input) {
         LispObject obj;
-        Symbol quote;
+        /* Symbol quote; */
 
-        /* quote = gen_symbol("QUOTE", pkg_cl); */
-        quote = S("QUOTE");
+        /* quote = S("QUOTE"); */
         obj = parse_input(input + 1);
 
-        return make_cons(quote, make_cons(obj, lt_nil));
+        /* return make_cons(S("QUOTE"), make_cons(obj, lt_nil)); */
+        return make_list(S("QUOTE"), obj);
     }
     if ('(' == input[0]) {
         Cons cons;

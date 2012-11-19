@@ -12,6 +12,9 @@
 
 #define S(name) gen_symbol(name, pkg_cl)
 
+extern char *symbol_name(Symbol);
+extern Package symbol_package(Symbol);
+
 extern Symbol ensure_symbol_exists(char *, Package);
 extern Symbol gen_keyword(char *);
 extern Symbol gen_symbol(char *, Package);

@@ -25,18 +25,6 @@ Character make_char(char C_character)
     return TO_CHAR(C_character);
 }
 
-String make_string(char *C_string)
-{
-    string_t object;
-
-    object = malloc(sizeof(struct string_t));
-    object->content = strdup(C_string);
-    object->length = strlen(C_string);
-    object->size = object->length + 1;
-
-    return TO_STRING(object);
-}
-
 String str_add_char(String str, Character ch)
 {
     unsigned int index, size;

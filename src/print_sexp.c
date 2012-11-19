@@ -21,9 +21,9 @@ void print_object(LispObject, Stream);
 void print_symbol(Symbol sym, Stream output)
 {
     if (is_keyword(sym))
-        write_format(output, ":%s", make_string(SYMBOL_NAME(sym)));
+        write_format(output, ":%s", make_string(symbol_name(sym)));
     else
-        write_string(output, make_string(SYMBOL_NAME(sym)));
+        write_string(output, make_string(symbol_name(sym)));
 }
 
 void print_atom(Atom atom, Stream output)
@@ -38,9 +38,9 @@ void print_atom(Atom atom, Stream output)
     case FIXNUM:
         write_fixnum(output, atom);
 	break;
-    case FLOAT:
-        write_single_float(output, atom);
-        break;
+    /* case FLOAT: */
+    /*     write_single_float(output, atom); */
+    /*     break; */
     case FUNCTION:
 	if (TRUE == FUNCTION_CFLAG(atom))
             write_format(output, "#<FUNCTION C %p>", atom);

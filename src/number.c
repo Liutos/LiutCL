@@ -33,16 +33,16 @@ Bignum make_bignum(mpz_t integer)
     return bn;
 }
 
-DoubleFloat make_double_float(double C_double)
-{
-    DoubleFloat d;
+/* DoubleFloat make_double_float(double C_double) */
+/* { */
+/*     DoubleFloat d; */
 
-    d = make_object();
-    d->type = DOUBLE_FLOAT;
-    theDOUBLE_FLOAT(d) = C_double;
+/*     d = make_object(); */
+/*     d->type = DOUBLE_FLOAT; */
+/*     theDOUBLE_FLOAT(d) = C_double; */
 
-    return d;
-}
+/*     return d; */
+/* } */
 
 Fixnum make_fixnum(int C_integer)
 {
@@ -60,16 +60,16 @@ Ratio make_ratio(ratio_t ratio)
     return r;
 }
 
-SingleFloat make_single_float(float C_float)
-{
-    SingleFloat f;
+/* SingleFloat make_single_float(float C_float) */
+/* { */
+/*     SingleFloat f; */
 
-    f = make_object();
-    f->type = SINGLE_FLOAT;
-    theSINGLE_FLOAT(f) = C_float;
+/*     f = make_object(); */
+/*     f->type = SINGLE_FLOAT; */
+/*     theSINGLE_FLOAT(f) = C_float; */
 
-    return f;
-}
+/*     return f; */
+/* } */
 
 /* Convertors */
 Bignum fixnum2bignum(Fixnum number)
@@ -82,15 +82,15 @@ Bignum fixnum2bignum(Fixnum number)
     return make_bignum(n);
 }
 
-DoubleFloat fixnum2double_float(Fixnum number)
-{
-    return make_double_float(theFIXNUM(number));
-}
+/* DoubleFloat fixnum2double_float(Fixnum number) */
+/* { */
+/*     return make_double_float(theFIXNUM(number)); */
+/* } */
 
-SingleFloat fixnum2single_float(Fixnum number)
-{
-    return make_single_float(theFIXNUM(number));
-}
+/* SingleFloat fixnum2single_float(Fixnum number) */
+/* { */
+/*     return make_single_float(theFIXNUM(number)); */
+/* } */
 
 /* Comparators */
 BOOL fixnum_eq(Fixnum n, Fixnum m)
@@ -169,26 +169,30 @@ Rational bignum_div(Bignum _n, Bignum _m)
     }
 }
 
-Rational fixnum_div(Fixnum _n, Fixnum _m)
+Fixnum fixnum_div(Fixnum n, Fixnum m)
 {
-    int n, m;
-
-    n = theFIXNUM(_n);
-    m = theFIXNUM(_m);
-    if (0 == n % m)
-        return make_fixnum(theFIXNUM(n) / theFIXNUM(m));
-    else {
-        int d;
-        ratio_t r;
-
-        r = malloc(sizeof(struct ratio_t));
-        d = gcd(n, m);
-        r->numerator = make_fixnum(n / d);
-        r->denominator = make_fixnum(m / d);
-
-        return make_ratio(r);
-    }
+    return make_fixnum(theFIXNUM(n) / theFIXNUM(m));
 }
+/* Rational fixnum_div(Fixnum _n, Fixnum _m) */
+/* { */
+/*     int n, m; */
+
+/*     n = theFIXNUM(_n); */
+/*     m = theFIXNUM(_m); */
+/*     if (0 == n % m) */
+/*         return make_fixnum(theFIXNUM(n) / theFIXNUM(m)); */
+/*     else { */
+/*         int d; */
+/*         ratio_t r; */
+
+/*         r = malloc(sizeof(struct ratio_t)); */
+/*         d = gcd(n, m); */
+/*         r->numerator = make_fixnum(n / d); */
+/*         r->denominator = make_fixnum(m / d); */
+
+/*         return make_ratio(r); */
+/*     } */
+/* } */
 
 /* Multiplication */
 DEFARIT(bignum_mul, Bignum)

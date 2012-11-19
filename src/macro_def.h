@@ -59,7 +59,7 @@
 /* Registers a regular function `prim' with name `name' to package `pkg'. */
 #define freg(name, pkg, prim, arity) reg(name, pkg, prim, arity, REGULAR)
 
-extern Environment reg_primitive(char *, Package, primitive_t, Arity, FunctionType, Environment);
+extern Environment reg_primitive(char *, Package, primitive_t, arity_t, FunctionType, Environment);
 #define reg(name, pkg, prim, arity, type)                \
     env = reg_primitive(name, pkg, prim, arity, type, env)
 #define sreg(name, pkg, prim, arity) reg(name, pkg, prim, arity, SPECIAL)

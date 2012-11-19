@@ -17,7 +17,16 @@
 #include "types.h"
 
 #define INIT(fn) do {extern void init_##fn(Environment); init_##fn(env);} while(0)
-#define RI(fn, exprs)
+
+arity_t req1;
+arity_t req1opt1;
+arity_t req1opt2;
+arity_t req1opt4;
+arity_t req1rest;
+arity_t req2;
+arity_t req2opt1;
+arity_t req2rest;
+arity_t rest;
 
 Environment init_cvars(Environment lenv)
 {
@@ -59,14 +68,18 @@ void init_packages(void)
 
 void init_arity(void)
 {
-    req1 = make_arity(1, 0, FALSE, FALSE, 0, lt_nil);
-    req1opt1 = make_arity(1, 1, FALSE, FALSE, 0, lt_nil);
-    req1opt2 = make_arity(1, 2, FALSE, FALSE, 0, lt_nil);
-    req1opt4 = make_arity(1, 4, FALSE, FALSE, 0, lt_nil);
-    req1rest = make_arity(1, 0, TRUE, FALSE, 0, lt_nil);
-    req2 = make_arity(2, 0, FALSE, FALSE, 0, lt_nil);
-    req2opt1 = make_arity(2, 1, FALSE, FALSE, 0, lt_nil);
-    rest = make_arity(0, 0, TRUE, FALSE, 0, lt_nil);
+#define mk_pos_arity(nreq, nopt) make_arity(nreq, nopt, FALSE, FALSE, 0, lt_nil)
+#define mk_rs_arity(nreq) make_arity(nreq, 0, TRUE, FALSE, 0, lt_nil);
+
+    req1 = mk_pos_arity(1, 0);
+    req1opt1 = mk_pos_arity(1, 1);
+    req1opt2 = mk_pos_arity(1, 2);
+    req1opt4 = mk_pos_arity(1, 4);
+    req1rest = mk_rs_arity(1);
+    req2 = mk_pos_arity(2, 0);
+    req2rest = mk_rs_arity(2);
+    req2opt1 = mk_pos_arity(2, 1);
+    rest =mk_rs_arity(0);
 }
 
 Environment init_primitives(Environment env)
@@ -80,11 +93,4 @@ Environment init_primitives(Environment env)
     INIT(spec);
 
     return env;
-}
-
-void init_init_exprs(void)
-{
-    init_exprs = make_hash_table_t(47, hash_ptr, ptr_cmp);
-    PHEAD(lt_find_symbol);
-    add_key_value(lt_find_symbol, parse_input("(*package*)"), init_exprs);
 }

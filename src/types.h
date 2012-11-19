@@ -36,7 +36,8 @@ struct environment_t {
 typedef struct frame_t {
     size_t quantity;            /* The length of `rargs'. */
     LispObject *rargs;         /* Required and optional arguments in array form. */
-    List rest_or_kws;           /* Rest or keyword arguments. */
+    List kws;           /* Keyword arguments in a-list form, order the same as making the corresponding lambda list. */
+    List rest;           /* Rest arguments. */
 } *frame_t;
 
 struct go_environment_t {
@@ -63,7 +64,7 @@ struct arity_t {
     int req_count;
     int opt_count;
     BOOL rest_flag;
-    BOOL key_flag;
+    BOOL key_flag;              /* This seems duplicated. */
     int key_count;
     List keywords;
 };
@@ -71,9 +72,10 @@ struct arity_t {
 typedef struct function_t {
     BOOL is_C_function;
     FunctionType type;
-    Arity arity;
+    arity_t arity;
     union {
 	primitive_t fptr;
+        primitive_t specform;
 	struct {
 	    Cons parameters;
 	    LispObject body;
@@ -157,9 +159,10 @@ typedef struct string_t {
 /* Symbol definition */
 typedef struct symbol_t {
     char *name;
+    LispObject package;
+    List property_list;
     LispObject value;
     LispObject function;
-    LispObject package;
 } *symbol_t;
 
 /* Multiple values cell definition */
@@ -186,26 +189,16 @@ typedef enum {
     VALUES,
     /* Tagged union */
     BIGNUM,
-    DOUBLE_FLOAT,
-    FLOAT,
-    HASH_TABLE,
-    LONG_FLOAT,
     PACKAGE,
     RATIO,
-    SHORT_FLOAT,
-    SINGLE_FLOAT,
     STREAM,
     VECTOR,
 } LispType;
 
 struct lisp_object_t {
     LispType type;
-    int refcnt;
     union {
         mpz_t bi;
-        double d;
-        float f;
-        hash_table hash_table;
         package_t package;
         ratio_t ratio;
         stream_t stream;
@@ -247,19 +240,14 @@ struct lisp_object_t {
 #define theCONS(x) ((cons_t)UNTAG(x))
 #define CONS_P(x) (TAGOF(x) == CONS_TAG)
 
-#define _CAR(x) (theCONS(x)->car)
-#define _CDR(x) (theCONS(x)->cdr)
+/* #define _CAR(x) (theCONS(x)->car) */
+/* #define _CDR(x) (theCONS(x)->cdr) */
 #define CAR(x) (lt_nil == (x) ? lt_nil: theCONS(x)->car)
 #define CDR(x) (lt_nil == (x) ? lt_nil: theCONS(x)->cdr)
 #define CDDR(x) CDR(CDR(x))
-#define FIRST(x) CAR(x)
-#define SECOND(x) CAR(CDR(x))
-#define THIRD(x) CAR(CDDR(x))
-
-/* Double-float */
-/* theDOUBLE_FLOAT: DoubleFloat -> double */
-#define theDOUBLE_FLOAT(x) ((x)->u.d)
-#define DOUBLE_FLOAT_P(x) (POINTER_P(x) && DOUBLE_FLOAT == (x)->type)
+/* #define FIRST(x) CAR(x) */
+/* #define SECOND(x) CAR(CDR(x)) */
+/* #define THIRD(x) CAR(CDDR(x)) */
 
 /* Fixnum */
 /* TO_FIXNUM: int -> Fixnum */
@@ -290,14 +278,14 @@ struct lisp_object_t {
 #define SPECIAL_P(x) (SPECIAL == FTYPE(x))
 
 /* Hash table */
-#define theHASH_TABLE(x) ((x)->u.hash_table)
-#define HASH_TABLE_P(x) (POINTER_P(x) && HASH_TABLE == (x)->type)
+/* #define theHASH_TABLE(x) ((x)->u.hash_table) */
+/* #define HASH_TABLE_P(x) (POINTER_P(x) && HASH_TABLE == (x)->type) */
 
-#define HASH_CMP(x) (theHASH_TABLE(x)->compare_fn)
-#define TABLE_COUNT(x) (theHASH_TABLE(x)->count)
-#define HASH_FN(x) (theHASH_TABLE(x)->hash_fn)
-#define TABLE_ELEMENTS(x) (theHASH_TABLE(x)->elements)
-#define TABLE_SIZE(x) (theHASH_TABLE(x)->size)
+/* #define HASH_CMP(x) (theHASH_TABLE(x)->compare_fn) */
+/* #define TABLE_COUNT(x) (theHASH_TABLE(x)->count) */
+/* #define HASH_FN(x) (theHASH_TABLE(x)->hash_fn) */
+/* #define TABLE_ELEMENTS(x) (theHASH_TABLE(x)->elements) */
+/* #define TABLE_SIZE(x) (theHASH_TABLE(x)->size) */
 
 /* Package */
 /* thePACKAGE: Package -> package_t */
@@ -312,11 +300,6 @@ struct lisp_object_t {
 
 #define DENOMINATOR(x) (theRATIO(x)->denominator)
 #define NUMERATOR(x) (theRATIO(x)->numerator)
-
-/* Single-float */
-/* theSINGLE_FLOAT: SingleFloat -> float */
-#define theSINGLE_FLOAT(x) ((x)->u.f)
-#define SINGLE_FLOAT_P(x) (POINTER_P(x) && (FLOAT == (x)->type))
 
 /* Stream */
 #define theSTREAM(x) ((x)->u.stream)
@@ -363,9 +346,8 @@ struct lisp_object_t {
 #define VECTOR_P(x) (POINTER_P(x) && VECTOR == (x)->type)
 
 #define ATOM_P(x) (!CONS_P(x))
-#define FLOAT_P(x) (SINGLE_FLOAT_P(x) || DOUBLE_FLOAT_P(x))
 #define INTEGER_P(x) (BIGNUM_P(x) && FIXNUM_P(x))
-#define NUMBER_P(x) (INTEGER_P(x) || FLOAT_P(x))
+#define NUMBER_P(x) (INTEGER_P(x))
 #define TAIL_P(x) (!CONS_P(x))
 #define eq(x, y) (x == y)
 

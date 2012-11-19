@@ -2,7 +2,7 @@
 #define DECLS_H
 
 typedef enum bool_t BOOL;
-typedef struct arity_t *arity_t, *Arity;
+typedef struct arity_t *arity_t;
 typedef struct block_environment_t *BlockEnvironment;
 typedef struct environment_t *Environment;
 typedef struct frame_t *Frame;
@@ -51,16 +51,17 @@ extern Package pkg_lt;
 extern Package package;
 extern hash_table_t packages;
 /* function.c */
-extern Arity req1;
-extern Arity req1opt1;
-extern Arity req1opt2;
-extern Arity req1opt4;
-extern Arity req1rest;
-extern Arity req2;
-extern Arity req2opt1;
-extern Arity rest;
-extern Arity make_list_a;
-extern Arity make_string_a;
+extern arity_t req1;
+extern arity_t req1opt1;
+extern arity_t req1opt2;
+extern arity_t req1opt4;
+extern arity_t req1rest;
+extern arity_t req2;
+extern arity_t req2opt1;
+extern arity_t req2rest;
+extern arity_t rest;
+extern arity_t make_list_a;
+extern arity_t make_string_a;
 /* stream.c */
 extern Stream standard_error;
 extern Stream standard_input;
