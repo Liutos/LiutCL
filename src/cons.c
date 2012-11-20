@@ -61,6 +61,12 @@ void set_cdr(Cons cons, LispObject value)
     theCONS(cons)->cdr = value;
 }
 
+/* Type checker */
+BOOL consp(LispObject object)
+{
+    return CONS_P(object);
+}
+
 /* Other operations */
 unsigned int cons_length(Cons cons)
 {

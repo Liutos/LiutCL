@@ -12,11 +12,11 @@
 #include "types.h"
 
 LispObject global_stack[50];
-int global_stack_top = -1;
+int global_stack_top = 0;
 
 BOOL is_stack_empty(void)
 {
-    return -1 == global_stack_top;
+    return 0 == global_stack_top;
 }
 
 BOOL is_stack_full(void)

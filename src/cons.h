@@ -10,6 +10,7 @@ extern LispObject car(Cons);
 extern LispObject cdr(Cons);
 extern void set_car(Cons, LispObject);
 extern void set_cdr(Cons, LispObject);
+extern BOOL consp(LispObject);
 
 extern Cons nth_cdr(unsigned int, List);
 extern LispObject assoc(LispObject, List);

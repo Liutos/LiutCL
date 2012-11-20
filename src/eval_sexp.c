@@ -23,9 +23,9 @@
 
 #define VALUES(x) process_values(x, is_need_mv)
 
-DEFEVAL(eval_cons, _);
-DEFEVAL(eval_progn, _);
-DEFEVAL(eval_sexp, _);
+DEFINE_EVAL(eval_cons, _);
+DEFINE_EVAL(eval_progn, _);
+DEFINE_EVAL(eval_sexp, _);
 
 LispObject return_value;
 
@@ -33,7 +33,7 @@ jmp_buf escape;
 /* Variable `toplevel' should not be changed. */
 jmp_buf toplevel;
 
-DEFEVAL(eprogn, exps)
+DEFINE_EVAL(eprogn, exps)
 {
     while (CONS_P(exps)) {
 	if (!CONS_P(CDR(exps)))
@@ -92,7 +92,7 @@ void check_arity_pattern(arity_t arity, List args)
     }
 }
 
-DEFEVAL(eval_args, args)
+DEFINE_EVAL(eval_args, args)
 {
     Cons cur, head, pre;
 
@@ -137,7 +137,7 @@ LispObject process_values(LispObject value, BOOL is_need_mv)
     }
 }
 
-DEFEVAL(eval_cons, exps)
+DEFINE_EVAL(eval_cons, exps)
 {
     Cons args;
     LispObject op, value;
@@ -152,11 +152,14 @@ DEFEVAL(eval_cons, exps)
         error_format("%! isn't a funcallable object.\n", op);
         longjmp(toplevel, TYPE_ERROR);
     }
-    /* Evaluates the arguments and check. */
+    /* Step 1: Evaluates the arguments. */
     if (REGULAR == FTYPE(op))
         args = CALL_EVAL(eval_args, args);
+    /* Step 2: Compares the arguments with function's lambda list. */
     check_arity_pattern(ARITY(op), args);
-    value = CALL_INVOKE(invoke_function, op, args);
+    /* Step 3: Pushes the arguments into the global stack, according to the function's lambda list. Do this before invoking a C function. */
+
+    value = CALL_INVOKER(invoke_function, op, args);
 
     return VALUES(value);
 }
@@ -182,7 +185,7 @@ LispObject eval_symbol(Symbol sym, Environment lenv, Environment denv)
     }
 }
 
-DEFEVAL(eval_sexp, exp)
+DEFINE_EVAL(eval_sexp, exp)
 {
     if (NULL == exp)
         return NULL;

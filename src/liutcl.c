@@ -23,7 +23,7 @@
 int main(int argc, char *argv[])
 {
     BlockEnvironment benv;
-    Environment fenv, lenv;
+    Environment denv, fenv, lenv;
     GoEnvironment genv;
     LispObject sexp, result;
     char *input;
@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
     /* Initialize the global dynamic scope environment */
     global_dynamic_env = make_empty_env();
     global_dynamic_env = init_dvars(global_dynamic_env);
+    denv = global_dynamic_env;
 
     benv = NULL;
     genv = NULL;
@@ -51,7 +52,8 @@ int main(int argc, char *argv[])
 
         input = read_sexp(stdin);
         sexp = parse_input(input);
-        result = eval_sexp(sexp, lenv, global_dynamic_env, fenv, benv, genv, TRUE);
+        /* result = eval_sexp(sexp, TRUE, lenv, denv, fenv, benv, genv); */
+        result = MVCALL_EVAL(eval_sexp, sexp);
         print_object(result, standard_output);
         free_sexp(input);
     } while (1);

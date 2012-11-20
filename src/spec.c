@@ -104,12 +104,12 @@ PHEAD(lt_if)
 
 PHEAD(lt_lambda)
 {
-    RETURN(CALL_MK(make_Lisp_function, ARG1, RK));
+    RETURN(CALL_MAKER(make_Lisp_function, ARG1, RK));
 }
 
 PHEAD(lt_mk_macro)
 {
-    RETURN(CALL_MK(make_Lisp_macro, ARG1, RK));
+    RETURN(CALL_MAKER(make_Lisp_macro, ARG1, RK));
 }
 
 Cons values2cons(Values vals)
@@ -121,7 +121,6 @@ Cons values2cons(Values vals)
     v = theVALUES(vals);
     for (int i = 0; i < v->count; i++) {
         cur = make_cons(v->objs[i], lt_nil);
-        /* _CDR(pre) = cur; */
         set_cdr(pre, cur);
         pre = cur;
     }
@@ -146,18 +145,16 @@ PHEAD(lt_multiple_value_call)
             continue;
         if (SINGLE_VALUES_P(value)) {
             cur = make_cons(PRIMARY_VALUE(value), lt_nil);
-            /* _CDR(pre) = cur; */
             set_cdr(pre, cur);
             pre = cur;
         } else {
             cur = values2cons(value);
-            /* _CDR(pre) = cur; */
             set_cdr(pre, cur);
             while (CDR(pre) != lt_nil)
                 pre = CDR(pre);
         }
     }
-    RETURN(CALL_INVOKE(invoke_function, function, CDR(head)));
+    RETURN(CALL_INVOKER(invoke_function, function, CDR(head)));
 }
 
 PHEAD(lt_multiple_value_list)

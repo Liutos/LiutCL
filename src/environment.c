@@ -58,25 +58,6 @@ Environment extend_env(Symbol symbol, LispObject value, Environment env)
     return env;
 }
 
-Environment extend_env_by_kvs(Cons symbols, Cons values, Environment env)
-{
-    while (!TAIL_P(symbols)) {
-	if (TAIL_P(values)) {
-	    error_format("Too less values.\n");
-	    exit(1);
-	}
-	env = extend_env(CAR(symbols), CAR(values), env);
-	symbols = CDR(symbols);
-	values = CDR(values);
-    }
-    if (TAIL_P(values))
-	return env;
-    else {
-	error_format("Too much symbols.\n");
-        longjmp(toplevel, 1);
-    }
-}
-
 Environment extend_env_by_name(char *name, Package pkg, LispObject value, Environment env)
 {
     return extend_env(gen_symbol(name, pkg), value, env);
@@ -124,6 +105,25 @@ void describe_env(Environment env, Stream stream)
     }
 }
 
+Environment extend_env_by_kvs(Cons symbols, Cons values, Environment env)
+{
+    while (!TAIL_P(symbols)) {
+	if (TAIL_P(values)) {
+	    error_format("Too less values.\n");
+	    exit(1);
+	}
+	env = extend_env(CAR(symbols), CAR(values), env);
+	symbols = CDR(symbols);
+	values = CDR(values);
+    }
+    if (TAIL_P(values))
+	return env;
+    else {
+	error_format("Too much symbols.\n");
+        longjmp(toplevel, 1);
+    }
+}
+
 Environment make_new_env(Cons parms, Cons values, Environment prev_env)
 {
     Environment env;
@@ -132,6 +132,38 @@ Environment make_new_env(Cons parms, Cons values, Environment prev_env)
     env->next = prev_env;
 
     return extend_env_by_kvs(parms, values, env);
+}
+
+Environment make_local_env(List parms, List args, Environment lenv, arity_t arity)
+{
+    int nreq, nopt;
+    Environment tmp;
+
+    tmp = make_empty_env();
+    tmp->next = lenv;
+    lenv = tmp;
+    nreq = arity->req_count;
+    for (int i = 0; i < nreq; i++) {
+        extend_env(car(parms), car(args), lenv);
+        parms = cdr(parms);
+        args = cdr(args);
+    }
+    nopt = arity->opt_count;
+    /* Skip the &OPTIONAL symbol. */
+    if (nopt != 0)
+        parms = cdr(parms);
+    for (int i = 0; i < nopt; i++) {
+        extend_env(car(parms), car(args), lenv);
+        parms = cdr(parms);
+        args = cdr(args);
+    } /* ---TODO: 现在这样计算出来的&optional参数的默认值均为lt_nil，需要为Lisp函数调用时的环境进行填充。 */
+    if (TRUE == arity->rest_flag) {
+        /* Skip the &REST symbol. */
+        parms = cdr(parms);
+        extend_env(car(parms), args, lenv);
+    } /* ---TODO: 暂时不支持&key参数的初始化 */
+
+    return lenv;
 }
 
 BlockEnvironment make_block_env(Symbol name, jmp_buf context, BlockEnvironment prev_block_env)

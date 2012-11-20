@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2012-11-06 liutos <mat.liutos@gmail.com>
  */
+#include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,8 @@
 
 hash_table_t init_exprs;
 
+/* Auxiliary functions */
+/* The constructor for structure of type arity_t. */
 arity_t make_arity
 (int req_cnt,
  int opt_cnt,
@@ -44,33 +47,80 @@ arity_t make_arity
     return arity;
 }
 
+/* Computes the quantity of required parameters. Stores the quantity in `*nreq' and returns the remainning list without the required parameters. */
+static List parse_req(List parms, int *nreq)
+{
+    Symbol opt, rest, key;
+
+    opt = S("&OPTIONAL");
+    rest = S("&REST");
+    key = S("&KEY");
+    *nreq = 0;
+    while (CONS_P(parms)) {
+        if (eq(opt, car(parms)) || eq(rest, car(parms)) || eq(key, car(parms)))
+            break;
+        (*nreq)++;
+        parms = CDR(parms);
+    }
+
+    return parms;
+}
+
+/* Computes the quantity of optional parameters. Stores the quantity in `*nopt' and returns the remainning list without the optional parameters. */
+static List parse_opt(List parms, int *nopt)
+{
+    Symbol opt, rest, key;
+
+    opt = S("&OPTIONAL");
+    if (!eq(opt, car(parms))) {
+        *nopt = 0;
+        return parms;
+    }
+    rest = S("&REST");
+    key = S("&KEY");
+    *nopt = 0;
+    parms = cdr(parms);
+    while (CONS_P(parms)) {
+        if (eq(rest, car(parms)) || eq(key, car(parms)))
+            break;
+        (*nopt)++;
+        parms = CDR(parms);
+    }
+
+    return parms;
+}
+
+/* Sets the value stored in *rest_flag to TRUE if the car of `parms' is symbol &REST and returns the remainning list without rest specifier and parameter. Otherwise, sets false and returns the original list. */
+static List parse_rest(List parms, BOOL *rest_flag)
+{
+    Symbol rest;
+
+    rest = S("&REST");
+    if (eq(rest, car(parms))) {
+        *rest_flag = TRUE;
+        return cdr(cdr(parms));
+    } else {
+        *rest_flag = FALSE;
+        return parms;
+    }
+}
+
 arity_t parse_arity(List parms)
 {
     BOOL rest_flag;
     Symbol key, opt, rest;
     int key_count, opt_count, req_count;
+    List keywords;
 
     key = S("&key");
     opt = S("&optional");
     rest = S("&rest");
-    key_count = opt_count = req_count = 0;
     /* Required parameters */
-    while (CONS_P(parms)) {
-        if (eq(key, CAR(parms)) || eq(opt, CAR(parms)) || eq(rest, CAR(parms)))
-            break;
-        req_count++;
-        parms = CDR(parms);
-    }
+    parms = parse_req(parms, &req_count);
     /* Optional parameters */
-    if (eq(opt, CAR(parms))) {
-        parms = CDR(parms);
-        while (CONS_P(parms)) {
-            if (eq(key, CAR(parms)) || eq(rest, CAR(parms)))
-                break;
-            opt_count++;
-            parms = CDR(parms);
-        }
-    }
+    parms = parse_opt(parms, &opt_count);
+    /* Rest parameters */
+    parms = parse_rest(parms, &rest_flag);
     /* Keyword parameters */
     if (eq(key, CAR(parms))) {
         parms = CDR(parms);
@@ -85,22 +135,13 @@ arity_t parse_arity(List parms)
             parms = CDR(parms);
         }
     }
-    /* Rest parameters */
-    if (eq(rest, CAR(parms))) {
-        parms = CDR(parms);
-        if (CONS_P(parms))
-            rest_flag = TRUE;
-        parms = CDR(parms);
-        if (eq(key, CAR(parms)) || eq(opt, CAR(parms))) {
-            write_format(standard_error, "Lambda list marker $! not allowed here.\n");
-            exit(1);
-        } else if (parms != lt_nil) {
-            write_format(standard_error, "Lambda list element $! is superfluous. Only one var...\n", CAR(parms));
-            exit(1);
-        }
-    }
 
-    return make_arity(req_count, opt_count, rest_flag, key_count != 0, key_count, lt_nil);
+    return make_arity(req_count,
+                      opt_count,
+                      rest_flag,
+                      key_count != 0,
+                      key_count,
+                      lt_nil);
 }
 
 /* Constructor */
@@ -117,7 +158,7 @@ Function make_C_function(primitive_t C_fn, arity_t arity, FunctionType type)
     return TO_FUNCTION(fn);
 }
 
-Function make_Lisp_function(List parms, List expr, Environment lenv, Environment denv, Environment fenv, BlockEnvironment benv, GoEnvironment genv)
+DEFINE_MAKER(make_Lisp_function)
 {
     function_t fn;
 
@@ -135,6 +176,42 @@ Function make_Lisp_function(List parms, List expr, Environment lenv, Environment
     return TO_FUNCTION(fn);
 }
 
+DEFINE_MAKER(make_Lisp_macro)
+{
+    Function fn;
+
+    fn = CALL_MAKER(make_Lisp_function, parms, expr);
+    FTYPE(fn) = MACRO;
+
+    return fn;
+}
+
+
+BOOL is_C_function(Function fn)
+{
+    return TRUE == theFUNCTION(fn)->is_C_function;
+}
+
+/* Slot readers */
+List lambda_list(Function fn)
+{
+    assert(!is_C_function(fn));
+    return theFUNCTION(fn)->u.s.parameters;
+}
+
+List lambda_expression(Function fn)
+{
+    assert(!is_C_function(fn));
+    return theFUNCTION(fn)->u.s.body;
+}
+
+Environment fn_lexical_env(Function fn)
+{
+    assert(!is_C_function(fn));
+    return theFUNCTION(fn)->u.s.lexical_env;
+}
+
+/* Other operations */
 /* Generates a a-list, keyword as key and LispObject as value, for storing the mapping between keyword parameter name and their values. */
 List mk_kws(List keywords)
 {
@@ -144,7 +221,6 @@ List mk_kws(List keywords)
     while (CONS_P(keywords)) {
         cur = make_cons(CAR(keywords), lt_nil);
         cur = make_cons(cur, lt_nil);
-        /* _CDR(pre) = cur; */
         set_cdr(pre, cur);
         pre = cur;
         keywords = CDR(keywords);
@@ -168,7 +244,7 @@ Frame cons2frame(Cons args, arity_t arity)
         args = CDR(args);
     }
     for (; i < quantity; i++)
-        frame->rargs[i] = gunbound; /* 设置为NULL表示这些值没有绑定 */
+        frame->rargs[i] = gunbound;
     frame->rest = args;
     frame->kws = mk_kws(arity->keywords);
     {
@@ -218,7 +294,6 @@ List make_keywords_aux(va_list ap)
     pre = head = make_cons(lt_nil, lt_nil);
     while (name != NULL) {
         cur = make_cons(gen_symbol(name, pkg_kw), lt_nil);
-        /* _CDR(pre) = cur; */
         set_cdr(pre, cur);
         pre = cur;
         name = va_arg(ap, char *);
@@ -265,55 +340,6 @@ arity_t new_with_kws(arity_t tmpl, ...)
     return new;
 }
 
-DEFMK(make_Lisp_macro)
-{
-    Function fn;
-
-    fn = CALL_MK(make_Lisp_function, parms, expr);
-    FTYPE(fn) = MACRO;
-
-    return fn;
-}
-
-DEFINVOKE(invoke_C_function, C_fn, Frame)
-{
-    return PRIMITIVE(C_fn)(args, lenv, denv, fenv, benv, genv);
-}
-
-List frame2cons(Frame frame)
-{
-    Cons cur, head, pre;
-
-    pre = head = make_cons(lt_nil, lt_nil);
-    for (int i = 0; i < frame->quantity; i++) {
-        cur = make_cons(frame->rargs[i], lt_nil);
-        /* _CDR(pre) = cur; */
-        set_cdr(pre, cur);
-        pre = cur;
-    }
-    /* _CDR(pre) = frame->rest; */
-    set_cdr(pre, frame->rest);
-
-    return CDR(head);
-}
-
-LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment denv)
-{
-    BlockEnvironment benv;
-    Environment fenv;
-    Environment lenv;
-    GoEnvironment genv;
-
-    benv = BLOCK_ENV(Lisp_function);
-    fenv = FDEFINITION_ENV(Lisp_function);
-    lenv = make_new_env(PARAMETERS(Lisp_function),
-                        args,
-                        LEXICAL_ENV(Lisp_function));
-    genv = GO_ENV(Lisp_function);
-    
-    return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
-}
-
 Cons fn_init_exprs(Function fn)
 {
     List exprs;
@@ -325,7 +351,7 @@ Cons fn_init_exprs(Function fn)
         return exprs;
 }
 
-Frame fill_frame(Frame frame, Function fn, Environment lenv, Environment denv, Environment fenv, BlockEnvironment benv, GoEnvironment genv)
+DEFINE_WITH_ENV(Frame, fill_frame, Frame frame, Function fn)/* , Environment lenv, Environment denv, Environment fenv, BlockEnvironment benv, GoEnvironment genv) */
 {
     arity_t arity;
     int nreq, nopt, nkey;
@@ -358,7 +384,6 @@ Frame fill_frame(Frame frame, Function fn, Environment lenv, Environment denv, E
 
             kv = CAR(tmp);
             if (is_unbound(CDR(kv)))
-                /* _CDR(kv) = CALL_EVAL(eval_sexp, CAR(key_inits)); */
                 set_cdr(kv, CALL_EVAL(eval_sexp, CAR(key_inits)));
             tmp = CDR(tmp);
         }
@@ -367,15 +392,53 @@ Frame fill_frame(Frame frame, Function fn, Environment lenv, Environment denv, E
     return frame;
 }
 
-DEFINVOKE(invoke_function, function, Cons)
+DEFINE_INVOKER(invoke_C_function, C_fn, Cons)
+{
+    Frame frame;
+
+    frame = cons2frame(args, ARITY(C_fn));
+    frame = CALL_WITH_ENV(fill_frame, frame, C_fn);
+
+    return CALL_WITH_ENV(PRIMITIVE(C_fn), frame);
+}
+
+List frame2cons(Frame frame)
+{
+    Cons cur, head, pre;
+
+    pre = head = make_cons(lt_nil, lt_nil);
+    for (int i = 0; i < frame->quantity; i++) {
+        cur = make_cons(frame->rargs[i], lt_nil);
+        set_cdr(pre, cur);
+        pre = cur;
+    }
+    set_cdr(pre, frame->rest);
+
+    return CDR(head);
+}
+
+LispObject invoke_Lisp_function(Function Lisp_function, Cons args, Environment denv)
+{
+    BlockEnvironment benv;
+    Environment fenv;
+    Environment lenv;
+    GoEnvironment genv;
+
+    benv = BLOCK_ENV(Lisp_function);
+    fenv = FDEFINITION_ENV(Lisp_function);
+    lenv = make_local_env(lambda_list(Lisp_function),
+                          args,
+                          fn_lexical_env(Lisp_function),
+                          ARITY(Lisp_function));
+    genv = GO_ENV(Lisp_function);
+    
+    return CALL_EVAL(eprogn, EXPRESSION(Lisp_function));
+}
+
+DEFINE_INVOKER(invoke_function, function, Cons)
 {
     if (TRUE == FUNCTION_CFLAG(function)) {
-        Frame frame;
-
-        frame = cons2frame(args, ARITY(function));
-        frame = fill_frame(frame, function, lenv, denv, fenv, benv, genv);
-
-	return CALL_INVOKE(invoke_C_function, function, frame);
+	return CALL_INVOKER(invoke_C_function, function, args);
     } else if (REGULAR == FTYPE(function))
 	return invoke_Lisp_function(function, args, denv);
     else {
@@ -387,12 +450,13 @@ DEFINVOKE(invoke_function, function, Cons)
     }
 }
 
-Environment reg_primitive(char *fn_name,
-                          Package pkg,
-                          primitive_t prim,
-                          arity_t arity,
-                          FunctionType type,
-                          Environment fenv)
+Environment reg_primitive
+(char *fn_name,
+ Package pkg,
+ primitive_t prim,
+ arity_t arity,
+ FunctionType type,
+ Environment fenv)
 {
     Function fn;
 

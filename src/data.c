@@ -104,7 +104,6 @@ PHEAD(lt_make_list)
     LispObject init;
 
     size = ARG1;
-    /* VOI(init, "INITIAL-ELEMENT", lt_nil); */
     init = ARG2;
     RETURN(make_list_aux(theFIXNUM(size), init));
 }
@@ -136,7 +135,6 @@ PHEAD(lt_rplaca)
 
     cons = ARG1;
     object = ARG2;
-    /* _CAR(cons) = object; */
     set_car(cons, object);
     RETURN(cons);
 }
@@ -148,7 +146,6 @@ PHEAD(lt_rplacd)
 
     cons = ARG1;
     object = ARG2;
-    /* _CDR(cons) = object; */
     set_cdr(cons, object);
     RETURN(cons);
 }
@@ -168,12 +165,11 @@ PHEAD(lt_apply)
 
         pre = head = make_cons(arg, lt_nil);
         while (CONS_P(argv)) {
-            /* _CDR(pre) = make_cons(CAR(argv), lt_nil); */
             set_cdr(pre, make_cons(CAR(argv), lt_nil));
             pre = CDR(pre);
             argv = CDR(argv);
         }
-        RETURN(CALL_INVOKE(invoke_function, fn, head));
+        RETURN(CALL_INVOKER(invoke_function, fn, head));
     }
 }
 
@@ -184,7 +180,7 @@ PHEAD(lt_funcall)
     fn = ARG1;
     args->rargs = args->rargs + 1;
     args->quantity--;
-    RETURN(CALL_INVOKE(invoke_function, fn, frame2cons(args)));
+    RETURN(CALL_INVOKER(invoke_function, fn, frame2cons(args)));
 }
 
 PHEAD(lt_functionp)
@@ -246,8 +242,6 @@ PHEAD(lt_make_string)
 
     size = ARG1;
     VOI(init, "INITIAL-ELEMENT", make_char('\0')); /* ---TODO: Do not set initial value of keyword parameters within the function body. */
-    /* if (is_unbound(type = KV("ELEMENT-TYPE"))) */
-    /*     type = S("CHARACTER"); */
     VOI(type, "ELEMENT-TYPE", S("CHARACTER"));
     string = make_string("");
     for (int n = theFIXNUM(size); n != 0; n--)
@@ -277,8 +271,6 @@ PHEAD(lt_find_symbol)
 
     string = ARG1;
     pkg = ARG2;
-    /* if (is_unbound(pkg = ARG2)) */
-    /*     pkg = package; */
     symbol = get_symbol(STRING_CONTENT(theSTRING(string)),
                         PACKAGE_HASH_TABLE(pkg));
     if (NULL == symbol)

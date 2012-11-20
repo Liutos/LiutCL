@@ -6,9 +6,8 @@
 #include "macro_def.h"
 #include "types.h"
 
-extern DEFEVAL(eprogn, _);
-extern DEFEVAL(eval_operator, _);
-extern DEFEVAL(eval_sexp, _);
+extern DEFINE_EVAL(eprogn, _);
+extern DEFINE_EVAL(eval_sexp, _);
 
 extern jmp_buf escape;
 
