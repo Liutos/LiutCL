@@ -41,6 +41,7 @@
        (let ((lhs (interpret (second expr) venv))
              (rhs (interpret (third expr) venv)))
          (/ lhs rhs)))
+      (let (interpret-let expr venv))
       (progn
         (let (last)
           (dolist (e (rest expr))
@@ -52,6 +53,18 @@
               (obj (interpret arg venv)))
          (assert (typep obj 'string))
          (format t "~A" obj))))))
+
+(defun interpret-let (expr venv)
+  (check-type expr cons)
+  (assert (eq (first expr) 'let))
+  (multiple-value-bind (bindings body)
+      (transform-let expr)
+    (let ((extended venv))
+      (dolist (binding bindings)
+        (destructuring-bind (var . val)
+            binding
+          (setf extended (extend extended var (interpret val venv)))))
+      (interpret body extended))))
 
 (defun load-source-file (filespec)
   (check-type filespec string)
@@ -89,10 +102,38 @@
         (format t "测试通过：~A => ~A~%" source-code output)
         (format t "测试失败：~A => ~A != ~A~%" source-code output expected))))
 
+(defun transform-let (expr)
+  "将一个LET语法分解为一系列的绑定和一个PROGN语法。"
+  (check-type expr cons)
+  (labels ((aux (bindings forms stack)
+             (unless forms
+               (return-from aux
+                 (values bindings `(progn ,@(nreverse stack)))))
+
+             (let ((next (first forms)))
+               (cond ((eq next '=)
+                      (assert (> (length stack) 0))
+                      (let ((var (pop stack))
+                            (val (second forms)))
+                        (if (> (length stack) 0)
+                            (return-from aux
+                              (values bindings
+                                      `(progn ,@(nreverse stack)
+                                              (let ,var = ,val
+                                                ,@(rest (rest forms))))))
+                            (aux (cons (cons var val) bindings)
+                                 (rest (rest forms))
+                                 stack))))
+                     (t
+                      (aux bindings (rest forms) (push next stack)))))))
+    (aux '() (rest expr) '())))
+
 (defun run-test-cases ()
   (test-interpret "123" 123)
   (test-interpret "(+ 1 (+ 2 3))" 6)
   (test-interpret "(- 1 (- 2 3))" 2)
   (test-interpret "(* 1 (* 2 3))" 6)
   (test-interpret "(/ 1 (/ 2 3))" 3/2)
-  (test-interpret "foo" 233))
+  (test-interpret "foo" 233)
+  (test-interpret "(let a = 1 b = 2 (+ a b))" 3)
+  (test-interpret "(let a = 1 (+ a 1) b = 2 (+ a b) c = 3 (+ a (+ b c)))" 6))
