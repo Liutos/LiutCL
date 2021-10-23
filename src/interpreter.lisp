@@ -11,6 +11,30 @@
 (defgeneric lookup (venv sym)
   (:documentation "在值环境中查找标识符的值。"))
 
+;;; 定义233-lisp中的函数对象需要满足的接口。
+(defgeneric get-body (func)
+  (:documentation "获取函数体的表达式列表。"))
+(defgeneric get-parameters (func)
+  (:documentation "获取函数的参数列表。"))
+
+(defclass <func> ()
+  ((body
+    :documentation "函数体的表达式列表，它们被包裹在一个隐式的LET语法中。"
+    :initarg :body)
+   (params
+    :documentation "参数列表。"
+    :initarg :params)))
+
+(defun make-func (body params)
+  (check-type body list)
+  (check-type params list)
+  (make-instance '<func> :body body :params params))
+
+(defmethod get-body ((func <func>))
+  (slot-value func 'body))
+(defmethod get-parameters ((func <func>))
+  (slot-value func 'params))
+
 (defun interpret (expr venv)
   (when (symbolp expr)
     (return-from interpret (lookup venv expr)))
@@ -20,6 +44,7 @@
 
   (let ((func (first expr)))
     (case func
+      (defun (interpret-defun expr venv))
       (let (interpret-let expr venv))
       (progn
         (let (last)
@@ -38,10 +63,38 @@
                                 (interpret arg venv))
                             args))
               (func (interpret func venv)))
-         (unless (functionp func)
-           (error "仅支持调用 CL 的原生函数：~A" func))
+         (when (functionp func)
+           (return-from interpret
+             (apply func vals)))
 
-         (apply func vals))))))
+         (let* ((body (get-body func))
+                (params (get-parameters func))
+                (new-venv
+                  (reduce #'(lambda (acc e)
+                              (destructuring-bind (var . val)
+                                  e
+                                (extend acc var val)))
+                          (mapcar #'(lambda (param expr)
+                                      (cons param
+                                            (interpret expr venv)))
+                                  params (rest expr))
+                          :initial-value venv)))
+           (interpret `(let ,@body) new-venv)))))))
+
+(defparameter *top-level-venv*
+  '()
+  "全局顶层值环境。")
+
+(defun interpret-defun (expr venv)
+  (declare (ignorable venv))            ; TODO: venv应当是影响这个函数是否为一个闭包的关键，之后再处理。
+  (check-type expr cons)
+  (assert (eq (first expr) 'defun))
+  (let* ((body (rest (rest (rest expr))))
+         (name (second expr))
+         (params (third expr))
+         (func (make-func body params)))
+    (push (cons name func) *top-level-venv*)
+    func))
 
 (defun interpret-let (expr venv)
   (check-type expr cons)
@@ -79,7 +132,8 @@
 (defmethod extend ((venv list) (sym symbol) val)
   (cons (cons sym val) venv))
 (defmethod lookup ((venv list) (sym symbol))
-  (cdr (assoc sym venv)))
+  (or (cdr (assoc sym venv))
+      (cdr (assoc sym *top-level-venv*))))
 
 (defparameter *testing-venv*
   (let ((bindings (list (list '* #'*)
@@ -135,4 +189,5 @@
   (test-interpret "(/ 1 (/ 2 3))" 3/2)
   (test-interpret "foo" 233)
   (test-interpret "(let a = 1 b = 2 (+ a b))" 3)
-  (test-interpret "(let a = 1 (+ a 1) b = 2 (+ a b) c = 3 (+ a (+ b c)))" 6))
+  (test-interpret "(let a = 1 (+ a 1) b = 2 (+ a b) c = 3 (+ a (+ b c)))" 6)
+  (test-interpret "(defun 1+ (x) (+ x 1)) (1+ 2)" 3))
