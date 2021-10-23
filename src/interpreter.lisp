@@ -19,28 +19,7 @@
     (return-from interpret expr))
 
   (let ((func (first expr)))
-    (ecase func
-      ;; TODO: 将加减乘除法运算都实现为函数，减少函数 interpret 的体积。
-      (*
-       (assert (= (length expr) 3))
-       (let ((lhs (interpret (second expr) venv))
-             (rhs (interpret (third expr) venv)))
-         (* lhs rhs)))
-      (+
-       (assert (= (length expr) 3))
-       (let ((lhs (interpret (second expr) venv))
-             (rhs (interpret (third expr) venv)))
-         (+ lhs rhs)))
-      (-
-       (assert (= (length expr) 3))
-       (let ((lhs (interpret (second expr) venv))
-             (rhs (interpret (third expr) venv)))
-         (- lhs rhs)))
-      (/
-       (assert (= (length expr) 3))
-       (let ((lhs (interpret (second expr) venv))
-             (rhs (interpret (third expr) venv)))
-         (/ lhs rhs)))
+    (case func
       (let (interpret-let expr venv))
       (progn
         (let (last)
@@ -52,7 +31,17 @@
        (let* ((arg (second expr))
               (obj (interpret arg venv)))
          (assert (typep obj 'string))
-         (format t "~A" obj))))))
+         (format t "~A" obj)))
+      (t
+       (let* ((args (rest expr))
+              (vals (mapcar #'(lambda (arg)
+                                (interpret arg venv))
+                            args))
+              (func (interpret func venv)))
+         (unless (functionp func)
+           (error "仅支持调用 CL 的原生函数：~A" func))
+
+         (apply func vals))))))
 
 (defun interpret-let (expr venv)
   (check-type expr cons)
@@ -93,7 +82,16 @@
   (cdr (assoc sym venv)))
 
 (defparameter *testing-venv*
-  (extend '() 'foo 233))
+  (let ((bindings (list (list '* #'*)
+                        (list '+ #'+)
+                        (list '- #'-)
+                        (list '/ #'/)))
+        (venv '()))
+    (dolist (binding bindings)
+      (destructuring-bind (name func)
+          binding
+        (setf venv (extend venv name func))))
+    venv))
 
 (defun test-interpret (source-code expected)
   (check-type source-code string)
@@ -105,6 +103,7 @@
 (defun transform-let (expr)
   "将一个LET语法分解为一系列的绑定和一个PROGN语法。"
   (check-type expr cons)
+  ;; TODO: 这里用一个类似while循环的语法来代替递归应当是更可读的。
   (labels ((aux (bindings forms stack)
              (unless forms
                (return-from aux
