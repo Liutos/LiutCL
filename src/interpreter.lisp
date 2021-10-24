@@ -16,6 +16,8 @@
   (:documentation "获取函数体的表达式列表。"))
 (defgeneric get-parameters (func)
   (:documentation "获取函数的参数列表。"))
+(defgeneric get-tag (func)
+  (:documentation "获取函数存储RETURN POINT的标号。"))
 
 (defclass <func> ()
   ((body
@@ -23,17 +25,25 @@
     :initarg :body)
    (params
     :documentation "参数列表。"
-    :initarg :params)))
+    :initarg :params)
+   (tag
+    :documentation "用于捕捉RETURN语句的标号。"
+    :initarg :tag)))
 
-(defun make-func (body params)
+(defun make-func (body params tag)
   (check-type body list)
   (check-type params list)
-  (make-instance '<func> :body body :params params))
+  (check-type tag symbol)
+  (make-instance '<func> :body body :params params :tag tag))
 
 (defmethod get-body ((func <func>))
   (slot-value func 'body))
 (defmethod get-parameters ((func <func>))
   (slot-value func 'params))
+(defmethod get-tag ((func <func>))
+  (slot-value func 'tag))
+
+(defparameter *symbol-return-from* '#:return-from)
 
 (defun interpret (expr venv)
   (when (symbolp expr)
@@ -43,6 +53,11 @@
     (return-from interpret expr))
 
   (let ((func (first expr)))
+    (when (eq func *symbol-return-from*)
+      (let ((form (third expr))
+            (tag (second expr)))
+        (throw tag (interpret form venv))))
+
     (case func
       (defun (interpret-defun expr venv))
       (let (interpret-let expr venv))
@@ -79,7 +94,8 @@
                                             (interpret expr venv)))
                                   params (rest expr))
                           :initial-value venv)))
-           (interpret `(let ,@body) new-venv)))))))
+           (catch (get-tag func)
+             (interpret `(let ,@body) new-venv))))))))
 
 (defparameter *top-level-venv*
   '()
@@ -92,7 +108,8 @@
   (let* ((body (rest (rest (rest expr))))
          (name (second expr))
          (params (third expr))
-         (func (make-func body params)))
+         (tag (gensym))
+         (func (make-func (rewrite-defun-return body tag) params tag)))
     (push (cons name func) *top-level-venv*)
     func))
 
@@ -128,6 +145,19 @@
   (check-type str string)
   (with-input-from-string (s str)
     (read-source-code s)))
+
+(defun rewrite-defun-return (body tag)
+  "重写DEFUN的函数体部分，将RETURN替换为RETURN-FROM，塞入一个标号。"
+  (check-type tag symbol)
+  (assert (null (symbol-package tag)))
+  (when (atom body)
+    (return-from rewrite-defun-return body))
+
+  (if (eq (first body) 'return)
+      `(,*symbol-return-from* ,tag ,@(rest body))
+      (mapcar #'(lambda (expr)
+                  (rewrite-defun-return expr tag))
+              body)))
 
 (defmethod extend ((venv list) (sym symbol) val)
   (cons (cons sym val) venv))
@@ -190,4 +220,5 @@
   (test-interpret "foo" 233)
   (test-interpret "(let a = 1 b = 2 (+ a b))" 3)
   (test-interpret "(let a = 1 (+ a 1) b = 2 (+ a b) c = 3 (+ a (+ b c)))" 6)
-  (test-interpret "(defun 1+ (x) (+ x 1)) (1+ 2)" 3))
+  (test-interpret "(defun 1+ (x) (+ x 1)) (1+ 2)" 3)
+  (test-interpret "(defun early (x) (return (+ x 2)) (+ x 1)) (early 3)" 5))
