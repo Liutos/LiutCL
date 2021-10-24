@@ -69,6 +69,7 @@
 
     (case func
       (defun (interpret-defun expr venv))
+      (for (interpret-for expr venv))
       (if (interpret-if expr venv))
       (let (interpret-let expr venv))
       (progn
@@ -123,6 +124,16 @@
          (func (make-func (rewrite-defun-return body tag) params tag)))
     (push (cons name func) *top-level-venv*)
     func))
+
+(defun interpret-for (expr venv)
+  (assert (eq (first expr) 'for))
+  (destructuring-bind (test . body)
+      (rest expr)
+    (loop
+      (unless (interpret test venv)
+        (return-from interpret-for))
+
+      (interpret `(progn ,@body) venv))))
 
 (defun interpret-if (expr venv)
   (assert (eq (first expr) 'if))
@@ -205,7 +216,8 @@
                         (list '+ #'+)
                         (list '- #'-)
                         (list '/ #'/)
-                        (list 'foo 233)))
+                        (list 'foo 233)
+                        (list '< #'<)))
         (venv '()))
     (dolist (binding bindings)
       (destructuring-bind (name func)
@@ -260,4 +272,5 @@
   (test-interpret "(defun early (x) (return (+ x 2)) (+ x 1)) (early 3)" 5)
   (test-interpret "(if t 1 2)" 1)
   (test-interpret "(if nil 1 2)" 2)
-  (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2))
+  (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2)
+  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (setf sum (+ sum a)) (setf a (+ a 1))) sum)" 15))
