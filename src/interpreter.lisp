@@ -14,6 +14,8 @@
   (:documentation "扩展值环境。"))
 (defgeneric lookup (venv sym)
   (:documentation "在值环境中查找标识符的值。"))
+(defgeneric modify (venv sym val)
+  (:documentation "修改值环境中已有的一个变量的值。"))
 
 ;;; 定义233-lisp中的函数对象需要满足的接口。
 (defgeneric get-body (func)
@@ -80,6 +82,7 @@
               (obj (interpret arg venv)))
          (assert (typep obj 'string))
          (format t "~A" obj)))
+      (setf (interpret-setf expr venv))
       (t
        (let* ((args (rest expr))
               (vals (mapcar #'(lambda (arg)
@@ -141,6 +144,14 @@
           (setf extended (extend extended var (interpret val venv)))))
       (interpret body extended))))
 
+(defun interpret-setf (expr venv)
+  (assert (eq (first expr) 'setf))
+  (destructuring-bind (var val)
+      (rest expr)
+    (let ((val (interpret val venv)))
+      (modify venv var val)
+      val)))
+
 (defun load-source-file (filespec)
   (check-type filespec string)
   (with-open-file (s filespec)
@@ -180,6 +191,14 @@
 (defmethod lookup ((venv list) (sym symbol))
   (or (cdr (assoc sym venv))
       (cdr (assoc sym *top-level-venv*))))
+(defmethod modify ((venv list) (sym symbol) val)
+  (let ((binding (assoc sym venv)))
+    (unless binding
+      (setf binding (assoc sym *top-level-venv*)))
+    (unless binding
+      (error "变量未定义：~A" sym))
+
+    (setf (cdr binding) val)))
 
 (defparameter *testing-venv*
   (let ((bindings (list (list '* #'*)
@@ -240,4 +259,5 @@
   (test-interpret "(defun 1+ (x) (+ x 1)) (1+ 2)" 3)
   (test-interpret "(defun early (x) (return (+ x 2)) (+ x 1)) (early 3)" 5)
   (test-interpret "(if t 1 2)" 1)
-  (test-interpret "(if nil 1 2)" 2))
+  (test-interpret "(if nil 1 2)" 2)
+  (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2))
