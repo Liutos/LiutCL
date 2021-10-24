@@ -6,6 +6,10 @@
 
 (in-package #:com.liutos.liutcl.interpreter)
 
+;;; 下列代码来自：https://ambrevar.xyz/modern-common-lisp/index.html?utm_source=pocket_mylist#orgf68c5ba
+;;; 可以让 SBCL 允许用 step 单步调试
+(declaim (optimize (speed 0) (space 0) (debug 3)))
+
 (defgeneric extend (venv sym val)
   (:documentation "扩展值环境。"))
 (defgeneric lookup (venv sym)
@@ -46,6 +50,9 @@
 (defparameter *symbol-return-from* '#:return-from)
 
 (defun interpret (expr venv)
+  (when (member expr '(nil t))
+    (return-from interpret expr))
+
   (when (symbolp expr)
     (return-from interpret (lookup venv expr)))
 
@@ -60,6 +67,7 @@
 
     (case func
       (defun (interpret-defun expr venv))
+      (if (interpret-if expr venv))
       (let (interpret-let expr venv))
       (progn
         (let (last)
@@ -112,6 +120,14 @@
          (func (make-func (rewrite-defun-return body tag) params tag)))
     (push (cons name func) *top-level-venv*)
     func))
+
+(defun interpret-if (expr venv)
+  (assert (eq (first expr) 'if))
+  (destructuring-bind (test then else)
+      (rest expr)
+    (if (interpret test venv)
+        (interpret then venv)
+        (interpret else venv))))
 
 (defun interpret-let (expr venv)
   (check-type expr cons)
@@ -169,7 +185,8 @@
   (let ((bindings (list (list '* #'*)
                         (list '+ #'+)
                         (list '- #'-)
-                        (list '/ #'/)))
+                        (list '/ #'/)
+                        (list 'foo 233)))
         (venv '()))
     (dolist (binding bindings)
       (destructuring-bind (name func)
@@ -221,4 +238,6 @@
   (test-interpret "(let a = 1 b = 2 (+ a b))" 3)
   (test-interpret "(let a = 1 (+ a 1) b = 2 (+ a b) c = 3 (+ a (+ b c)))" 6)
   (test-interpret "(defun 1+ (x) (+ x 1)) (1+ 2)" 3)
-  (test-interpret "(defun early (x) (return (+ x 2)) (+ x 1)) (early 3)" 5))
+  (test-interpret "(defun early (x) (return (+ x 2)) (+ x 1)) (early 3)" 5)
+  (test-interpret "(if t 1 2)" 1)
+  (test-interpret "(if nil 1 2)" 2))
