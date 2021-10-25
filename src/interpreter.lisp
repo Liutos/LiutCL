@@ -56,7 +56,11 @@
     (return-from interpret expr))
 
   (when (symbolp expr)
-    (return-from interpret (lookup venv expr)))
+    (let ((val (lookup venv expr)))
+      (unless val
+        (error "变量~A未定义" expr))
+
+      (return-from interpret val)))
 
   (when (atom expr)
     (return-from interpret expr))
@@ -68,6 +72,7 @@
         (throw tag (interpret form venv))))
 
     (case func
+      (break (interpret-break expr venv))
       (defun (interpret-defun expr venv))
       (for (interpret-for expr venv))
       (if (interpret-if expr venv))
@@ -113,6 +118,14 @@
   '()
   "全局顶层值环境。")
 
+(defparameter *symbol-throw-tag-for-break* '#:tag-for-break
+  "用于由BREAK抛出，被FOR循环捕捉的符号。")
+
+(defun interpret-break (expr venv)
+  (declare (ignorable expr venv))
+  (assert (eq (first expr) 'break))
+  (throw *symbol-throw-tag-for-break* nil))
+
 (defun interpret-defun (expr venv)
   (declare (ignorable venv))            ; TODO: venv应当是影响这个函数是否为一个闭包的关键，之后再处理。
   (check-type expr cons)
@@ -129,11 +142,12 @@
   (assert (eq (first expr) 'for))
   (destructuring-bind (test . body)
       (rest expr)
-    (loop
-      (unless (interpret test venv)
-        (return-from interpret-for))
+    (catch *symbol-throw-tag-for-break*
+      (loop
+        (unless (interpret test venv)
+          (return-from interpret-for))
 
-      (interpret `(progn ,@body) venv))))
+        (interpret `(progn ,@body) venv)))))
 
 (defun interpret-if (expr venv)
   (assert (eq (first expr) 'if))
@@ -217,7 +231,8 @@
                         (list '- #'-)
                         (list '/ #'/)
                         (list 'foo 233)
-                        (list '< #'<)))
+                        (list '< #'<)
+                        (list '= #'=)))
         (venv '()))
     (dolist (binding bindings)
       (destructuring-bind (name func)
@@ -273,4 +288,5 @@
   (test-interpret "(if t 1 2)" 1)
   (test-interpret "(if nil 1 2)" 2)
   (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2)
-  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (setf sum (+ sum a)) (setf a (+ a 1))) sum)" 15))
+  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (setf sum (+ sum a)) (setf a (+ a 1))) sum)" 15)
+  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (if (= a 2) (break) (setf sum (+ sum a))) (setf a (+ a 1))) sum)" 1))
