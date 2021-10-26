@@ -118,6 +118,12 @@
   '()
   "全局顶层值环境。")
 
+(defun init-top-level-venv ()
+  (let ((venv '()))
+    (setf venv (extend venv '< #'<))
+    (setf venv (extend venv '+ #'+))
+    (setf *top-level-venv* venv)))
+
 (defparameter *symbol-throw-tag-for-break* '#:tag-for-break
   "用于由BREAK抛出，被FOR循环捕捉的符号。")
 
@@ -179,11 +185,13 @@
 
 (defun load-source-file (filespec)
   (check-type filespec string)
+  (init-top-level-venv)
   (with-open-file (s filespec)
-    (interpret (read-source-code s))))
+    (interpret (read-source-code s) nil)))
 
 (defun read-source-code (stream)
-  (let ((*readtable* (copy-readtable nil)))
+  (let ((*package* (find-package '#:com.liutos.liutcl.interpreter))
+        (*readtable* (copy-readtable nil)))
     (let ((eof (gensym))
           (exprs '()))
       (loop
