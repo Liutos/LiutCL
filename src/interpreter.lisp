@@ -73,6 +73,7 @@
 
     (case func
       (break (interpret-break expr venv))
+      (continue (interpret-continue expr venv))
       (defun (interpret-defun expr venv))
       (for (interpret-for expr venv))
       (if (interpret-if expr venv))
@@ -132,6 +133,12 @@
   (assert (eq (first expr) 'break))
   (throw *symbol-throw-tag-for-break* nil))
 
+(defparameter *symbol-throw-tag-for-continue* '#:tag-for-continue)
+
+(defun interpret-continue (expr venv)
+  (declare (ignorable expr venv))
+  (throw *symbol-throw-tag-for-continue* nil))
+
 (defun interpret-defun (expr venv)
   (declare (ignorable venv))            ; TODO: venv应当是影响这个函数是否为一个闭包的关键，之后再处理。
   (check-type expr cons)
@@ -153,7 +160,8 @@
         (unless (interpret test venv)
           (return-from interpret-for))
 
-        (interpret `(progn ,@body) venv)))))
+        (catch *symbol-throw-tag-for-continue*
+          (interpret `(progn ,@body) venv))))))
 
 (defun interpret-if (expr venv)
   (assert (eq (first expr) 'if))
@@ -297,4 +305,5 @@
   (test-interpret "(if nil 1 2)" 2)
   (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2)
   (test-interpret "(let a = 0 sum = 0 (for (< a 6) (setf sum (+ sum a)) (setf a (+ a 1))) sum)" 15)
-  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (if (= a 2) (break) (setf sum (+ sum a))) (setf a (+ a 1))) sum)" 1))
+  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (if (= a 2) (break) (setf sum (+ sum a))) (setf a (+ a 1))) sum)" 1)
+  (test-interpret "(let i = 0 sum = 0 (for (< i 6) (if (= i 3) (progn (setf i (+ i 1)) (continue)) (print \"Hi\")) (setf sum (+ sum i)) (setf i (+ i 1))) sum)" 12))
