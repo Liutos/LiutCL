@@ -9,10 +9,11 @@
   :author "Liutos <mat.liutos@gmail.com>"
   :version "0.1.0"
   :depends-on ()
+  :pathname "src/"
   :components
-  ((:module "src"
-    :components
-    ((:file "interpreter")))))
+  ((:file "interpreter" :depends-on ("package" "reader"))
+   (:file "package")
+   (:file "reader" :depends-on ("package"))))
 
 (defsystem #:liutcl/test
   :author "Liutos <mat.liutos@gmail.com>"
