@@ -13,3 +13,14 @@
   ((:module "src"
     :components
     ((:file "interpreter")))))
+
+(defsystem #:liutcl/test
+  :author "Liutos <mat.liutos@gmail.com>"
+  :version "0.1.0"
+  :depends-on (#:fiveam
+               #:liutcl)
+  :pathname "t/"
+  :components
+  ((:file "interpreter"))
+  :perform (test-op (o c)
+                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :interpret :com.liutos.liutcl.interpreter.test))))

@@ -282,13 +282,6 @@
         (setf venv (extend venv name func))))
     venv))
 
-(defun test-interpret (source-code expected)
-  (check-type source-code string)
-  (let ((output (interpret (read-source-code-from-string source-code) *testing-venv*)))
-    (if (equal output expected)
-        (format t "测试通过：~A => ~A~%" source-code output)
-        (format t "测试失败：~A => ~A != ~A~%" source-code output expected))))
-
 (defun transform-let (expr)
   "将一个LET语法分解为一系列的绑定和一个PROGN语法。"
   (check-type expr cons)
@@ -315,22 +308,3 @@
                      (t
                       (aux bindings (rest forms) (push next stack)))))))
     (aux '() (rest expr) '())))
-
-(defun run-test-cases ()
-  (test-interpret "123" 123)
-  (test-interpret "(+ 1 (+ 2 3))" 6)
-  (test-interpret "(- 1 (- 2 3))" 2)
-  (test-interpret "(* 1 (* 2 3))" 6)
-  (test-interpret "(/ 1 (/ 2 3))" 3/2)
-  (test-interpret "foo" 233)
-  (test-interpret "(let a = 1 b = 2 (+ a b))" 3)
-  (test-interpret "(let a = 1 (+ a 1) b = 2 (+ a b) c = 3 (+ a (+ b c)))" 6)
-  (test-interpret "(defun 1+ (x) (+ x 1)) (1+ 2)" 3)
-  (test-interpret "(defun early (x) (return (+ x 2)) (+ x 1)) (early 3)" 5)
-  (test-interpret "(if t 1 2)" 1)
-  (test-interpret "(if nil 1 2)" 2)
-  (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2)
-  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (setf sum (+ sum a)) (setf a (+ a 1))) sum)" 15)
-  (test-interpret "(let a = 0 sum = 0 (for (< a 6) (if (= a 2) (break) (setf sum (+ sum a))) (setf a (+ a 1))) sum)" 1)
-  (test-interpret "(let i = 0 sum = 0 (for (< i 6) (if (= i 3) (progn (setf i (+ i 1)) (continue)) (print \"Hi\")) (setf sum (+ sum i)) (setf i (+ i 1))) sum)" 12)
-  (test-interpret "\"Hello, world!\\n\"" (format nil "Hello, world!~%")))
