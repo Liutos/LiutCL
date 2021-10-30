@@ -93,6 +93,9 @@
          (when (functionp func)
            (return-from interpret
              (apply func vals)))
+         (when (hash-table-p func)
+           (return-from interpret
+             (interpret-access func (first vals))))
 
          (let* ((body (get-body func))
                 (params (get-parameters func))
@@ -157,6 +160,12 @@
 
         (catch *symbol-throw-tag-for-continue*
           (interpret `(progn ,@body) venv))))))
+
+(defun interpret-access (container indicator)
+  "对访问字典对象的表达式求值。"
+  (check-type container hash-table)
+  (check-type indicator (or number string))
+  (gethash indicator container))
 
 (defun interpret-if (expr venv)
   (assert (eq (first expr) 'if))
