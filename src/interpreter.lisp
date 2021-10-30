@@ -206,9 +206,26 @@
       (interpret (cons 'progn filtered) nil)
       (interpret '(main) nil))))
 
+(defun |"-reader| (stream char)
+  "读取字符串并识别其中的C语言风格的转义序列。"
+  (declare (ignorable char))
+  (let ((cs '()))
+    (loop
+      (let ((c (read-char stream)))
+        (cond ((char= c #\")
+               (return-from |"-reader|
+                 (coerce (nreverse cs) 'string)))
+              ((char= c #\\)
+               (let ((c (read-char stream)))
+                 (ecase c
+                   (#\n (push #\Newline cs))
+                   (#\t (push #\Tab cs)))))
+              (t (push c cs)))))))
+
 (defun read-source-code (stream)
   (let ((*package* (find-package '#:com.liutos.liutcl.interpreter))
         (*readtable* (copy-readtable nil)))
+    (set-macro-character #\" '|"-reader|)
     (let ((eof (gensym))
           (exprs '()))
       (loop
@@ -315,4 +332,5 @@
   (test-interpret "(let a = 1 (setf a (+ a 1)) a)" 2)
   (test-interpret "(let a = 0 sum = 0 (for (< a 6) (setf sum (+ sum a)) (setf a (+ a 1))) sum)" 15)
   (test-interpret "(let a = 0 sum = 0 (for (< a 6) (if (= a 2) (break) (setf sum (+ sum a))) (setf a (+ a 1))) sum)" 1)
-  (test-interpret "(let i = 0 sum = 0 (for (< i 6) (if (= i 3) (progn (setf i (+ i 1)) (continue)) (print \"Hi\")) (setf sum (+ sum i)) (setf i (+ i 1))) sum)" 12))
+  (test-interpret "(let i = 0 sum = 0 (for (< i 6) (if (= i 3) (progn (setf i (+ i 1)) (continue)) (print \"Hi\")) (setf sum (+ sum i)) (setf i (+ i 1))) sum)" 12)
+  (test-interpret "\"Hello, world!\\n\"" (format nil "Hello, world!~%")))
