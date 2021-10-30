@@ -117,6 +117,7 @@
   (let ((venv '()))
     (setf venv (extend venv '< #'<))
     (setf venv (extend venv '+ #'+))
+    (setf venv (extend venv 'dict #'make-dict))
     (setf *top-level-venv* venv)))
 
 (defparameter *symbol-throw-tag-for-break* '#:tag-for-break

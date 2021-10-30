@@ -11,9 +11,10 @@
   :depends-on ()
   :pathname "src/"
   :components
-  ((:file "interpreter" :depends-on ("package" "reader"))
+  ((:file "interpreter" :depends-on ("package" "reader" "stdlib"))
    (:file "package")
-   (:file "reader" :depends-on ("package"))))
+   (:file "reader" :depends-on ("package"))
+   (:file "stdlib" :depends-on ("package"))))
 
 (defsystem #:liutcl/test
   :author "Liutos <mat.liutos@gmail.com>"
@@ -24,4 +25,5 @@
   :components
   ((:file "interpreter"))
   :perform (test-op (o c)
+                    (uiop:symbol-call :com.liutos.liutcl.interpreter :init-top-level-venv)
                     (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :interpret :com.liutos.liutcl.interpreter.test))))
