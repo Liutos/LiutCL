@@ -14,7 +14,8 @@
   ((:file "interpreter" :depends-on ("package" "reader" "stdlib"))
    (:file "package")
    (:file "reader" :depends-on ("package"))
-   (:file "stdlib" :depends-on ("package"))))
+   (:file "stdlib" :depends-on ("package"))
+   (:file "typing" :depends-on ("package"))))
 
 (defsystem #:liutcl/test
   :author "Liutos <mat.liutos@gmail.com>"
@@ -23,7 +24,10 @@
                #:liutcl)
   :pathname "t/"
   :components
-  ((:file "interpreter"))
+  ((:file "interpreter" :depends-on ("package"))
+   (:file "package")
+   (:file "typing" :depends-on ("package")))
   :perform (test-op (o c)
                     (uiop:symbol-call :com.liutos.liutcl.interpreter :init-top-level-venv)
-                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :interpret :com.liutos.liutcl.interpreter.test))))
+                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :interpret :com.liutos.liutcl.interpreter.test))
+                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :check-233-type :com.liutos.liutcl.interpreter.test))))
