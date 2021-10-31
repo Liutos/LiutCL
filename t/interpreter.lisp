@@ -49,5 +49,6 @@
                         (let ((ht (make-hash-table :test #'equal)))
                           (setf (gethash "a" ht) 1)
                           ht)))
-  (is (equal (read-and-interpret "(let d = (dict \"a\" \"A\" \"b\" \"C\") (d \"a\"))") "A")))
+  (is (equal (read-and-interpret "(let d = (dict \"a\" \"A\" \"b\" \"C\") (d \"a\"))") "A"))
+  (is (equal (read-and-interpret "(let d = (dict \"a\" \"A\" \"b\" \"C\") (setf (d \"c\") \"D\") (d \"c\"))") "D")))
 
