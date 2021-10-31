@@ -4,13 +4,6 @@
 ;;; 可以让 SBCL 允许用 step 单步调试
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 
-(defgeneric extend (venv sym val)
-  (:documentation "扩展值环境。"))
-(defgeneric lookup (venv sym)
-  (:documentation "在值环境中查找标识符的值。"))
-(defgeneric modify (venv sym val)
-  (:documentation "修改值环境中已有的一个变量的值。"))
-
 ;;; 定义233-lisp中的函数对象需要满足的接口。
 (defgeneric get-body (func)
   (:documentation "获取函数体的表达式列表。"))
@@ -228,20 +221,6 @@
       (mapcar #'(lambda (expr)
                   (rewrite-defun-return expr tag))
               body)))
-
-(defmethod extend ((venv list) (sym symbol) val)
-  (cons (cons sym val) venv))
-(defmethod lookup ((venv list) (sym symbol))
-  (or (cdr (assoc sym venv))
-      (cdr (assoc sym *top-level-venv*))))
-(defmethod modify ((venv list) (sym symbol) val)
-  (let ((binding (assoc sym venv)))
-    (unless binding
-      (setf binding (assoc sym *top-level-venv*)))
-    (unless binding
-      (error "变量未定义：~A" sym))
-
-    (setf (cdr binding) val)))
 
 (defparameter *testing-venv*
   (let ((bindings (list (list '* #'*)

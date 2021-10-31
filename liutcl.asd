@@ -11,7 +11,8 @@
   :depends-on ()
   :pathname "src/"
   :components
-  ((:file "interpreter" :depends-on ("package" "reader" "stdlib"))
+  ((:file "env" :depends-on ("package"))
+   (:file "interpreter" :depends-on ("env" "package" "reader" "stdlib"))
    (:file "package")
    (:file "reader" :depends-on ("package"))
    (:file "stdlib" :depends-on ("package"))
