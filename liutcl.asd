@@ -12,10 +12,11 @@
   :pathname "src/"
   :components
   ((:file "env" :depends-on ("package"))
-   (:file "interpreter" :depends-on ("env" "package" "reader" "stdlib"))
+   (:file "interpreter" :depends-on ("env" "package" "reader" "stdlib" "transform"))
    (:file "package")
    (:file "reader" :depends-on ("package"))
    (:file "stdlib" :depends-on ("package"))
+   (:file "transform" :depends-on ("package"))
    (:file "typing" :depends-on ("package"))))
 
 (defsystem #:liutcl/test
