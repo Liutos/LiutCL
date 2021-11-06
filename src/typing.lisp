@@ -40,5 +40,15 @@
           (unless (equal rhs-type *233-type-integer*)
             (error "要求类型~A，但表达式~A的类型为~A" *233-type-integer* rhs rhs-type))
 
-          (return-from check-233-type *233-type-integer*)))))
+          (return-from check-233-type *233-type-integer*))))
+
+    (when (eq func 'let)
+      (multiple-value-bind (bindings body)
+          (transform-let expr)
+        (let ((ntenv tenv))
+          (dolist (binding bindings)
+            (destructuring-bind (var . val)
+                binding
+              (setf ntenv (extend ntenv var (check-233-type val ntenv)))))
+          (return-from check-233-type (check-233-type body ntenv)))))) ; TODO: 总是要写return-from太麻烦了，想办法简化一下。
   (error "未知类型的表达式：~A" expr))

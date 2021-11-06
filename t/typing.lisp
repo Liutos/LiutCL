@@ -13,4 +13,5 @@
   (is (equal (read-and-check-type "(- 1 (- 2 3))") com.liutos.liutcl.interpreter::*233-type-integer*))
   (is (equal (read-and-check-type "(* 1 (* 2 3))") com.liutos.liutcl.interpreter::*233-type-integer*))
   (is (equal (read-and-check-type "(/ 1 (/ 2 3))") com.liutos.liutcl.interpreter::*233-type-integer*))
-  (is (equal (read-and-check-type "foo") com.liutos.liutcl.interpreter::*233-type-integer*)))
+  (is (equal (read-and-check-type "foo") com.liutos.liutcl.interpreter::*233-type-integer*))
+  (is (equal (read-and-check-type "(let a = 1 (+ a 1))") com.liutos.liutcl.interpreter::*233-type-integer*)))
