@@ -10,6 +10,49 @@
     tenv)
   "单元测试专用的类型环境。")
 
+(defun is-type-var-p (type)
+  "检查类型是否为一个类型变量。"
+  (and (symbolp type)
+       (string= (symbol-name type) "?" :end1 1)))
+
+(defun check-is-expr-type-p (expr type)
+  "检查表达式EXPR是否为类型TYPE。
+
+第一个返回值表示是否通过了检查，第二个返回值表示其中未确定的类型变量的值。"
+  (cond ((and (integerp expr)
+              (eq type *233-type-integer*))
+         t)
+        ((and (integerp expr) (is-type-var-p type))
+         (values t (list (cons type *233-type-integer*))))
+        ((eq (first expr) 'progn)
+         (let (last)
+           (dolist (e (rest expr))
+             (let ((var (gensym "?")))
+               (multiple-value-bind (pass var-types)
+                   (check-is-expr-type-p e var)
+                 (unless pass
+                   (return-from check-is-expr-type-p nil)) ; TODO: 可以考虑将返回值改为抛出异常，并说明这里的类型为什么不行。
+                 (setf last (cdr (assoc var var-types))))))
+           (eq last type)))
+        ((member (first expr) '(+ - * /))
+         (let ((lhs (second expr))
+               (rhs (third expr)))
+           (multiple-value-bind (pass var-types)
+               (check-is-expr-type-p lhs *233-type-integer*)
+             (declare (ignorable var-types))
+             (unless pass
+               (return-from check-is-expr-type-p nil)))
+           (multiple-value-bind (pass var-types) ; TODO: 这里是否可以造一个类似Monad的东西来简化这种写法？
+               (check-is-expr-type-p rhs *233-type-integer*)
+             (declare (ignorable var-types))
+             (unless pass
+               (return-from check-is-expr-type-p nil)))
+           (if (is-type-var-p type)
+               (values t (list (cons type *233-type-integer*)))
+               (eq type *233-type-integer*))))
+        (t
+         (error "未知类型的表达式：~A" expr))))
+
 (defun check-233-type (expr tenv)
   (when (integerp expr)
     (return-from check-233-type *233-type-integer*))
