@@ -15,12 +15,21 @@
   (and (symbolp type)
        (string= (symbol-name type) "?" :end1 1)))
 
+(defgeneric is-type-equal-p (type1 type2)
+  (:documentation "比较两个233-lisp中的类型是否相等。"))
+
+;;; 每当增加一种233-lisp中的类型后，就需要增加相应的 IS-TYPE-EQUAL-P 的实现。
+(defmethod is-type-equal-p ((type1 (eql *233-type-integer*)) (type2 (eql *233-type-integer*)))
+  t)
+(defmethod is-type-equal-p ((type1 t) (type2 t))
+  nil)
+
 (defun check-is-expr-type-p (expr type)
   "检查表达式EXPR是否为类型TYPE。
 
 第一个返回值表示是否通过了检查，第二个返回值表示其中未确定的类型变量的值。"
   (cond ((and (integerp expr)
-              (eq type *233-type-integer*))
+              (is-type-equal-p type *233-type-integer*))
          t)
         ((and (integerp expr) (is-type-var-p type))
          (values t (list (cons type *233-type-integer*))))
@@ -33,7 +42,7 @@
                  (unless pass
                    (return-from check-is-expr-type-p nil)) ; TODO: 可以考虑将返回值改为抛出异常，并说明这里的类型为什么不行。
                  (setf last (cdr (assoc var var-types))))))
-           (eq last type)))
+           (is-type-equal-p last type)))
         ((member (first expr) '(+ - * /))
          (let ((lhs (second expr))
                (rhs (third expr)))
@@ -49,7 +58,7 @@
                (return-from check-is-expr-type-p nil)))
            (if (is-type-var-p type)
                (values t (list (cons type *233-type-integer*)))
-               (eq type *233-type-integer*))))
+               (is-type-equal-p type *233-type-integer*))))
         (t
          (error "未知类型的表达式：~A" expr))))
 
