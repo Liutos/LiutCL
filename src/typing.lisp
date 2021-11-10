@@ -24,8 +24,8 @@
 (defmethod is-type-equal-p ((type1 t) (type2 t))
   nil)
 
-(defun check-is-expr-type-p (expr type)
-  "检查表达式EXPR是否为类型TYPE。
+(defun check-is-expr-type-p (expr tenv type)
+  "检查表达式EXPR在类型环境TENV下，是否为类型TYPE。
 
 第一个返回值表示是否通过了检查，第二个返回值表示其中未确定的类型变量的值。"
   (cond ((and (integerp expr)
@@ -33,34 +33,68 @@
          t)
         ((and (integerp expr) (is-type-var-p type))
          (values t (list (cons type *233-type-integer*))))
+        ((symbolp expr)
+         (unify-symbol expr tenv type))
         ((eq (first expr) 'progn)
          (let (last)
            (dolist (e (rest expr))
              (let ((var (gensym "?")))
                (multiple-value-bind (pass var-types)
-                   (check-is-expr-type-p e var)
+                   (check-is-expr-type-p e tenv var)
                  (unless pass
                    (return-from check-is-expr-type-p nil)) ; TODO: 可以考虑将返回值改为抛出异常，并说明这里的类型为什么不行。
                  (setf last (cdr (assoc var var-types))))))
-           (is-type-equal-p last type)))
+           (if (is-type-var-p type)
+               (values t (list (cons type last)))
+               (is-type-equal-p last type))))
         ((member (first expr) '(+ - * /))
          (let ((lhs (second expr))
                (rhs (third expr)))
            (multiple-value-bind (pass var-types)
-               (check-is-expr-type-p lhs *233-type-integer*)
+               (check-is-expr-type-p lhs tenv *233-type-integer*)
              (declare (ignorable var-types))
              (unless pass
                (return-from check-is-expr-type-p nil)))
            (multiple-value-bind (pass var-types) ; TODO: 这里是否可以造一个类似Monad的东西来简化这种写法？
-               (check-is-expr-type-p rhs *233-type-integer*)
+               (check-is-expr-type-p rhs tenv *233-type-integer*)
              (declare (ignorable var-types))
              (unless pass
                (return-from check-is-expr-type-p nil)))
            (if (is-type-var-p type)
                (values t (list (cons type *233-type-integer*)))
                (is-type-equal-p type *233-type-integer*))))
+        ((eq (first expr) 'let)
+         (unify-let expr tenv type))
         (t
          (error "未知类型的表达式：~A" expr))))
+
+(defun unify-let (expr tenv type)
+  (check-type expr cons)
+  (assert (eq (first expr) 'let))
+  (multiple-value-bind (bindings body)
+      (transform-let expr)
+    (let ((new-tenv tenv))
+      (dolist (binding bindings)
+        (destructuring-bind (var . val)
+            binding
+          (let ((ty (gensym "?")))
+            (multiple-value-bind (pass types)
+                (check-is-expr-type-p val tenv ty)
+              (unless pass
+                (return-from unify-let nil))
+              (setf new-tenv (extend new-tenv var (cdr (assoc ty types))))))))
+      (check-is-expr-type-p body new-tenv type))))
+
+(defun unify-symbol (symbol tenv type)
+  "检查变量SYMBOL在类型环境TENV中是否符合类型TYPE。"
+  (check-type symbol symbol)
+  (let ((ty (lookup tenv symbol)))
+    (unless ty
+      (error "变量~A的类型未定义" symbol))
+
+    (if (is-type-var-p type)
+        (values t (list (cons symbol ty)))
+        (is-type-equal-p ty type))))
 
 (defun check-233-type (expr tenv)
   (when (integerp expr)
