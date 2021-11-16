@@ -19,6 +19,20 @@
            ht1)
   t)
 
+(defun test-__file__ ()
+  "测试__file__特性。"
+  (uiop:call-with-temporary-file
+   #'(lambda (path)
+       (with-open-file (*standard-output* path
+                                          :direction :output
+                                          :if-exists :supersede)
+         (format t "(defun main () (print __file__))"))
+       (equal
+        (with-output-to-string (*standard-output*)
+          (com.liutos.liutcl.interpreter:load-source-file (namestring path)))
+        (namestring path)))
+   :want-stream-p nil))
+
 (test interpret
   "Test the COM.LIUTOS.LIUTCL.INTERPRETER::INTERPRET."
   (is (equal (read-and-interpret "123") 123))
@@ -43,5 +57,6 @@
                           (setf (gethash "a" ht) 1)
                           ht)))
   (is (equal (read-and-interpret "(let d = (dict \"a\" \"A\" \"b\" \"C\") (d \"a\"))") "A"))
-  (is (equal (read-and-interpret "(let d = (dict \"a\" \"A\" \"b\" \"C\") (setf (d \"c\") \"D\") (d \"c\"))") "D")))
+  (is (equal (read-and-interpret "(let d = (dict \"a\" \"A\" \"b\" \"C\") (setf (d \"c\") \"D\") (d \"c\"))") "D"))
+  (is (test-__file__)))
 

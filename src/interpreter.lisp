@@ -207,7 +207,9 @@
                  (1- (length seq)))
         (error "源文件 ~A 中含有 DEFUN 之外的顶层表达式" filespec))
       (interpret (cons 'progn filtered) nil)
-      (interpret '(main) nil))))
+      (let ((venv '()))
+        (setf venv (extend venv '__file__ filespec))
+        (interpret '(main) venv)))))
 
 (defun rewrite-defun-return (body tag)
   "重写DEFUN的函数体部分，将RETURN替换为RETURN-FROM，塞入一个标号。"
