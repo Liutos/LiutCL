@@ -14,6 +14,19 @@
   ()
   (:documentation "核心语言中各种语法结构的基类。"))
 
+;;; <core-id> begin
+(defclass <core-id> (<core>)
+  ((s
+    :initarg :s
+    :type symbol))
+  (:documentation "语言核心中表示标识符的语法结构。"))
+
+(defmethod initialize-instance :after ((instance <core-id>) &rest initargs &key s &allow-other-keys)
+  (declare (ignorable initargs instance))
+  (unless (symbolp s)
+    (error ":S必须为一个符号，但传入了~S" s)))
+;;; <core-id> end
+
 ;;; <core-num> begin
 (defclass <core-num> (<core>)
   ((n
@@ -77,15 +90,67 @@
 ;;; <value-num> end
 ;;; 语言值类型 end
 
-(declaim (ftype (function (<core>) <value>) interpret))
-(defun interpret (ast)
+;;; 环境相关 begin
+;;; <binding> begin
+(defclass <binding> ()
+  ((name
+    :initarg :name
+    :reader binding-name
+    :type symbol)
+   (val
+    :initarg :val
+    :reader binding-val
+    :type <value>))
+  (:documentation "将名称与值对象联系起来。"))
+
+(defmethod initialize-instance :after ((instance <binding>) &rest initargs &key name val &allow-other-keys)
+  (declare (ignorable initargs instance))
+  (unless (symbolp name)
+    (error ":NAME必须为一个符号，但传入了~S" name))
+  (unless (typep val '<value>)
+    (error ":VAL必须为<VALUE>及其子类的实例，但传入了~S" val)))
+;;; <binding> end
+
+;;; env begin
+(deftype env ()
+  `list)
+
+(defun extend-env (binding env)
+  "返回一个新的环境，它在旧环境ENV的基础上，增加了一个绑定BINDING。"
+  (declare (type <binding> binding))
+  (declare (type env env))
+  (cons binding env))
+
+(defun lookup-env (name env)
+  "在环境ENV中查找与名称NAME关联的值并返回。"
+  (declare (symbol name))
+  (declare (type env env))
+  (cond ((null env)
+         (error "找不到标识符~S的定义" name))
+        (t
+         (let ((binding (first env)))
+           (cond ((eq (binding-name binding) name)
+                  (binding-val binding))
+                 (t
+                  (lookup-env name (rest env))))))))
+
+(defun make-empty-env ()
+  '())
+;;; env end
+;;; 环境相关 end
+
+(defun interpret (ast env)
   "解释执行抽象语法树AST，返回代码的执行结果。"
   (declare (type <core> ast))
+  (declare (type env env))
   (etypecase ast
+    (<core-id>
+     (with-slots (s) ast
+       (lookup-env s env)))
     (<core-num>
      (with-slots (n) ast
        (make-instance '<value-num> :n n)))
     (<core-plus>
      (with-slots (l r) ast
        (make-instance '<value-num>
-                      :n (+ (value-num-n (interpret l)) (value-num-n (interpret r))))))))
+                      :n (+ (value-num-n (interpret l env)) (value-num-n (interpret r env))))))))
