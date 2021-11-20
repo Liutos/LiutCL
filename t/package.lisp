@@ -6,4 +6,6 @@
   (:import-from #:com.liutos.liutcl.interpreter
                 #:<core-num>
                 #:<core-plus>
-                #:interpret))
+                #:<value-num>
+                #:interpret
+                #:value-equal-p))

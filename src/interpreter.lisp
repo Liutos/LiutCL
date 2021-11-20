@@ -9,6 +9,7 @@
 ;;; 可以让 SBCL 允许用 step 单步调试
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 
+;;; 语法相关 begin
 (defclass <core> ()
   ()
   (:documentation "核心语言中各种语法结构的基类。"))
@@ -45,15 +46,46 @@
   (unless (typep r '<core>)
     (error ":R必须为一个<CORE>类型，但传入了~S" r)))
 ;;; <core-plus> end
+;;; 语法相关 end
 
-(declaim (ftype (function (<core>) number) interpret))
+;;; 语言值类型 begin
+(defclass <value> ()
+  ()
+  (:documentation "被实现语言中的类型的基类。"))
+
+(defgeneric value-equal-p (x y)
+  (:documentation "比较两个<VALUE>类的实例对象X和Y是否相等。")
+  (:method ((x <value>) (y <value>))
+    "通常情况下，任意的两个值对象是不相等的。"
+    (declare (ignorable x y))
+    nil))
+
+;;; <value-num> begin
+(defclass <value-num> (<value>)
+  ((n
+    :initarg :n
+    :reader value-num-n))
+  (:documentation "被实现语言中的数值类型。"))
+
+(defmethod initialize-instance :after ((instance <value-num>) &rest initargs &key n &allow-other-keys)
+  (declare (ignorable instance initargs))
+  (unless (integerp n)
+    (error ":N必须为一个整数，但传入了~S" n)))
+
+(defmethod value-equal-p ((x <value-num>) (y <value-num>))
+  (= (value-num-n x) (value-num-n y)))
+;;; <value-num> end
+;;; 语言值类型 end
+
+(declaim (ftype (function (<core>) <value>) interpret))
 (defun interpret (ast)
   "解释执行抽象语法树AST，返回代码的执行结果。"
   (declare (type <core> ast))
   (etypecase ast
     (<core-num>
      (with-slots (n) ast
-       n))
+       (make-instance '<value-num> :n n)))
     (<core-plus>
      (with-slots (l r) ast
-       (+ (interpret l) (interpret r))))))
+       (make-instance '<value-num>
+                      :n (+ (value-num-n (interpret l)) (value-num-n (interpret r))))))))
