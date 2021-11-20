@@ -2,5 +2,8 @@
 
 (defpackage #:com.liutos.liutcl.interpreter.test
   (:use #:cl
-        #:com.liutos.liutcl.interpreter
-        #:fiveam))
+        #:fiveam)
+  (:import-from #:com.liutos.liutcl.interpreter
+                #:<core-num>
+                #:<core-plus>
+                #:interpret))
