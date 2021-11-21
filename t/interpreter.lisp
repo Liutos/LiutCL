@@ -50,4 +50,18 @@
                                                                           :l (make-instance '<core-id> :s 'x)
                                                                           :r (make-instance '<core-num> :n 1))
                                                      :par 'x))
-                  (make-empty-env)))))
+                  (make-empty-env))))
+  (let* ((inner (make-instance '<core-lambda>
+                               :body (make-instance '<core-plus>
+                                                    :l (make-instance '<core-id> :s 'x)
+                                                    :r (make-instance '<core-id> :s 'y))
+                               :par 'y))
+         (outer (make-instance '<core-lambda>
+                               :body (make-instance '<core-app>
+                                                    :arg (make-instance '<core-num> :n 2)
+                                                    :fun inner)
+                               :par 'x)))
+    (is (value-equal-p
+         (make-instance '<value-num> :n 3)
+         (interpret (make-instance '<core-app> :arg (make-instance '<core-num> :n 1) :fun outer)
+                    (make-empty-env))))))

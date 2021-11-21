@@ -117,15 +117,21 @@
    (body
     :documentation "表示函数逻辑的语法结构。"
     :initarg :body
-    :type <core>))
+    :type <core>)
+   (env
+    :documentation "函数对象被创建时的环境。"
+    :initarg :env
+    :type env))
   (:documentation "被实现语言中的函数类型。"))
 
-(defmethod initialize-instance :after ((instance <value-fun>) &rest initargs &key arg body &allow-other-keys)
+(defmethod initialize-instance :after ((instance <value-fun>) &rest initargs &key arg body env &allow-other-keys)
   (declare (ignorable instance initargs))
   (unless (symbolp arg)
     (error ":ARG必须为一个符号，但传入了~S" arg))
   (unless (typep body '<core>)
-    (error ":BODY必须为一个语法结构，但传入了~S" body)))
+    (error ":BODY必须为一个语法结构，但传入了~S" body))
+  (unless (typep env 'env)
+    (error ":ENV必须为一个环境，但传入了~S" env)))
 ;;; <value-fun> end
 
 ;;; <value-num> begin
@@ -232,13 +238,13 @@
                       (extend-env (make-instance '<binding>
                                                  :name arg
                                                  :val arg-val)
-                                  (make-empty-env)))))))
+                                  env))))))
     (<core-id>
      (with-slots (s) ast
        (lookup-env s env)))
     (<core-lambda>
      (with-slots (body par) ast
-       (make-instance '<value-fun> :arg par :body body)))
+       (make-instance '<value-fun> :arg par :body body :env env)))
     (<core-num>
      (with-slots (n) ast
        (make-instance '<value-num> :n n)))
