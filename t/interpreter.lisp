@@ -40,5 +40,14 @@
       (interpret (make-instance '<core-plus>
                                 :l (make-instance '<core-num> :n 232)
                                 :r (make-instance '<core-id> :s 'add1))
-                 (extend-env binding env)))))
-
+                 (extend-env binding env))))
+  (is (value-equal-p
+       (make-instance '<value-num> :n 233)
+       (interpret (make-instance '<core-app>
+                                 :arg (make-instance '<core-num> :n 232)
+                                 :fun (make-instance '<core-lambda>
+                                                     :body (make-instance '<core-plus>
+                                                                          :l (make-instance '<core-id> :s 'x)
+                                                                          :r (make-instance '<core-num> :n 1))
+                                                     :par 'x))
+                  (make-empty-env)))))

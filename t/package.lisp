@@ -7,6 +7,7 @@
                 #:<binding>
                 #:<core-app>
                 #:<core-id>
+                #:<core-lambda>
                 #:<core-num>
                 #:<core-plus>
                 #:<value-fun>

@@ -46,6 +46,24 @@
     (error ":S必须为一个符号，但传入了~S" s)))
 ;;; <core-id> end
 
+;;; <core-lambda> begin
+(defclass <core-lambda> (<core>)
+  ((body
+    :initarg :body
+    :type <core>)
+   (par
+    :initarg :par
+    :type symbol))
+  (:documentation "语言核心中表示匿名函数定义的语法结构。"))
+
+(defmethod initialize-instance :after ((instance <core-lambda>) &rest initargs &key body par &allow-other-keys)
+  (declare (ignorable initargs instance))
+  (unless (typep body '<core>)
+    (error ":BODY必须为一个语法结构，但传入了~S" body))
+  (unless (symbolp par)
+    (error ":PAR必须为一个符号，但传入了~S" par)))
+;;; <core-lambda> end
+
 ;;; <core-num> begin
 (defclass <core-num> (<core>)
   ((n
@@ -218,6 +236,9 @@
     (<core-id>
      (with-slots (s) ast
        (lookup-env s env)))
+    (<core-lambda>
+     (with-slots (body par) ast
+       (make-instance '<value-fun> :arg par :body body)))
     (<core-num>
      (with-slots (n) ast
        (make-instance '<value-num> :n n)))
