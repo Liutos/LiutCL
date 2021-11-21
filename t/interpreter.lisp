@@ -29,5 +29,16 @@
          (interpret (make-instance '<core-app>
                                    :arg (make-instance '<core-num> :n 232)
                                    :fun (make-instance '<core-id> :s 'add1))
-                    (extend-env binding env))))))
+                    (extend-env binding env)))))
+  (let ((env (make-empty-env))
+        (binding (make-instance '<binding>
+                                :name 'add1
+                                :val (make-instance '<value-fun>
+                                                    :arg 'x
+                                                    :body (make-instance '<core-id> :s 'x)))))
+    (signals wrong-type
+      (interpret (make-instance '<core-plus>
+                                :l (make-instance '<core-num> :n 232)
+                                :r (make-instance '<core-id> :s 'add1))
+                 (extend-env binding env)))))
 

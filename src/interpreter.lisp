@@ -176,6 +176,30 @@
 ;;; env end
 ;;; 环境相关 end
 
+;;; 类型错误 begin
+(define-condition wrong-type ()
+  ((actual
+    :documentation "实际传入的错误类型"
+    :initarg :actual)
+   (expected
+    :documentation "函数所期望的正确类型"
+    :initarg :expected))
+  (:report (lambda (condition stream)
+             (with-slots (actual expected) condition
+               (format stream "期望的类型为~S，但传入了~S。" actual expected)))))
+;;; 类型错误 end
+
+;;; 原生函数 begin
+(defun num+ (l r)
+  "将两个<VALUE-NUM>类型的值相加，返回一个新的<VALUE-NUM>类型的值。"
+  (unless (typep l '<value-num>)
+    (error 'wrong-type :actual (type-of l) :expected '<value-num>))
+  (unless (typep r '<value-num>)
+    (error 'wrong-type :actual (type-of r) :expected '<value-num>))
+  (make-instance '<value-num>
+                 :n (+ (value-num-n l) (value-num-n r))))
+;;; 原生函数 end
+
 (defun interpret (ast env)
   "解释执行抽象语法树AST，返回代码的执行结果。"
   (declare (type <core> ast))
@@ -199,5 +223,4 @@
        (make-instance '<value-num> :n n)))
     (<core-plus>
      (with-slots (l r) ast
-       (make-instance '<value-num>
-                      :n (+ (value-num-n (interpret l env)) (value-num-n (interpret r env))))))))
+       (num+ (interpret l env) (interpret r env))))))

@@ -14,4 +14,5 @@
                 #:extend-env
                 #:interpret
                 #:make-empty-env
-                #:value-equal-p))
+                #:value-equal-p
+                #:wrong-type))
