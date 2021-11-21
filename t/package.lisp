@@ -5,9 +5,11 @@
         #:fiveam)
   (:import-from #:com.liutos.liutcl.interpreter
                 #:<binding>
+                #:<core-app>
                 #:<core-id>
                 #:<core-num>
                 #:<core-plus>
+                #:<value-fun>
                 #:<value-num>
                 #:extend-env
                 #:interpret

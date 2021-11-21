@@ -14,6 +14,25 @@
   ()
   (:documentation "核心语言中各种语法结构的基类。"))
 
+;;; <core-app> begin
+(defclass <core-app> (<core>)
+  ((fun
+    :initarg :fun
+    :type <core>)
+   (arg
+    :documentation "实参表达式。"
+    :initarg :arg
+    :type <core>))
+  (:documentation "语言核心中表示函数调用的语法结构。"))
+
+(defmethod initialize-instance :after ((instance <core-app>) &rest initargs &key fun arg &allow-other-keys)
+  (declare (ignorable initargs instance))
+  (unless (typep fun '<core>)
+    (error ":FUN必须为一个语法结构，但传入了~S" fun))
+  (unless (typep arg '<core>)
+    (error ":ARG必须为一个语法结构，但传入了~S" arg)))
+;;; <core-app> end
+
 ;;; <core-id> begin
 (defclass <core-id> (<core>)
   ((s
@@ -70,8 +89,26 @@
   (:documentation "比较两个<VALUE>类的实例对象X和Y是否相等。")
   (:method ((x <value>) (y <value>))
     "通常情况下，任意的两个值对象是不相等的。"
-    (declare (ignorable x y))
-    nil))
+    (eq x y)))
+;;; <value-fun> begin
+(defclass <value-fun> (<value>)
+  ((arg
+    :documentation "当前唯一的形参的名字。"
+    :initarg :arg
+    :type symbol)
+   (body
+    :documentation "表示函数逻辑的语法结构。"
+    :initarg :body
+    :type <core>))
+  (:documentation "被实现语言中的函数类型。"))
+
+(defmethod initialize-instance :after ((instance <value-fun>) &rest initargs &key arg body &allow-other-keys)
+  (declare (ignorable instance initargs))
+  (unless (symbolp arg)
+    (error ":ARG必须为一个符号，但传入了~S" arg))
+  (unless (typep body '<core>)
+    (error ":BODY必须为一个语法结构，但传入了~S" body)))
+;;; <value-fun> end
 
 ;;; <value-num> begin
 (defclass <value-num> (<value>)
@@ -144,6 +181,16 @@
   (declare (type <core> ast))
   (declare (type env env))
   (etypecase ast
+    (<core-app>
+     (with-slots (fun arg) ast
+       (let ((arg-val (interpret arg env))
+             (fun-val (interpret fun env)))
+         (with-slots (arg body) fun-val
+           (interpret body
+                      (extend-env (make-instance '<binding>
+                                                 :name arg
+                                                 :val arg-val)
+                                  (make-empty-env)))))))
     (<core-id>
      (with-slots (s) ast
        (lookup-env s env)))

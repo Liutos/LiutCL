@@ -15,5 +15,19 @@
     (is (value-equal-p
          (make-instance '<value-num> :n 666)
          (interpret (make-instance '<core-id> :s 'foo)
+                    (extend-env binding env)))))
+  (let ((env (make-empty-env))
+        (binding (make-instance '<binding>
+                                :name 'add1
+                                :val (make-instance '<value-fun>
+                                                    :arg 'x
+                                                    :body (make-instance '<core-plus>
+                                                                         :l (make-instance '<core-id> :s 'x)
+                                                                         :r (make-instance '<core-num> :n 1))))))
+    (is (value-equal-p
+         (make-instance '<value-num> :n 233)
+         (interpret (make-instance '<core-app>
+                                   :arg (make-instance '<core-num> :n 232)
+                                   :fun (make-instance '<core-id> :s 'add1))
                     (extend-env binding env))))))
 
