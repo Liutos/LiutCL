@@ -224,21 +224,46 @@
                  :n (+ (value-num-n l) (value-num-n r))))
 ;;; 原生函数 end
 
-(defun interpret (ast env)
+;;; 存储相关 begin
+(deftype store ()
+  `hash-table)
+
+(defun fetch-store (store location)
+  (declare (type store store))
+  (declare (integer location))
+  (multiple-value-bind (v foundp)
+      (gethash location store)
+    (unless foundp
+      (error "位置~D上没有值" location))
+
+    v))
+
+(defun make-empty-store ()
+  (make-hash-table))
+
+(defun put-store (store location new-value)
+  (declare (type store store))
+  (declare (integer location))
+  (setf (gethash location store) new-value))
+;;; 存储相关 end
+
+(defun interpret (ast env store)
   "解释执行抽象语法树AST，返回代码的执行结果。"
   (declare (type <core> ast))
   (declare (type env env))
+  (declare (type store store))
   (etypecase ast
     (<core-app>
      (with-slots (fun arg) ast
-       (let ((arg-val (interpret arg env))
-             (fun-val (interpret fun env)))
+       (let ((arg-val (interpret arg env store))
+             (fun-val (interpret fun env store)))
          (with-slots (arg body) fun-val
            (interpret body
                       (extend-env (make-instance '<binding>
                                                  :name arg
                                                  :val arg-val)
-                                  env))))))
+                                  env)
+                      store)))))
     (<core-id>
      (with-slots (s) ast
        (lookup-env s env)))
@@ -250,4 +275,4 @@
        (make-instance '<value-num> :n n)))
     (<core-plus>
      (with-slots (l r) ast
-       (num+ (interpret l env) (interpret r env))))))
+       (num+ (interpret l env store) (interpret r env store))))))

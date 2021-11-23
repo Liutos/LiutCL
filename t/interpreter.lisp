@@ -1,5 +1,9 @@
 (in-package #:com.liutos.liutcl.interpreter.test)
 
+(defun interpret (expr env)
+  "为了避免修改太多代码，对COM.LIUTOS.LIUTCL.INTERPRETER::INTERPRET做一层封装。"
+  (com.liutos.liutcl.interpreter::interpret expr env (com.liutos.liutcl.interpreter::make-empty-store)))
+
 (test interpret
   "测试interpret函数。"
   (is (value-equal-p (make-instance '<value-num> :n 233) (interpret (make-instance '<core-num> :n 233) (make-empty-env))))

@@ -13,7 +13,6 @@
                 #:<value-fun>
                 #:<value-num>
                 #:extend-env
-                #:interpret
                 #:make-empty-env
                 #:value-equal-p
                 #:wrong-type))
