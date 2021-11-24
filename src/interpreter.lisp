@@ -154,22 +154,22 @@
 ;;; 环境相关 begin
 ;;; <binding> begin
 (defclass <binding> ()
-  ((name
+  ((location
+    :initarg :location
+    :reader binding-location
+    :type integer)
+   (name
     :initarg :name
     :reader binding-name
-    :type symbol)
-   (val
-    :initarg :val
-    :reader binding-val
-    :type <value>))
-  (:documentation "将名称与值对象联系起来。"))
+    :type symbol))
+  (:documentation "将名称与对象的存储位置联系起来。"))
 
-(defmethod initialize-instance :after ((instance <binding>) &rest initargs &key name val &allow-other-keys)
+(defmethod initialize-instance :after ((instance <binding>) &rest initargs &key location name &allow-other-keys)
   (declare (ignorable initargs instance))
+  (unless (integerp location)
+    (error ":LOCATION必须为一个整数，但传入了~S" location))
   (unless (symbolp name)
-    (error ":NAME必须为一个符号，但传入了~S" name))
-  (unless (typep val '<value>)
-    (error ":VAL必须为<VALUE>及其子类的实例，但传入了~S" val)))
+    (error ":NAME必须为一个符号，但传入了~S" name)))
 ;;; <binding> end
 
 ;;; env begin
@@ -191,7 +191,7 @@
         (t
          (let ((binding (first env)))
            (cond ((eq (binding-name binding) name)
-                  (binding-val binding))
+                  (binding-location binding))
                  (t
                   (lookup-env name (rest env))))))))
 
@@ -241,10 +241,15 @@
 (defun make-empty-store ()
   (make-hash-table))
 
-(defun put-store (store location new-value)
+(defparameter *next-location* 0
+  "下一个可用的位置。")
+
+(defun put-store (store new-value)
   (declare (type store store))
-  (declare (integer location))
-  (setf (gethash location store) new-value))
+  (let ((location *next-location*))
+    (setf (gethash location store) new-value)
+    (incf *next-location*)
+    location))
 ;;; 存储相关 end
 
 (defun interpret (ast env store)
@@ -260,13 +265,13 @@
          (with-slots (arg body) fun-val
            (interpret body
                       (extend-env (make-instance '<binding>
-                                                 :name arg
-                                                 :val arg-val)
+                                                 :location (put-store store arg-val)
+                                                 :name arg)
                                   env)
                       store)))))
     (<core-id>
      (with-slots (s) ast
-       (lookup-env s env)))
+       (fetch-store store (lookup-env s env))))
     (<core-lambda>
      (with-slots (body par) ast
        (make-instance '<value-fun> :arg par :body body :env env)))

@@ -14,5 +14,7 @@
                 #:<value-num>
                 #:extend-env
                 #:make-empty-env
+                #:make-empty-store
+                #:put-store
                 #:value-equal-p
                 #:wrong-type))
