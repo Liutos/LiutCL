@@ -14,6 +14,26 @@
   ()
   (:documentation "核心语言中各种语法结构的基类。"))
 
+(defmacro define-core-variant (name slots &rest options)
+  "定义一个<CORE>的子类并在INITIALIZE-INSTANCE :AFTER中检查参数类型。"
+  (check-type name symbol)
+  (let* ((specs (mapcar #'cdr slots))
+         (initargs (mapcar #'(lambda (spec) (intern (symbol-name (getf spec :initarg)))) specs))
+         (slot-names (mapcar #'car slots))
+         (slot-types (mapcar #'(lambda (spec) (getf spec :type)) specs))
+         (assertions
+           (mapcar #'(lambda (name type)
+                       `(unless (typep ,name ',type)
+                          (error ,(format nil ":~A必须为~A类型，但传入了~~A" name type) ,name)))
+                   slot-names slot-types)))
+    `(progn
+       (defclass ,name (<core>)
+         ,slots
+         ,@options)
+
+       (defmethod initialize-instance :after ((instance ,name) &rest initargs &key ,@initargs &allow-other-keys)
+         (declare (ignorable initargs instance))
+         ,@assertions))))
 ;;; <core-app> begin
 (defclass <core-app> (<core>)
   ((fun
