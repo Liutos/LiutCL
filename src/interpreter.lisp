@@ -301,3 +301,45 @@
     (<core-plus>
      (with-slots (l r) ast
        (num+ (interpret l env store) (interpret r env store))))))
+
+(deftype continuation ()
+  `(function (<value>) <value>))
+
+(defun interpret/k (ast env store cont)
+  "CPS版本的interpret解释器，其中CONT表示“接下来的运算”。"
+  (declare (type <core> ast))
+  (declare (type env env))
+  (declare (type store store))
+  (declare (type continuation cont))
+  (etypecase ast
+    (<core-app>
+     (with-slots (fun arg) ast
+       (interpret/k arg env store
+                    (lambda (arg-val)
+                      (interpret/k fun env store
+                                   (lambda (fun-val)
+                                     (with-slots (arg body) fun-val
+                                       (let* ((location (put-store store arg-val))
+                                              (binding (make-instance '<binding>
+                                                                      :location location
+                                                                      :name arg)))
+                                         (interpret/k body
+                                                      (extend-env binding env)
+                                                      store
+                                                      cont)))))))))
+    (<core-id>
+     (with-slots (s) ast
+       (funcall cont (fetch-store store (lookup-env s env)))))
+    (<core-lambda>
+     (with-slots (body par) ast
+       (funcall cont (make-instance '<value-fun> :arg par :body body :env env))))
+    (<core-num>
+     (with-slots (n) ast
+       (funcall cont (make-instance '<value-num> :n n))))
+    (<core-plus>
+     (with-slots (l r) ast
+       (interpret/k l env store
+                    (lambda (lhs)
+                      (interpret/k r env store
+                                   (lambda (rhs)
+                                     (funcall cont (num+ lhs rhs))))))))))
