@@ -5,14 +5,15 @@
   (let ((store (or store (make-empty-store))))
     (com.liutos.liutcl.interpreter::interpret/k expr env store #'identity)))
 
+(defun interpret-concrete (expr env &optional store)
+  (interpret (com.liutos.liutcl.interpreter::parse-concrete-syntax expr)
+             env
+             store))
+
 (test interpret
   "测试interpret函数。"
-  (is (value-equal-p (make-instance '<value-num> :n 233) (interpret (make-instance '<core-num> :n 233) (make-empty-env))))
-  (is (value-equal-p (make-instance '<value-num> :n 6) (interpret (make-instance '<core-plus>
-                                                                                 :l (make-instance '<core-num> :n 1)
-                                                                                 :r (make-instance '<core-plus>
-                                                                                                   :l (make-instance '<core-num> :n 2)
-                                                                                                   :r (make-instance '<core-num> :n 3))) (make-empty-env))))
+  (is (value-equal-p (make-instance '<value-num> :n 233) (interpret-concrete 233 (make-empty-env))))
+  (is (value-equal-p (make-instance '<value-num> :n 6) (interpret-concrete (+ 1 (+ 2 3)) (make-empty-env))))
   (let* ((env (make-empty-env))
          (store (make-empty-store))
          (binding (make-instance '<binding>
@@ -20,9 +21,9 @@
                                  :name 'foo)))
     (is (value-equal-p
          (make-instance '<value-num> :n 666)
-         (interpret (make-instance '<core-id> :s 'foo)
-                    (extend-env binding env)
-                    store))))
+         (interpret-concrete 'foo
+                             (extend-env binding env)
+                             store))))
   (let* ((env (make-empty-env))
          (store (make-empty-store))
          (binding (make-instance '<binding>
@@ -34,11 +35,9 @@
                                  :name 'add1)))
     (is (value-equal-p
          (make-instance '<value-num> :n 233)
-         (interpret (make-instance '<core-app>
-                                   :arg (make-instance '<core-num> :n 232)
-                                   :fun (make-instance '<core-id> :s 'add1))
-                    (extend-env binding env)
-                    store))))
+         (interpret-concrete '(add1 232)
+                             (extend-env binding env)
+                             store))))
   (let* ((env (make-empty-env))
          (store (make-empty-store))
          (binding (make-instance '<binding>
@@ -47,32 +46,14 @@
                                                                            :body (make-instance '<core-id> :s 'x)))
                                  :name 'add1)))
     (signals wrong-type
-      (interpret (make-instance '<core-plus>
-                                :l (make-instance '<core-num> :n 232)
-                                :r (make-instance '<core-id> :s 'add1))
-                 (extend-env binding env)
-                 store)))
+      (interpret-concrete '(+ 232 add1)
+                          (extend-env binding env)
+                          store)))
   (is (value-equal-p
        (make-instance '<value-num> :n 233)
-       (interpret (make-instance '<core-app>
-                                 :arg (make-instance '<core-num> :n 232)
-                                 :fun (make-instance '<core-lambda>
-                                                     :body (make-instance '<core-plus>
-                                                                          :l (make-instance '<core-id> :s 'x)
-                                                                          :r (make-instance '<core-num> :n 1))
-                                                     :par 'x))
-                  (make-empty-env))))
-  (let* ((inner (make-instance '<core-lambda>
-                               :body (make-instance '<core-plus>
-                                                    :l (make-instance '<core-id> :s 'x)
-                                                    :r (make-instance '<core-id> :s 'y))
-                               :par 'y))
-         (outer (make-instance '<core-lambda>
-                               :body (make-instance '<core-app>
-                                                    :arg (make-instance '<core-num> :n 2)
-                                                    :fun inner)
-                               :par 'x)))
-    (is (value-equal-p
+       (interpret-concrete '((lambda (x) (+ x 1)) 232)
+                           (make-empty-env))))
+  (is (value-equal-p
          (make-instance '<value-num> :n 3)
-         (interpret (make-instance '<core-app> :arg (make-instance '<core-num> :n 1) :fun outer)
-                    (make-empty-env))))))
+         (interpret-concrete '((lambda (x) ((lambda (y) (+ x y)) 2)) 1)
+                             (make-empty-env)))))

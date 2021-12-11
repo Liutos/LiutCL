@@ -343,3 +343,36 @@
                       (interpret/k r env store
                                    (lambda (rhs)
                                      (funcall cont (num+ lhs rhs))))))))))
+
+;;; 具体语法相关 begin
+(defun parse-concrete-syntax (expr)
+  "解析作为具体语法的S表达式 EXPR，返回对象的抽象语法 <CORE> 类的实例对象。"
+  (cond ((and (listp expr) (eq (first expr) 'lambda))
+         (destructuring-bind (_ parameters . body)
+             expr
+           (declare (ignorable _))      ; TODO: CL 一处值得改进的地方，即无法用下划线来便捷地表达“不使用的变量”这一意图。
+           (assert (= (length parameters) 1) nil "仅支持一个参数：~S" parameters)
+           (assert (= (length body) 1) nil "仅支持一个表达式：~S" body)
+           (make-instance '<core-lambda>
+                          :body (parse-concrete-syntax (first body))
+                          :par (first parameters))))
+        ((and (listp expr) (eq (first expr) '+))
+         (destructuring-bind (_ lhs rhs)
+             expr
+           (declare (ignorable _))
+           (make-instance '<core-plus>
+                          :l (parse-concrete-syntax lhs)
+                          :r (parse-concrete-syntax rhs))))
+        ((listp expr)
+         (destructuring-bind (fun arg)
+             expr
+           (make-instance '<core-app>
+                          :arg (parse-concrete-syntax arg)
+                          :fun (parse-concrete-syntax fun))))
+        ((symbolp expr)
+         (make-instance '<core-id> :s expr))
+        ((integerp expr)
+         (make-instance '<core-num> :n expr))
+        (t
+         (error "不支持的具体语法：~S" expr))))
+;;; 具体语法相关 end
