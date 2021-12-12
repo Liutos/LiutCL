@@ -302,8 +302,46 @@
      (with-slots (l r) ast
        (num+ (interpret l env store) (interpret r env store))))))
 
+;;; 续延相关 begin
 (deftype continuation ()
   `(function (<value>) <value>))
+
+(defun apply-continuation (cont v)
+  "将值 V 传给续延 CONT。"
+  (declare (type continuation cont))
+  (declare (type <value> v))
+  (funcall cont v))
+
+(defun make-arg-cont (fun env store cont)
+  "创建一个表示求值了实参之后要做的计算的续延。"
+  (lambda (arg-val)
+    (interpret/k fun env store
+                 (make-fun-cont arg-val env store cont))))
+
+(defun make-fun-cont (arg-val env store cont)
+  "创建一个表示求值了函数位置的值之后要做的计算的续延。"
+  (lambda (fun-val)
+    (with-slots (arg body) fun-val
+      (let* ((location (put-store store arg-val))
+             (binding (make-instance '<binding>
+                                     :location location
+                                     :name arg)))
+        (interpret/k body
+                     (extend-env binding env)
+                     store
+                     cont)))))
+
+(defun make-lhs-cont (r env store cont)
+  "创建一个表示求值了加法运算的左操作数后要做的计算的续延。"
+  (lambda (lhs)
+    (interpret/k r env store
+                 (make-rhs-cont lhs cont))))
+
+(defun make-rhs-cont (lhs cont)
+  "创建一个表示求值了加法运算的右操作数后要做的计算的续延。"
+  (lambda (rhs)
+    (funcall cont (num+ lhs rhs))))
+;;; 续延相关 end
 
 (defun interpret/k (ast env store cont)
   "CPS版本的interpret解释器，其中CONT表示“接下来的运算”。"
@@ -314,35 +352,19 @@
   (etypecase ast
     (<core-app>
      (with-slots (fun arg) ast
-       (interpret/k arg env store
-                    (lambda (arg-val)
-                      (interpret/k fun env store
-                                   (lambda (fun-val)
-                                     (with-slots (arg body) fun-val
-                                       (let* ((location (put-store store arg-val))
-                                              (binding (make-instance '<binding>
-                                                                      :location location
-                                                                      :name arg)))
-                                         (interpret/k body
-                                                      (extend-env binding env)
-                                                      store
-                                                      cont)))))))))
+       (interpret/k arg env store (make-arg-cont fun env store cont))))
     (<core-id>
      (with-slots (s) ast
-       (funcall cont (fetch-store store (lookup-env s env)))))
+       (apply-continuation cont (fetch-store store (lookup-env s env)))))
     (<core-lambda>
      (with-slots (body par) ast
-       (funcall cont (make-instance '<value-fun> :arg par :body body :env env))))
+       (apply-continuation cont (make-instance '<value-fun> :arg par :body body :env env))))
     (<core-num>
      (with-slots (n) ast
-       (funcall cont (make-instance '<value-num> :n n))))
+       (apply-continuation cont (make-instance '<value-num> :n n))))
     (<core-plus>
      (with-slots (l r) ast
-       (interpret/k l env store
-                    (lambda (lhs)
-                      (interpret/k r env store
-                                   (lambda (rhs)
-                                     (funcall cont (num+ lhs rhs))))))))))
+       (interpret/k l env store (make-lhs-cont r env store cont))))))
 
 ;;; 具体语法相关 begin
 (defun parse-concrete-syntax (expr)
