@@ -304,43 +304,149 @@
 
 ;;; 续延相关 begin
 (deftype continuation ()
-  `(function (<value>) <value>))
+  '<cont>)
+
+(defclass <cont> ()
+  ()
+  (:documentation "表示续延的抽象类。"))
+
+;;; TODO: 与前文的 define-core-variant 合并。
+(defmacro define-cont-variant (name slots &rest options)
+  "定义一个<CONT>的子类并在INITIALIZE-INSTANCE :AFTER中检查参数类型。"
+  (check-type name symbol)
+  (let* ((specs (mapcar #'cdr slots))
+         (initargs (mapcar #'(lambda (spec) (intern (symbol-name (getf spec :initarg)))) specs))
+         (slot-names (mapcar #'car slots))
+         (slot-types (mapcar #'(lambda (spec) (getf spec :type)) specs))
+         (assertions
+           (mapcar #'(lambda (name type)
+                       `(unless (typep ,name ',type)
+                          (error ,(format nil ":~A必须为~A类型，但传入了~~A" name type) ,name)))
+                   slot-names slot-types)))
+    `(progn
+       (defclass ,name (<cont>)
+         ,slots
+         ,@options)
+
+       (defmethod initialize-instance :after ((instance ,name) &rest initargs &key ,@initargs &allow-other-keys)
+         (declare (ignorable initargs instance))
+         ,@assertions))))
+
+(define-cont-variant <arg-cont>
+  ((fun
+    :initarg :fun
+    :type <core>)
+   (env
+    :initarg :env
+    :type env)
+   (store
+    :initarg :store
+    :type store)
+   (cont
+    :initarg :cont
+    :type <cont>))
+  (:documentation "表示求值了实参之后要做的计算的续延。"))
+
+(define-cont-variant <end-cont>
+    ()
+  (:documentation "表示没有更多的计算的续延。"))
+
+(define-cont-variant <fun-cont>
+    ((arg-val
+      :initarg :arg-val
+      :type <value>)
+     (env
+      :initarg :env
+      :type env)
+     (store
+      :initarg :store
+      :type store)
+     (cont
+      :initarg :cont
+      :type <cont>))
+  (:documentation "表示求值了函数位置的值之后要做的计算的续延。"))
+
+(define-cont-variant <lhs-cont>
+    ((r
+      :initarg :r
+      :type <core>)
+     (env
+      :initarg :env
+      :type env)
+     (store
+      :initarg :store
+      :type store)
+     (cont
+      :initarg :cont
+      :type <cont>))
+  (:documentation "表示求值了加法运算的左操作数后要做的计算的续延。"))
+
+(define-cont-variant <rhs-cont>
+    ((lhs
+      :initarg :lhs
+      :type <value>)
+     (cont
+      :initarg :cont
+      :type <cont>))
+  (:documentation "表示求值了加法运算的右操作数后要做的计算的续延。"))
 
 (defun apply-continuation (cont v)
   "将值 V 传给续延 CONT。"
-  (declare (type continuation cont))
+  (declare (type (or continuation <cont>) cont))
   (declare (type <value> v))
-  (funcall cont v))
+  (etypecase cont
+    (<arg-cont>
+     (with-slots (cont fun env store) cont
+       (interpret/k fun env store
+                    (make-fun-cont v env store cont))))
+    (<end-cont>
+     v)
+    (<fun-cont>
+     (with-slots (arg-val cont env store) cont
+       (with-slots (arg body) v
+         (let* ((location (put-store store arg-val))
+                (binding (make-instance '<binding>
+                                        :location location
+                                        :name arg)))
+           (interpret/k body
+                        (extend-env binding env)
+                        store
+                        cont)))))
+    (<lhs-cont>
+     (with-slots (cont env r store) cont
+       (interpret/k r env store (make-rhs-cont v cont))))
+    (<rhs-cont>
+     (with-slots (cont lhs) cont
+       (apply-continuation cont (num+ lhs v))))
+    (function
+     (funcall cont v))))
 
 (defun make-arg-cont (fun env store cont)
   "创建一个表示求值了实参之后要做的计算的续延。"
-  (lambda (arg-val)
-    (interpret/k fun env store
-                 (make-fun-cont arg-val env store cont))))
+  (make-instance '<arg-cont>
+                 :cont cont
+                 :env env
+                 :fun fun
+                 :store store))
+
+(defun make-end-cont ()
+  (make-instance '<end-cont>))
 
 (defun make-fun-cont (arg-val env store cont)
   "创建一个表示求值了函数位置的值之后要做的计算的续延。"
-  (lambda (fun-val)
-    (with-slots (arg body) fun-val
-      (let* ((location (put-store store arg-val))
-             (binding (make-instance '<binding>
-                                     :location location
-                                     :name arg)))
-        (interpret/k body
-                     (extend-env binding env)
-                     store
-                     cont)))))
+  (make-instance '<fun-cont>
+                 :arg-val arg-val
+                 :cont cont
+                 :env env
+                 :store store))
 
 (defun make-lhs-cont (r env store cont)
   "创建一个表示求值了加法运算的左操作数后要做的计算的续延。"
-  (lambda (lhs)
-    (interpret/k r env store
-                 (make-rhs-cont lhs cont))))
+  (make-instance '<lhs-cont> :cont cont :env env :r r :store store))
 
 (defun make-rhs-cont (lhs cont)
   "创建一个表示求值了加法运算的右操作数后要做的计算的续延。"
-  (lambda (rhs)
-    (funcall cont (num+ lhs rhs))))
+  (make-instance '<rhs-cont> :cont cont :lhs lhs))
 ;;; 续延相关 end
 
 (defun interpret/k (ast env store cont)
