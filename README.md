@@ -1,5 +1,13 @@
 # LiutCL - A Approximate Common Lisp Implementation from Scratch
 
+## 运行单元测试
+
+在 REPL 中输入并执行如下代码
+
+```lisp
+(asdf:operate 'asdf:test-op 'liutcl/test)
+```
+
 ## 简介
 
 自认为是一个Common Lisp实现
