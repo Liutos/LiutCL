@@ -58,6 +58,7 @@
 (defclass <core-id> (<core>)
   ((s
     :initarg :s
+    :reader core-id-s
     :type symbol))
   (:documentation "语言核心中表示标识符的语法结构。"))
 
@@ -125,6 +126,18 @@
       :initarg :arg
       :type <core>)))
 ;;; (print ...) 语法相关 end
+
+;;; call/cc 语法相关 begin
+(define-core-variant <core-call/cc>
+    ((body
+      :documentation "在能够访问到当前续延的环境下求值的表达式。"
+      :initarg :body
+      :type <core>)
+     (var
+      :documentation "用于捕捉当前续延的变量名。"
+      :initarg :var
+      :type <core-id>)))
+;;; call/cc 语法相关 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -178,6 +191,20 @@
 (defmethod value-equal-p ((x <value-num>) (y <value-num>))
   (= (value-num-n x) (value-num-n y)))
 ;;; <value-num> end
+
+;;; 续延值类型 begin
+(defclass <value-cont> (<value>)
+  ((cont
+    :documentation "一个续延对象。"
+    :initarg :cont
+    :reader value-cont-cont))
+  (:documentation "被实现语言中的续延类型。"))
+
+(defmethod initialize-instance :after ((instance <value-cont>) &rest initargs &key cont &allow-other-keys)
+  (declare (ignorable instance initargs))
+  (unless (typep cont '<cont>)
+    (error ":CONT 必须为一个续延，但传入了 ~S" cont)))
+;;; 续延值类型 end
 ;;; 语言值类型 end
 
 ;;; 环境相关 begin
@@ -418,15 +445,20 @@
      v)
     (<fun-cont>
      (with-slots (arg-val cont env store) cont
-       (with-slots (arg body) v
-         (let* ((location (put-store store arg-val))
-                (binding (make-instance '<binding>
-                                        :location location
-                                        :name arg)))
-           (interpret/k body
-                        (extend-env binding env)
-                        store
-                        cont)))))
+       (etypecase v
+         (<value-cont>
+          (with-slots (cont) v
+            (apply-continuation cont arg-val)))
+         (<value-fun>
+          (with-slots (arg body) v
+            (let* ((location (put-store store arg-val))
+                   (binding (make-instance '<binding>
+                                           :location location
+                                           :name arg)))
+              (interpret/k body
+                           (extend-env binding env)
+                           store
+                           cont)))))))
     (<lhs-cont>
      (with-slots (cont env r store) cont
        (interpret/k r env store (make-rhs-cont v cont))))
@@ -482,6 +514,15 @@
     (<core-app>
      (with-slots (fun arg) ast
        (interpret/k arg env store (make-arg-cont fun env store cont))))
+    (<core-call/cc>
+     (with-slots (body var) ast
+       ;; 新建一个环境，在这个环境中，将当前续延绑定到变量 VAR 上，然后求值表达式 BODY，并将结果传递给当前续延。
+       (let* ((binding (make-instance '<binding>
+                                      :location (put-store store (make-instance '<value-cont>
+                                                                                :cont cont))
+                                      :name (core-id-s var)))
+              (env (extend-env binding env)))
+         (interpret/k body env store cont))))
     (<core-id>
      (with-slots (s) ast
        (apply-continuation cont (fetch-store store (lookup-env s env)))))
@@ -517,6 +558,13 @@
            (make-instance '<core-plus>
                           :l (parse-concrete-syntax lhs)
                           :r (parse-concrete-syntax rhs))))
+        ((and (listp expr) (symbolp (first expr)) (string= (first expr) 'call/cc))
+         (destructuring-bind (_ vars body)
+             expr
+           (declare (ignorable _))
+           (make-instance '<core-call/cc>
+                          :body (parse-concrete-syntax body)
+                          :var (make-instance '<core-id> :s (first vars)))))
         ((and (listp expr) (eq (first expr) 'print))
          (destructuring-bind (_ arg)
              expr
