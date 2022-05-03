@@ -56,4 +56,8 @@
   (is (value-equal-p
          (make-instance '<value-num> :n 3)
          (interpret-concrete '((lambda (x) ((lambda (y) (+ x y)) 2)) 1)
-                             (make-empty-env)))))
+                             (make-empty-env))))
+  (is (string=
+       (concatenate 'string "233" (list #\Newline))
+       (with-output-to-string (*standard-output*)
+         (interpret-concrete '(print 233) (make-empty-env))))))

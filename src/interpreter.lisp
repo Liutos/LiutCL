@@ -117,6 +117,14 @@
   (unless (typep r '<core>)
     (error ":R必须为一个<CORE>类型，但传入了~S" r)))
 ;;; <core-plus> end
+
+;;; (print ...) 语法相关 begin
+(define-core-variant <core-print>
+    ((arg
+      :documentation "要打印的数字。"
+      :initarg :arg
+      :type <core>)))
+;;; (print ...) 语法相关 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -382,6 +390,12 @@
       :type <cont>))
   (:documentation "表示求值了加法运算的左操作数后要做的计算的续延。"))
 
+(define-cont-variant <print-cont>
+    ((cont
+      :initarg :cont
+      :type <cont>))
+  (:documentation "表示求值了 print 语法的参数后要做的动作的续延。"))
+
 (define-cont-variant <rhs-cont>
     ((lhs
       :initarg :lhs
@@ -416,6 +430,11 @@
     (<lhs-cont>
      (with-slots (cont env r store) cont
        (interpret/k r env store (make-rhs-cont v cont))))
+    (<print-cont>
+     (with-slots (cont) cont
+       (assert (typep v '<value-num>) nil "目前只支持数值类型的参数。")
+       (format t "~D~%" (value-num-n v))
+       (apply-continuation cont v)))
     (<rhs-cont>
      (with-slots (cont lhs) cont
        (apply-continuation cont (num+ lhs v))))
@@ -445,6 +464,9 @@
   "创建一个表示求值了加法运算的左操作数后要做的计算的续延。"
   (make-instance '<lhs-cont> :cont cont :env env :r r :store store))
 
+(defun make-print-cont (cont)
+  (make-instance '<print-cont> :cont cont))
+
 (defun make-rhs-cont (lhs cont)
   "创建一个表示求值了加法运算的右操作数后要做的计算的续延。"
   (make-instance '<rhs-cont> :cont cont :lhs lhs))
@@ -471,7 +493,10 @@
        (apply-continuation cont (make-instance '<value-num> :n n))))
     (<core-plus>
      (with-slots (l r) ast
-       (interpret/k l env store (make-lhs-cont r env store cont))))))
+       (interpret/k l env store (make-lhs-cont r env store cont))))
+    (<core-print>
+     (with-slots (arg) ast
+       (interpret/k arg env store (make-print-cont cont))))))
 
 ;;; 具体语法相关 begin
 (defun parse-concrete-syntax (expr)
@@ -492,6 +517,12 @@
            (make-instance '<core-plus>
                           :l (parse-concrete-syntax lhs)
                           :r (parse-concrete-syntax rhs))))
+        ((and (listp expr) (eq (first expr) 'print))
+         (destructuring-bind (_ arg)
+             expr
+           (declare (ignorable _))
+           (make-instance '<core-print>
+                          :arg (parse-concrete-syntax arg))))
         ((listp expr)
          (destructuring-bind (fun arg)
              expr
