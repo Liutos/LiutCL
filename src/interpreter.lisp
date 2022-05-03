@@ -1,6 +1,7 @@
 (in-package #:cl)
 
 (defpackage #:com.liutos.liutcl.interpreter
+  (:export #:load-source-file)
   (:use #:cl))
 
 (in-package #:com.liutos.liutcl.interpreter)
@@ -504,3 +505,16 @@
         (t
          (error "不支持的具体语法：~S" expr))))
 ;;; 具体语法相关 end
+
+;;; 运行脚本相关 begin
+(defun load-source-file (filespec)
+  "读取文件 FILESPEC 中的代码并从上到下顺序执行。"
+  (with-open-file (s filespec)
+    (let ((env (make-empty-env))
+          (expr (read s))
+          (store (make-empty-store)))
+      (interpret/k (parse-concrete-syntax expr)
+                   env
+                   store
+                   (make-end-cont)))))
+;;; 运行脚本相关 end
