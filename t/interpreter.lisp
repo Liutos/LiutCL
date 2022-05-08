@@ -63,4 +63,11 @@
          (interpret-concrete '(print 233) (make-empty-env)))))
   (is (value-equal-p
        (make-instance '<value-num> :n 233)
-       (interpret-concrete '(call/cc (k) (+ 1 (k 233))) (make-empty-env)))))
+       (interpret-concrete '(call/cc (k) (+ 1 (k 233))) (make-empty-env))))
+  (is (value-equal-p
+       (make-instance '<value-bool> :val nil)
+       (interpret-concrete 'false (make-empty-env))))
+  (is (string=
+       (concatenate 'string "false" (list #\Newline))
+       (with-output-to-string (*standard-output*)
+         (interpret-concrete '(print false) (make-empty-env))))))

@@ -138,6 +138,14 @@
       :initarg :var
       :type <core-id>)))
 ;;; call/cc 语法相关 end
+
+;;; 布尔类型字面量语法 begin
+(define-core-variant <core-bool>
+    ((id
+      :documentation "表示布尔类型字面量的标识符。"
+      :initarg :id
+      :type symbol)))
+;;; 布尔类型字面量语法 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -205,6 +213,18 @@
   (unless (typep cont '<cont>)
     (error ":CONT 必须为一个续延，但传入了 ~S" cont)))
 ;;; 续延值类型 end
+
+;;; 布尔类型 begin
+(defclass <value-bool> (<value>)
+  ((val
+    :documentation "布尔值"
+    :initarg :val
+    :reader value-bool-val))
+  (:documentation "被实现语言中的布尔类型。"))
+
+(defmethod value-equal-p ((x <value-bool>) (y <value-bool>))
+  (eq (value-bool-val x) (value-bool-val y)))
+;;; 布尔类型 end
 ;;; 语言值类型 end
 
 ;;; 环境相关 begin
@@ -464,8 +484,11 @@
        (interpret/k r env store (make-rhs-cont v cont))))
     (<print-cont>
      (with-slots (cont) cont
-       (assert (typep v '<value-num>) nil "目前只支持数值类型的参数。")
-       (format t "~D~%" (value-num-n v))
+       (etypecase v
+         (<value-bool>
+          (format t "~A~%" (if (value-bool-val v) "true" "false")))
+         (<value-num>
+          (format t "~D~%" (value-num-n v))))
        (apply-continuation cont v)))
     (<rhs-cont>
      (with-slots (cont lhs) cont
@@ -514,6 +537,13 @@
     (<core-app>
      (with-slots (fun arg) ast
        (interpret/k arg env store (make-arg-cont fun env store cont))))
+    (<core-bool>
+     (with-slots (id) ast
+       (let (bv rv)                    ; rv 表示要传入给续延的值，bv 表示根据字面量映射出来的 nil 或 t。
+         (assert (member id '(false true) :test 'string=))
+         (setf bv (if (string= id 'false) nil t))
+         (setf rv (make-instance '<value-bool> :val bv))
+         (apply-continuation cont rv)))) ; 常量的行为都是直接应用当前续延。
     (<core-call/cc>
      (with-slots (body var) ast
        ;; 新建一个环境，在这个环境中，将当前续延绑定到变量 VAR 上，然后求值表达式 BODY，并将结果传递给当前续延。
@@ -577,6 +607,8 @@
            (make-instance '<core-app>
                           :arg (parse-concrete-syntax arg)
                           :fun (parse-concrete-syntax fun))))
+        ((and (symbolp expr) (member expr '(false true) :test #'string=)) ; 由于标识符可能属于其它 package，因此这里用 string= 来比较。
+         (make-instance '<core-bool> :id expr))
         ((symbolp expr)
          (make-instance '<core-id> :s expr))
         ((integerp expr)

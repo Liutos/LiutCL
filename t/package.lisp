@@ -10,6 +10,7 @@
                 #:<core-lambda>
                 #:<core-num>
                 #:<core-plus>
+                #:<value-bool>
                 #:<value-fun>
                 #:<value-num>
                 #:extend-env
