@@ -28,7 +28,7 @@
          (store (make-empty-store))
          (binding (make-instance '<binding>
                                  :location (put-store store (make-instance '<value-fun>
-                                                                           :arg 'x
+                                                                           :args '(x)
                                                                            :body (make-instance '<core-plus>
                                                                                                 :l (make-instance '<core-id> :s 'x)
                                                                                                 :r (make-instance '<core-num> :n 1))))
@@ -42,7 +42,7 @@
          (store (make-empty-store))
          (binding (make-instance '<binding>
                                  :location (put-store store (make-instance '<value-fun>
-                                                                           :arg 'x
+                                                                           :args '(x)
                                                                            :body (make-instance '<core-id> :s 'x)))
                                  :name 'add1)))
     (signals wrong-type

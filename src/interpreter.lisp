@@ -160,10 +160,9 @@
     (eq x y)))
 ;;; <value-fun> begin
 (defclass <value-fun> (<value>)
-  ((arg
-    :documentation "当前唯一的形参的名字。"
-    :initarg :arg
-    :type symbol)
+  ((args
+    :documentation "由形参组成的列表。"
+    :initarg :args)
    (body
     :documentation "表示函数逻辑的语法结构。"
     :initarg :body
@@ -174,10 +173,10 @@
     :type env))
   (:documentation "被实现语言中的函数类型。"))
 
-(defmethod initialize-instance :after ((instance <value-fun>) &rest initargs &key arg body env &allow-other-keys)
+(defmethod initialize-instance :after ((instance <value-fun>) &rest initargs &key args body env &allow-other-keys)
   (declare (ignorable instance initargs))
-  (unless (symbolp arg)
-    (error ":ARG必须为一个符号，但传入了~S" arg))
+  (unless (and (listp args) (symbolp (first args)))
+    (error ":ARGS必须为一个符号列表，但传入了~S" args))
   (unless (typep body '<core>)
     (error ":BODY必须为一个语法结构，但传入了~S" body))
   (unless (typep env 'env)
@@ -328,36 +327,6 @@
     location))
 ;;; 存储相关 end
 
-(defun interpret (ast env store)
-  "解释执行抽象语法树AST，返回代码的执行结果。"
-  (declare (type <core> ast))
-  (declare (type env env))
-  (declare (type store store))
-  (etypecase ast
-    (<core-app>
-     (with-slots (fun arg) ast
-       (let ((arg-val (interpret arg env store))
-             (fun-val (interpret fun env store)))
-         (with-slots (arg body) fun-val
-           (interpret body
-                      (extend-env (make-instance '<binding>
-                                                 :location (put-store store arg-val)
-                                                 :name arg)
-                                  env)
-                      store)))))
-    (<core-id>
-     (with-slots (s) ast
-       (fetch-store store (lookup-env s env))))
-    (<core-lambda>
-     (with-slots (body par) ast
-       (make-instance '<value-fun> :arg par :body body :env env)))
-    (<core-num>
-     (with-slots (n) ast
-       (make-instance '<value-num> :n n)))
-    (<core-plus>
-     (with-slots (l r) ast
-       (num+ (interpret l env store) (interpret r env store))))))
-
 ;;; 续延相关 begin
 (deftype continuation ()
   '<cont>)
@@ -470,11 +439,11 @@
           (with-slots (cont) v
             (apply-continuation cont arg-val)))
          (<value-fun>
-          (with-slots (arg body) v
+          (with-slots (args body) v
             (let* ((location (put-store store arg-val))
                    (binding (make-instance '<binding>
                                            :location location
-                                           :name arg)))
+                                           :name (first args))))
               (interpret/k body
                            (extend-env binding env)
                            store
@@ -558,7 +527,7 @@
        (apply-continuation cont (fetch-store store (lookup-env s env)))))
     (<core-lambda>
      (with-slots (body par) ast
-       (apply-continuation cont (make-instance '<value-fun> :arg par :body body :env env))))
+       (apply-continuation cont (make-instance '<value-fun> :args (list par) :body body :env env))))
     (<core-num>
      (with-slots (n) ast
        (apply-continuation cont (make-instance '<value-num> :n n))))
