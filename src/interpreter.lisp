@@ -40,18 +40,17 @@
   ((fun
     :initarg :fun
     :type <core>)
-   (arg
-    :documentation "实参表达式。"
-    :initarg :arg
-    :type <core>))
+   (args
+    :documentation "实参表达式组成的列表。"
+    :initarg :args))
   (:documentation "语言核心中表示函数调用的语法结构。"))
 
-(defmethod initialize-instance :after ((instance <core-app>) &rest initargs &key fun arg &allow-other-keys)
+(defmethod initialize-instance :after ((instance <core-app>) &rest initargs &key args fun &allow-other-keys)
   (declare (ignorable initargs instance))
   (unless (typep fun '<core>)
     (error ":FUN必须为一个语法结构，但传入了~S" fun))
-  (unless (typep arg '<core>)
-    (error ":ARG必须为一个语法结构，但传入了~S" arg)))
+  (unless (and (listp args) (typep (first args) '<core>))
+    (error ":ARGS必须为一个语法结构列表，但传入了~S" args)))
 ;;; <core-app> end
 
 ;;; <core-id> begin
@@ -345,8 +344,9 @@
          (slot-types (mapcar #'(lambda (spec) (getf spec :type)) specs))
          (assertions
            (mapcar #'(lambda (name type)
-                       `(unless (typep ,name ',type)
-                          (error ,(format nil ":~A必须为~A类型，但传入了~~A" name type) ,name)))
+                       (when type
+                         `(unless (typep ,name ',type)
+                            (error ,(format nil ":~A必须为~A类型，但传入了~~A" name type) ,name))))
                    slot-names slot-types)))
     `(progn
        (defclass ,name (<cont>)
@@ -354,32 +354,39 @@
          ,@options)
 
        (defmethod initialize-instance :after ((instance ,name) &rest initargs &key ,@initargs &allow-other-keys)
-         (declare (ignorable initargs instance))
+         (declare (ignorable initargs instance ,@initargs))
          ,@assertions))))
 
-(define-cont-variant <arg-cont>
-  ((fun
-    :initarg :fun
-    :type <core>)
-   (env
-    :initarg :env
-    :type env)
-   (store
-    :initarg :store
-    :type store)
-   (cont
-    :initarg :cont
-    :type <cont>))
-  (:documentation "表示求值了实参之后要做的计算的续延。"))
+(define-cont-variant <arg2-cont>
+    ((fun
+      :documentation "求值完所有参数表达式后要求的函数位置上的表达式。"
+      :initarg :fun
+      :type <core>)
+     (env
+      :initarg :env
+      :type env)
+     (rest-args
+      :documentation "剩余待求值的参数表达式列表。"
+      :initarg :rest-args)
+     (store
+      :initarg :store
+      :type store)
+     (cont
+      :initarg :cont
+      :type <cont>)
+     (vs
+      :documentation "已被求值的表达式的结果组成的列表，用于最终绑定到函数体的环境上。"
+      :initarg :vs))
+  (:documentation "代表求值了函数的第一个参数之后接着要做的事情。"))
 
 (define-cont-variant <end-cont>
     ()
   (:documentation "表示没有更多的计算的续延。"))
 
 (define-cont-variant <fun-cont>
-    ((arg-val
-      :initarg :arg-val
-      :type <value>)
+    ((args
+      :documentation "全部求值后的参数列表。"
+      :initarg :args)
      (env
       :initarg :env
       :type env)
@@ -426,28 +433,51 @@
   (declare (type (or continuation <cont>) cont))
   (declare (type <value> v))
   (etypecase cont
-    (<arg-cont>
-     (with-slots (cont fun env store) cont
-       (interpret/k fun env store
-                    (make-fun-cont v env store cont))))
+    (<arg2-cont>
+     (with-slots (cont fun env rest-args store vs) cont
+       ;; 如果还有剩余的参数表达式，就将当前获得的值“压栈”，并继续求值下一个表达式。
+       ;; 否则，代表所有参数都求值完毕，可以求值函数位置上的表达式了。
+       (cond ((null rest-args)
+              (interpret/k fun env store
+                           (make-fun-cont (cons v vs) env store cont)))
+             (t
+              (let ((next-arg (first rest-args))
+                    (rest-args (rest rest-args)))
+                (interpret/k next-arg
+                             env
+                             store
+                             (make-arg2-cont fun
+                                             env
+                                             rest-args
+                                             store
+                                             cont
+                                             (cons v vs))))))))
     (<end-cont>
      v)
     (<fun-cont>
-     (with-slots (arg-val cont env store) cont
+     (with-slots (args cont env store) cont
        (etypecase v
          (<value-cont>
           (with-slots (cont) v
-            (apply-continuation cont arg-val)))
+            (assert (= (length args) 1) nil "续延只能有一个参数")
+            (apply-continuation cont (first args))))
          (<value-fun>
-          (with-slots (args body) v
-            (let* ((location (put-store store arg-val))
-                   (binding (make-instance '<binding>
-                                           :location location
-                                           :name (first args))))
-              (interpret/k body
-                           (extend-env binding env)
-                           store
-                           cont)))))))
+          (let ((body (slot-value v 'body))
+                (names (slot-value v 'args))
+                (new-env env))
+            (assert (= (length names) (length args)) nil "形参和实参的数量必须相等：~D != ~D" (length names) (length args))
+            ;; TODO: 这里用 mapcar 只为了副作用怪怪的。
+            (mapcar #'(lambda (name arg-val)
+                        (let* ((location (put-store store arg-val))
+                               (binding (make-instance '<binding>
+                                                       :location location
+                                                       :name name)))
+                          (setf new-env (extend-env binding new-env))))
+                    names args)
+            (interpret/k body
+                         new-env
+                         store
+                         cont))))))
     (<lhs-cont>
      (with-slots (cont env r store) cont
        (interpret/k r env store (make-rhs-cont v cont))))
@@ -465,21 +495,22 @@
     (function
      (funcall cont v))))
 
-(defun make-arg-cont (fun env store cont)
-  "创建一个表示求值了实参之后要做的计算的续延。"
-  (make-instance '<arg-cont>
+(defun make-arg2-cont (fun env rest-args store cont vs)
+  (make-instance '<arg2-cont>
                  :cont cont
                  :env env
                  :fun fun
-                 :store store))
+                 :rest-args rest-args
+                 :store store
+                 :vs vs))
 
 (defun make-end-cont ()
   (make-instance '<end-cont>))
 
-(defun make-fun-cont (arg-val env store cont)
+(defun make-fun-cont (args env store cont)
   "创建一个表示求值了函数位置的值之后要做的计算的续延。"
   (make-instance '<fun-cont>
-                 :arg-val arg-val
+                 :args args
                  :cont cont
                  :env env
                  :store store))
@@ -504,8 +535,11 @@
   (declare (type continuation cont))
   (etypecase ast
     (<core-app>
-     (with-slots (fun arg) ast
-       (interpret/k arg env store (make-arg-cont fun env store cont))))
+     (with-slots (args fun) ast
+       (assert (<= 1 (length args) 2) nil "暂时仅支持1到2个参数的函数的调用")
+       (let ((next-arg (first args))    ; 第一个要被求值的参数表达式。
+             (rest-args (rest args)))   ; 剩下的待求值的参数表达式组成的列表。
+         (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil)))))
     (<core-bool>
      (with-slots (id) ast
        (let (bv rv)                    ; rv 表示要传入给续延的值，bv 表示根据字面量映射出来的 nil 或 t。
@@ -571,10 +605,10 @@
            (make-instance '<core-print>
                           :arg (parse-concrete-syntax arg))))
         ((listp expr)
-         (destructuring-bind (fun arg)
+         (destructuring-bind (fun . args)
              expr
            (make-instance '<core-app>
-                          :arg (parse-concrete-syntax arg)
+                          :args (mapcar #'parse-concrete-syntax args)
                           :fun (parse-concrete-syntax fun))))
         ((and (symbolp expr) (member expr '(false true) :test #'string=)) ; 由于标识符可能属于其它 package，因此这里用 string= 来比较。
          (make-instance '<core-bool> :id expr))
