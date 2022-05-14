@@ -223,6 +223,19 @@
 (defmethod value-equal-p ((x <value-bool>) (y <value-bool>))
   (eq (value-bool-val x) (value-bool-val y)))
 ;;; 布尔类型 end
+
+;;; 原生函数类型 begin
+(defclass <value-primitive> (<value>)
+  ((f
+    :documentation "一个 CL 函数对象。"
+    :initarg :f
+    :reader value-primitive-f
+    :type function))
+  (:documentation "用 CL 函数实现的、目标语言中的函数类型。"))
+
+(defmethod value-equal-p ((x <value-primitive>) (y <value-primitive>))
+  (eq (value-primitive-f x) (value-primitive-f y)))
+;;; 原生函数类型 end
 ;;; 语言值类型 end
 
 ;;; 环境相关 begin
@@ -473,11 +486,13 @@
                                                        :location location
                                                        :name name)))
                           (setf new-env (extend-env binding new-env))))
-                    names args)
+                    names (nreverse args)) ; args 是用 cons 构造的，次序与形参列表相反。
             (interpret/k body
                          new-env
                          store
-                         cont))))))
+                         cont)))
+         (<value-primitive>
+          (apply (value-primitive-f v) `(,@(nreverse args) ,cont))))))
     (<lhs-cont>
      (with-slots (cont env r store) cont
        (interpret/k r env store (make-rhs-cont v cont))))
@@ -619,6 +634,29 @@
         (t
          (error "不支持的具体语法：~S" expr))))
 ;;; 具体语法相关 end
+
+;;; 内置函数相关 begin
+(defun 233-> (x y k)                    ; 每个内置函数也是 CPS 风格的。
+  "实现 233-lisp 中的、比较两个数字的大于运算符。"
+  ;; TODO: 这里抛出 CL 层面的异常并不合适，应当改为抛出 233-lisp 层面的异常。
+  (check-type x <value-num>)
+  (check-type y <value-num>)
+  (apply-continuation k (make-instance '<value-bool>
+                                       :val (> (value-num-n x) (value-num-n y)))))
+
+(defun make-prelude-env (store)
+  "创建一个仅在空环境的基础上添加了 233-lisp 内置函数的环境。"
+  (check-type store store)
+  (let ((built-ins (list (cons '> #'233->)))
+        (env (make-empty-env)))
+    (dolist (pair built-ins)
+      (destructuring-bind (name . fun) pair
+        (let* ((fun (make-instance '<value-primitive> :f fun))
+               (location (put-store store fun))
+               (binding (make-instance '<binding> :location location :name name)))
+          (setf env (extend-env binding env)))))
+    env))
+;;; 内置函数相关 end
 
 ;;; 运行脚本相关 begin
 (defun load-source-file (filespec)

@@ -16,6 +16,7 @@
                 #:extend-env
                 #:make-empty-env
                 #:make-empty-store
+                #:make-prelude-env
                 #:put-store
                 #:value-equal-p
                 #:wrong-type))

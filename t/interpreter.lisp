@@ -70,4 +70,8 @@
   (is (string=
        (concatenate 'string "false" (list #\Newline))
        (with-output-to-string (*standard-output*)
-         (interpret-concrete '(print false) (make-empty-env))))))
+         (interpret-concrete '(print false) (make-empty-env)))))
+  (is (value-equal-p
+       (make-instance '<value-bool> :val t)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '(> 2 1) (make-prelude-env store) store)))))

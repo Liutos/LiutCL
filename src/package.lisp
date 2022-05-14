@@ -2,4 +2,5 @@
 
 (defpackage #:com.liutos.liutcl.interpreter
   (:use #:cl)
-  (:export #:load-source-file))
+  (:export #:load-source-file
+           #:make-prelude-env))
