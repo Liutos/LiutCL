@@ -78,4 +78,7 @@
   (is (value-equal-p
        (make-instance '<value-bool> :val t)
        (let ((store (make-empty-store)))
-         (interpret-concrete '(= 3 (+ 1 2)) (make-prelude-env store) store)))))
+         (interpret-concrete '(= 3 (+ 1 2)) (make-prelude-env store) store))))
+  (is (value-equal-p
+       (make-instance '<value-num> :n 2)
+       (interpret-concrete '(if true 2 1) (make-empty-env)))))

@@ -145,6 +145,23 @@
       :initarg :id
       :type symbol)))
 ;;; 布尔类型字面量语法 end
+
+;;; if 语法相关 begin
+(define-core-variant <core-if>
+    ((test
+         :documentation "首先被求值的测试表达式。"
+       :initarg :test
+       :type <core>)
+     (then
+      :documentation "测试表达式成立时执行的代码。"
+      :initarg :then
+      :type <core>)
+     (else
+      :documentation "测试表达式不成立时的代码。"
+      :initarg :else
+      :type <core>))
+  (:documentation "if 语法的语法结构。"))
+;;; if 语法相关 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -411,6 +428,24 @@
       :type <cont>))
   (:documentation "表示求值了函数位置的值之后要做的计算的续延。"))
 
+(define-cont-variant <test-cont>
+    ((saved-cont
+      :initarg :saved-cont
+      :type <cont>)
+     (else
+      :initarg :else
+      :type <core>)
+     (env
+      :initarg :env
+      :type env)
+     (store
+      :initarg :store
+      :type store)
+     (then
+      :initarg :then
+      :type <core>))
+  (:documentation "表示求值了 if 语句的测试表达式之后要做的计算。"))
+
 (define-cont-variant <lhs-cont>
     ((r
       :initarg :r
@@ -507,6 +542,9 @@
     (<rhs-cont>
      (with-slots (cont lhs) cont
        (apply-continuation cont (num+ lhs v))))
+    (<test-cont>
+     (with-slots (else env saved-cont store then) cont
+       (interpret/k (if v then else) env store saved-cont)))
     (function
      (funcall cont v))))
 
@@ -574,6 +612,15 @@
     (<core-id>
      (with-slots (s) ast
        (apply-continuation cont (fetch-store store (lookup-env s env)))))
+    (<core-if>
+     (with-slots (else test then) ast
+       (interpret/k test env store
+                    (make-instance '<test-cont>
+                                   :else else
+                                   :env env
+                                   :saved-cont cont
+                                   :store store
+                                   :then then))))
     (<core-lambda>
      (with-slots (body par) ast
        (apply-continuation cont (make-instance '<value-fun> :args (list par) :body body :env env))))
@@ -619,6 +666,14 @@
            (declare (ignorable _))
            (make-instance '<core-print>
                           :arg (parse-concrete-syntax arg))))
+        ((and (listp expr) (eq (first expr) 'if))
+         (destructuring-bind (_ test then else)
+             expr
+           (declare (ignorable _))
+           (make-instance '<core-if>
+                          :else (parse-concrete-syntax else)
+                          :test (parse-concrete-syntax test)
+                          :then (parse-concrete-syntax then))))
         ((listp expr)
          (destructuring-bind (fun . args)
              expr
