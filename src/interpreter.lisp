@@ -636,6 +636,13 @@
 ;;; 具体语法相关 end
 
 ;;; 内置函数相关 begin
+(defun 233-= (x y k)
+  (check-type x <value-num>)
+  (check-type y <value-num>)
+  (apply-continuation k
+                      (make-instance '<value-bool>
+                                     :val (= (value-num-n x) (value-num-n y)))))
+
 (defun 233-> (x y k)                    ; 每个内置函数也是 CPS 风格的。
   "实现 233-lisp 中的、比较两个数字的大于运算符。"
   ;; TODO: 这里抛出 CL 层面的异常并不合适，应当改为抛出 233-lisp 层面的异常。
@@ -647,7 +654,8 @@
 (defun make-prelude-env (store)
   "创建一个仅在空环境的基础上添加了 233-lisp 内置函数的环境。"
   (check-type store store)
-  (let ((built-ins (list (cons '> #'233->)))
+  (let ((built-ins (list (cons '= #'233-=)
+                         (cons '> #'233->)))
         (env (make-empty-env)))
     (dolist (pair built-ins)
       (destructuring-bind (name . fun) pair
