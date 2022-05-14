@@ -18,5 +18,6 @@ exec ros -Q -- $0 "$@"
     (format t "使用方法：liutcl.ros FILE~%")
     (return-from main))
 
-  (com.liutos.liutcl.interpreter:load-source-file (first argv)))
+  (with-open-file (s (first argv))
+    (com.liutos.liutcl.interpreter:load-source-file s)))
 ;;; vim: set ft=lisp lisp:

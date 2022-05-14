@@ -24,8 +24,9 @@
          (slot-types (mapcar #'(lambda (spec) (getf spec :type)) specs))
          (assertions
            (mapcar #'(lambda (name type)
-                       `(unless (typep ,name ',type)
-                          (error ,(format nil ":~A必须为~A类型，但传入了~~A" name type) ,name)))
+                       (when type
+                         `(unless (typep ,name ',type)
+                            (error ,(format nil ":~A必须为~A类型，但传入了~~A" name type) ,name))))
                    slot-names slot-types)))
     `(progn
        (defclass ,name (<core>)
@@ -49,9 +50,25 @@
   (declare (ignorable initargs instance))
   (unless (typep fun '<core>)
     (error ":FUN必须为一个语法结构，但传入了~S" fun))
-  (unless (and (listp args) (typep (first args) '<core>))
-    (error ":ARGS必须为一个语法结构列表，但传入了~S" args)))
+  (unless (or (null args) (and (listp args) (typep (first args) '<core>)))
+    (error ":ARGS必须为空，或者是一个语法结构列表，但传入了~S" args)))
 ;;; <core-app> end
+
+;;; defun 语法相关 begin
+(define-core-variant <core-defun>
+    ((body
+      :documentation "函数体代码。"
+      :initarg :body
+      :type <core>)
+     (name
+      :documentation "函数名"
+      :initarg :name
+      :type symbol)
+     (parameters
+      :documentation "参数列表"
+      :initarg :parameters))
+  (:documentation "表示定义全局函数的语法。"))
+;;; defun 语法相关 end
 
 ;;; <core-id> begin
 (defclass <core-id> (<core>)
@@ -294,7 +311,7 @@
          (error "找不到标识符~S的定义" name))
         (t
          (let ((binding (first env)))
-           (cond ((eq (binding-name binding) name)
+           (cond ((string= (binding-name binding) name) ; 为了可以比较不同 package 中的符号 main，这里使用 string= 而不是 eq。
                   (binding-location binding))
                  (t
                   (lookup-env name (rest env))))))))
@@ -589,10 +606,15 @@
   (etypecase ast
     (<core-app>
      (with-slots (args fun) ast
-       (assert (<= 1 (length args) 2) nil "暂时仅支持1到2个参数的函数的调用")
-       (let ((next-arg (first args))    ; 第一个要被求值的参数表达式。
-             (rest-args (rest args)))   ; 剩下的待求值的参数表达式组成的列表。
-         (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil)))))
+       (assert (<= 0 (length args) 2) nil "暂时仅支持1到2个参数的函数的调用")
+       (cond ((= (length args) 0)
+              ;; 既然没有参数要求值，便可以直接求值函数位置的表达式并准备调用了。
+              (interpret/k fun env store
+                           (make-fun-cont nil env store cont)))
+             (t
+              (let ((next-arg (first args))    ; 第一个要被求值的参数表达式。
+                    (rest-args (rest args)))   ; 剩下的待求值的参数表达式组成的列表。
+                (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil)))))))
     (<core-bool>
      (with-slots (id) ast
        (let (bv rv)                    ; rv 表示要传入给续延的值，bv 表示根据字面量映射出来的 nil 或 t。
@@ -609,6 +631,8 @@
                                       :name (core-id-s var)))
               (env (extend-env binding env)))
          (interpret/k body env store cont))))
+    (<core-defun>
+     (error "<CORE-DEFUN> 不允许出现在运行时"))
     (<core-id>
      (with-slots (s) ast
        (apply-continuation cont (fetch-store store (lookup-env s env)))))
@@ -674,6 +698,13 @@
                           :else (parse-concrete-syntax else)
                           :test (parse-concrete-syntax test)
                           :then (parse-concrete-syntax then))))
+        ((and (listp expr) (eq (first expr) 'defun))
+         (destructuring-bind (_ name parameters body) expr
+           (declare (ignorable _))
+           (make-instance '<core-defun>
+                          :body (parse-concrete-syntax body)
+                          :name name
+                          :parameters (mapcar #'parse-concrete-syntax parameters))))
         ((listp expr)
          (destructuring-bind (fun . args)
              expr
@@ -722,14 +753,39 @@
 ;;; 内置函数相关 end
 
 ;;; 运行脚本相关 begin
-(defun load-source-file (filespec)
-  "读取文件 FILESPEC 中的代码并从上到下顺序执行。"
-  (with-open-file (s filespec)
-    (let ((env (make-empty-env))
-          (expr (read s))
-          (store (make-empty-store)))
-      (interpret/k (parse-concrete-syntax expr)
-                   env
-                   store
-                   (make-end-cont)))))
+(defun read-expressions (stream)
+  "从文件流 STREAM 中读取出所有的表达式并组成一个列表。"
+  (let ((eof (gensym))
+        (exprs '()))
+    (loop
+      (let ((expr (read stream nil eof)))
+        (when (eq expr eof)
+          (return-from read-expressions (nreverse exprs)))
+
+        (push expr exprs)))))
+
+(defun load-source-file (stream)
+  "读取文件流 STREAM 中的代码并调用其中定义的 MAIN 函数。"
+  (assert (input-stream-p stream) nil "STREAM 必须为一个输入流")
+  (let* ((store (make-empty-store))
+         (prelude (make-prelude-env store))
+         (env prelude)
+         (exprs (read-expressions stream)))
+    (dolist (expr exprs)
+      (let ((ast (parse-concrete-syntax expr)))
+        (assert (typep ast '<core-defun>) nil "顶层语句只能是 DEFUN：~A" ast)
+        (with-slots (body name parameters) ast
+          (let* ((fun (make-instance '<value-fun>
+                                     :args parameters
+                                     :body body
+                                     :env env))
+                 (location (put-store store fun))
+                 (binding (make-instance '<binding>
+                                         :location location
+                                         :name name)))
+            (setf env (extend-env binding env))))))
+    (interpret/k (parse-concrete-syntax '(main))
+                 env
+                 store
+                 (make-end-cont))))
 ;;; 运行脚本相关 end

@@ -82,3 +82,11 @@
   (is (value-equal-p
        (make-instance '<value-num> :n 2)
        (interpret-concrete '(if true 2 1) (make-empty-env)))))
+
+(test load-source-file
+  "测试 load-source-file 函数。"
+  (is (string=
+       (concatenate 'string "233" (list #\Newline))
+       (with-output-to-string (*standard-output*)
+         (with-input-from-string (s "(defun main () (print 233))")
+           (com.liutos.liutcl.interpreter:load-source-file s))))))

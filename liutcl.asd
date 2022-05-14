@@ -23,4 +23,5 @@
   ((:file "interpreter" :depends-on ("package"))
    (:file "package"))
   :perform (test-op (o c)
-                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :interpret :com.liutos.liutcl.interpreter.test))))
+                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :interpret :com.liutos.liutcl.interpreter.test))
+                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :load-source-file :com.liutos.liutcl.interpreter.test))))
