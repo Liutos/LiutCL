@@ -90,3 +90,10 @@
        (with-output-to-string (*standard-output*)
          (with-input-from-string (s "(defun main () (print 233))")
            (com.liutos.liutcl.interpreter:load-source-file s))))))
+
+(test arithmetic
+  "测试算术运算函数。"
+  (is (value-equal-p
+       (make-instance '<value-num> :n 1)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '(mod 10 3) (make-prelude-env store) store)))))
