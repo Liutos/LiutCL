@@ -97,3 +97,10 @@
        (make-instance '<value-num> :n 1)
        (let ((store (make-empty-store)))
          (interpret-concrete '(mod 10 3) (make-prelude-env store) store)))))
+
+(test macro
+  "测试语言内置的宏。"
+  (is (value-equal-p
+       (make-instance '<value-bool> :val nil)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '(or (> 1 2) (> 2 3)) (make-prelude-env store) store)))))

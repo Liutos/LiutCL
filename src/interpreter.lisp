@@ -659,6 +659,24 @@
        (interpret/k arg env store (make-print-cont cont))))))
 
 ;;; 具体语法相关 begin
+(defun expand-or-to-if (expr)
+  "将 OR 语句 EXPR 替换为等价的 IF 语句。"
+  (assert (eq (first expr) 'or))
+  (let ((body (rest expr)))
+    (when (null body)
+      (return-from expand-or-to-if nil))
+
+    (let ((forms (rest body))         ; or 之后第二个元素开始的所有表达式组成的列表。
+          (test (first body))          ; or 之后的第一个表达式。
+          (val-var (gensym)))
+      (if (null forms)
+          test
+          `((lambda (,val-var)          ; 目标语言尚未支持 LET 语句，用 LAMBDA 代替。
+              (if ,val-var
+                  ,(expand-or-to-if (cons 'or forms))
+                  ,val-var))
+            ,test)))))
+
 (defun parse-concrete-syntax (expr)
   "解析作为具体语法的S表达式 EXPR，返回对象的抽象语法 <CORE> 类的实例对象。"
   (cond ((and (listp expr) (eq (first expr) 'lambda))
@@ -705,6 +723,10 @@
                           :body (parse-concrete-syntax body)
                           :name name
                           :parameters (mapcar #'parse-concrete-syntax parameters))))
+        ((and (listp expr) (eq (first expr) 'or))
+         ;; 将 OR 语句作为宏来实现，展开为上面已经支持的 IF 语句。
+         (let ((expanded (expand-or-to-if expr)))
+           (parse-concrete-syntax expanded)))
         ((listp expr)
          (destructuring-bind (fun . args)
              expr
