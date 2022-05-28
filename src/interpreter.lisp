@@ -256,6 +256,10 @@
 
 (defmethod value-equal-p ((x <value-bool>) (y <value-bool>))
   (eq (value-bool-val x) (value-bool-val y)))
+
+(defmethod print-object ((object <value-bool>) stream)
+  (print-unreadable-object (object stream :type t)
+    (princ (if (value-bool-val object) "true" "false") stream)))
 ;;; 布尔类型 end
 
 ;;; 原生函数类型 begin
@@ -673,8 +677,8 @@
           test
           `((lambda (,val-var)          ; 目标语言尚未支持 LET 语句，用 LAMBDA 代替。
               (if ,val-var
-                  ,(expand-or-to-if (cons 'or forms))
-                  ,val-var))
+                  ,val-var
+                  ,(expand-or-to-if (cons 'or forms))))
             ,test)))))
 
 (defun parse-concrete-syntax (expr)
