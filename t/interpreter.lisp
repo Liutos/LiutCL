@@ -81,7 +81,10 @@
          (interpret-concrete '(= 3 (+ 1 2)) (make-prelude-env store) store))))
   (is (value-equal-p
        (make-instance '<value-num> :n 2)
-       (interpret-concrete '(if true 2 1) (make-empty-env)))))
+       (interpret-concrete '(if true 2 1) (make-empty-env))))
+  (is (value-equal-p
+       (make-instance '<value-num> :n 1)
+       (interpret-concrete '(if false 2 1) (make-empty-env)))))
 
 (test load-source-file
   "测试 load-source-file 函数。"

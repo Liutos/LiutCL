@@ -52,6 +52,12 @@
     (error ":FUN必须为一个语法结构，但传入了~S" fun))
   (unless (or (null args) (and (listp args) (typep (first args) '<core>)))
     (error ":ARGS必须为空，或者是一个语法结构列表，但传入了~S" args)))
+
+(defmethod print-object ((object <core-app>) stream)
+  "将函数调用的 AST 打印为 S 表达式。"
+  (print-unreadable-object (object stream)
+    (with-slots (args fun) object
+      (format stream "(~A ~{~A~^ ~})" fun args))))
 ;;; <core-app> end
 
 ;;; defun 语法相关 begin
@@ -82,6 +88,11 @@
   (declare (ignorable initargs instance))
   (unless (symbolp s)
     (error ":S必须为一个符号，但传入了~S" s)))
+
+(defmethod print-object ((object <core-id>) stream)
+  "打印出标识符的名称。"
+  (print-unreadable-object (object stream)
+    (princ (core-id-s object) stream)))
 ;;; <core-id> end
 
 ;;; <core-lambda> begin
@@ -114,6 +125,11 @@
   (declare (ignorable initargs instance))
   (unless (integerp n)
     (error ":N必须为一个整数，但传入了~S" n)))
+
+(defmethod print-object ((object <core-num>) stream)
+  (print-unreadable-object (object stream)
+    (with-slots (n) object
+      (princ n stream))))
 ;;; <core-num> end
 
 ;;; <core-plus> begin
@@ -141,6 +157,11 @@
       :documentation "要打印的数字。"
       :initarg :arg
       :type <core>)))
+
+(defmethod print-object ((object <core-print>) stream)
+  (print-unreadable-object (object stream)
+    (with-slots (arg) object
+      (format stream "(print ~A)" arg))))
 ;;; (print ...) 语法相关 end
 
 ;;; call/cc 语法相关 begin
@@ -178,6 +199,11 @@
       :initarg :else
       :type <core>))
   (:documentation "if 语法的语法结构。"))
+
+(defmethod print-object ((object <core-if>) stream)
+  (print-unreadable-object (object stream)
+    (with-slots (else test then) object
+      (format stream "(if ~A ~A ~A)" test then else))))
 ;;; if 语法相关 end
 ;;; 语法相关 end
 
@@ -227,6 +253,10 @@
   (declare (ignorable instance initargs))
   (unless (integerp n)
     (error ":N必须为一个整数，但传入了~S" n)))
+
+(defmethod print-object ((v <value-num>) stream)
+  (print-unreadable-object (v stream :type t)
+    (princ (value-num-n v) stream)))
 
 (defmethod value-equal-p ((x <value-num>) (y <value-num>))
   (= (value-num-n x) (value-num-n y)))
@@ -565,7 +595,7 @@
        (apply-continuation cont (num+ lhs v))))
     (<test-cont>
      (with-slots (else env saved-cont store then) cont
-       (interpret/k (if v then else) env store saved-cont)))
+       (interpret/k (if (value-bool-val v) then else) env store saved-cont)))
     (function
      (funcall cont v))))
 
@@ -610,7 +640,7 @@
   (etypecase ast
     (<core-app>
      (with-slots (args fun) ast
-       (assert (<= 0 (length args) 2) nil "暂时仅支持1到2个参数的函数的调用")
+       (assert (<= 0 (length args) 3) nil "暂时仅支持0到3个参数的函数的调用")
        (cond ((= (length args) 0)
               ;; 既然没有参数要求值，便可以直接求值函数位置的表达式并准备调用了。
               (interpret/k fun env store
@@ -726,7 +756,7 @@
            (make-instance '<core-defun>
                           :body (parse-concrete-syntax body)
                           :name name
-                          :parameters (mapcar #'parse-concrete-syntax parameters))))
+                          :parameters parameters)))
         ((and (listp expr) (eq (first expr) 'or))
          ;; 将 OR 语句作为宏来实现，展开为上面已经支持的 IF 语句。
          (let ((expanded (expand-or-to-if expr)))
