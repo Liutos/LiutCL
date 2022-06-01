@@ -341,14 +341,10 @@
   "在环境ENV中查找与名称NAME关联的值并返回。"
   (declare (symbol name))
   (declare (type env env))
-  (cond ((null env)
-         (error "找不到标识符~S的定义" name))
-        (t
-         (let ((binding (first env)))
-           (cond ((string= (binding-name binding) name) ; 为了可以比较不同 package 中的符号 main，这里使用 string= 而不是 eq。
-                  (binding-location binding))
-                 (t
-                  (lookup-env name (rest env))))))))
+  (dolist (binding env)
+    (when (string= (binding-name binding) name) ; 为了可以比较不同 package 中的符号 main，这里使用 string= 而不是 eq。
+      (return-from lookup-env (binding-location binding))))
+  (error "找不到标识符~S的定义" name))
 
 (defun make-empty-env ()
   '())
