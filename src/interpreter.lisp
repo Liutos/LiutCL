@@ -534,29 +534,32 @@
        ;; 如果还有剩余的参数表达式，就将当前获得的值“压栈”，并继续求值下一个表达式。
        ;; 否则，代表所有参数都求值完毕，可以求值函数位置上的表达式了。
        (cond ((null rest-args)
-              (interpret/k fun env store
-                           (make-fun-cont (cons v vs) env store cont)))
+              (lambda ()
+                (interpret/k fun env store
+                             (make-fun-cont (cons v vs) env store cont))))
              (t
               (let ((next-arg (first rest-args))
                     (rest-args (rest rest-args)))
-                (interpret/k next-arg
-                             env
-                             store
-                             (make-arg2-cont fun
-                                             env
-                                             rest-args
-                                             store
-                                             cont
-                                             (cons v vs))))))))
+                (lambda ()
+                  (interpret/k next-arg
+                               env
+                               store
+                               (make-arg2-cont fun
+                                               env
+                                               rest-args
+                                               store
+                                               cont
+                                               (cons v vs)))))))))
     (<end-cont>
-     v)
+     (lambda () v))
     (<fun-cont>
      (with-slots (args cont env store) cont
        (etypecase v
          (<value-cont>
           (with-slots (cont) v
             (assert (= (length args) 1) nil "续延只能有一个参数")
-            (apply-continuation cont (first args))))
+            (lambda ()
+              (apply-continuation cont (first args)))))
          (<value-fun>
           (let ((body (slot-value v 'body))
                 (names (slot-value v 'args))
@@ -570,15 +573,17 @@
                                                        :name name)))
                           (setf new-env (extend-env binding new-env))))
                     names (nreverse args)) ; args 是用 cons 构造的，次序与形参列表相反。
-            (interpret/k body
-                         new-env
-                         store
-                         cont)))
+            (lambda ()
+              (interpret/k body
+                           new-env
+                           store
+                           cont))))
          (<value-primitive>
           (apply (value-primitive-f v) `(,@(nreverse args) ,cont))))))
     (<lhs-cont>
      (with-slots (cont env r store) cont
-       (interpret/k r env store (make-rhs-cont v cont))))
+       (lambda ()
+         (interpret/k r env store (make-rhs-cont v cont)))))
     (<print-cont>
      (with-slots (cont) cont
        (etypecase v
@@ -586,14 +591,17 @@
           (format t "~A~%" (if (value-bool-val v) "true" "false")))
          (<value-num>
           (format t "~D~%" (value-num-n v))))
-       (apply-continuation cont v)))
+       (lambda ()
+         (apply-continuation cont v))))
     (<rhs-cont>
      (with-slots (cont lhs) cont
-       (apply-continuation cont (num+ lhs v))))
+       (lambda ()
+         (apply-continuation cont (num+ lhs v)))))
     (<test-cont>
      (with-slots (else env saved-cont store then) cont
-       (interpret/k (if (value-bool-val v) then else) env store saved-cont)))
-    (function
+       (lambda ()
+         (interpret/k (if (value-bool-val v) then else) env store saved-cont))))
+    (function                           ; TODO: 这个分支应该可以删除了？
      (funcall cont v))))
 
 (defun make-arg2-cont (fun env rest-args store cont vs)
@@ -640,12 +648,14 @@
        (assert (<= 0 (length args) 3) nil "暂时仅支持0到3个参数的函数的调用")
        (cond ((= (length args) 0)
               ;; 既然没有参数要求值，便可以直接求值函数位置的表达式并准备调用了。
-              (interpret/k fun env store
-                           (make-fun-cont nil env store cont)))
+              (lambda ()
+                (interpret/k fun env store
+                             (make-fun-cont nil env store cont))))
              (t
               (let ((next-arg (first args))    ; 第一个要被求值的参数表达式。
                     (rest-args (rest args)))   ; 剩下的待求值的参数表达式组成的列表。
-                (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil)))))))
+                (lambda ()
+                  (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil))))))))
     (<core-bool>
      (with-slots (id) ast
        (let (bv rv)                    ; rv 表示要传入给续延的值，bv 表示根据字面量映射出来的 nil 或 t。
@@ -662,33 +672,40 @@
                                                                                 :cont cont))
                                       :name (core-id-s var)))
               (env (extend-env binding env)))
-         (interpret/k body env store cont))))
+         (lambda ()
+           (interpret/k body env store cont)))))
     (<core-defun>
      (error "<CORE-DEFUN> 不允许出现在运行时"))
     (<core-id>
      (with-slots (s) ast
-       (apply-continuation cont (fetch-store store (lookup-env s env)))))
+       (lambda ()
+         (apply-continuation cont (fetch-store store (lookup-env s env))))))
     (<core-if>
      (with-slots (else test then) ast
-       (interpret/k test env store
-                    (make-instance '<test-cont>
-                                   :else else
-                                   :env env
-                                   :saved-cont cont
-                                   :store store
-                                   :then then))))
+       (lambda ()
+         (interpret/k test env store
+                      (make-instance '<test-cont>
+                                     :else else
+                                     :env env
+                                     :saved-cont cont
+                                     :store store
+                                     :then then)))))
     (<core-lambda>
      (with-slots (body par) ast
-       (apply-continuation cont (make-instance '<value-fun> :args (list par) :body body :env env))))
+       (lambda ()
+         (apply-continuation cont (make-instance '<value-fun> :args (list par) :body body :env env)))))
     (<core-num>
      (with-slots (n) ast
-       (apply-continuation cont (make-instance '<value-num> :n n))))
+       (lambda ()
+         (apply-continuation cont (make-instance '<value-num> :n n)))))
     (<core-plus>
      (with-slots (l r) ast
-       (interpret/k l env store (make-lhs-cont r env store cont))))
+       (lambda ()
+         (interpret/k l env store (make-lhs-cont r env store cont)))))
     (<core-print>
      (with-slots (arg) ast
-       (interpret/k arg env store (make-print-cont cont))))))
+       (lambda ()
+         (interpret/k arg env store (make-print-cont cont)))))))
 
 ;;; 具体语法相关 begin
 (defun expand-or-to-if (expr)
@@ -783,10 +800,11 @@
     (check-type x <value-num>)
     (check-type y <value-num>)
     (let ((rv (funcall f (value-num-n x) (value-num-n y))))
-      (apply-continuation k
-                          (if (numberp rv)
-                              (make-instance '<value-num> :n rv)
-                              (make-instance '<value-bool> :val rv))))))
+      (lambda ()
+        (apply-continuation k
+                            (if (numberp rv)
+                                (make-instance '<value-num> :n rv)
+                                (make-instance '<value-bool> :val rv)))))))
 
 (defun make-prelude-env (store)
   "创建一个仅在空环境的基础上添加了 233-lisp 内置函数的环境。"
@@ -808,6 +826,7 @@
 ;;; 解决调用栈耗尽相关 begin
 (defun trampoline (bounce)
   "模仿《EOPL》第 5.2 章节实现的函数，驱动解释器返回的无参匿名函数持续执行，直到返回最终结果。"
+  ;; 参考资料：https://eli.thegreenplace.net/2017/on-recursion-continuations-and-trampolines/
   (let ((v bounce))
     (loop
       (if (functionp v)
@@ -847,8 +866,9 @@
                                          :location location
                                          :name name)))
             (setf env (extend-env binding env))))))
-    (interpret/k (parse-concrete-syntax '(main))
-                 env
-                 store
-                 (make-end-cont))))
+    (trampoline
+     (interpret/k (parse-concrete-syntax '(main))
+                  env
+                  store
+                  (make-end-cont)))))
 ;;; 运行脚本相关 end
