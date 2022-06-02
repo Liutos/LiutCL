@@ -18,5 +18,6 @@
                 #:make-empty-store
                 #:make-prelude-env
                 #:put-store
+                #:trampoline
                 #:value-equal-p
                 #:wrong-type))

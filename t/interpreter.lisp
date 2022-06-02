@@ -3,7 +3,8 @@
 (defun interpret (expr env &optional store)
   "为了避免修改太多代码，对COM.LIUTOS.LIUTCL.INTERPRETER::INTERPRET做一层封装。"
   (let ((store (or store (make-empty-store))))
-    (com.liutos.liutcl.interpreter::interpret/k expr env store (com.liutos.liutcl.interpreter::make-end-cont))))
+    (trampoline
+     (com.liutos.liutcl.interpreter::interpret/k expr env store (com.liutos.liutcl.interpreter::make-end-cont)))))
 
 (defun interpret-concrete (expr env &optional store)
   (interpret (com.liutos.liutcl.interpreter::parse-concrete-syntax expr)

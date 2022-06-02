@@ -1,7 +1,8 @@
 (in-package #:cl)
 
 (defpackage #:com.liutos.liutcl.interpreter
-  (:export #:load-source-file)
+  (:export #:load-source-file
+           #:trampoline)
   (:use #:cl))
 
 (in-package #:com.liutos.liutcl.interpreter)
@@ -34,7 +35,7 @@
          ,@options)
 
        (defmethod initialize-instance :after ((instance ,name) &rest initargs &key ,@initargs &allow-other-keys)
-         (declare (ignorable initargs instance))
+         (declare (ignorable initargs instance ,@initargs))
          ,@assertions))))
 ;;; <core-app> begin
 (defclass <core-app> (<core>)
@@ -651,7 +652,8 @@
          (assert (member id '(false true) :test 'string=))
          (setf bv (if (string= id 'false) nil t))
          (setf rv (make-instance '<value-bool> :val bv))
-         (apply-continuation cont rv)))) ; 常量的行为都是直接应用当前续延。
+         (lambda ()
+           (apply-continuation cont rv))))) ; 常量的行为都是直接应用当前续延。
     (<core-call/cc>
      (with-slots (body var) ast
        ;; 新建一个环境，在这个环境中，将当前续延绑定到变量 VAR 上，然后求值表达式 BODY，并将结果传递给当前续延。
@@ -802,6 +804,16 @@
           (setf env (extend-env binding env)))))
     env))
 ;;; 内置函数相关 end
+
+;;; 解决调用栈耗尽相关 begin
+(defun trampoline (bounce)
+  "模仿《EOPL》第 5.2 章节实现的函数，驱动解释器返回的无参匿名函数持续执行，直到返回最终结果。"
+  (let ((v bounce))
+    (loop
+      (if (functionp v)
+          (setf v (funcall v))
+          (return-from trampoline v)))))
+;;; 解决调用栈耗尽相关 end
 
 ;;; 运行脚本相关 begin
 (defun read-expressions (stream)
