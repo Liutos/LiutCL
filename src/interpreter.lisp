@@ -723,6 +723,25 @@
                   ,(expand-or-to-if (cons 'or forms))))
             ,test)))))
 
+(defun expand-cond-to-if (expr)
+  "将 COND 语句 EXPR 替换为等价的 IF 语句。"
+  (assert (eq (first expr) 'cond))
+  (let ((forms (rest expr)))
+    (when (null forms)
+      (return-from expand-cond-to-if nil))
+
+    (let ((form (first forms))
+          (forms (rest forms)))
+      (destructuring-bind (test then) form
+        (cond ((null forms)
+               `(if ,test
+                    ,then
+                    0))                 ; TODO: 这里用一个更合适的值替换掉 0 作为返回值。
+              (t
+               `(if ,test
+                    ,then
+                    ,(expand-cond-to-if (cons 'cond forms)))))))))
+
 (defun parse-concrete-syntax (expr)
   "解析作为具体语法的S表达式 EXPR，返回对象的抽象语法 <CORE> 类的实例对象。"
   (cond ((and (listp expr) (eq (first expr) 'lambda))
@@ -773,6 +792,8 @@
          ;; 将 OR 语句作为宏来实现，展开为上面已经支持的 IF 语句。
          (let ((expanded (expand-or-to-if expr)))
            (parse-concrete-syntax expanded)))
+        ((and (listp expr) (eq (first expr) 'cond))
+         (parse-concrete-syntax (expand-cond-to-if expr)))
         ((listp expr)
          (destructuring-bind (fun . args)
              expr
