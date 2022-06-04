@@ -645,7 +645,6 @@
   (etypecase ast
     (<core-app>
      (with-slots (args fun) ast
-       (assert (<= 0 (length args) 3) nil "暂时仅支持0到3个参数的函数的调用")
        (cond ((= (length args) 0)
               ;; 既然没有参数要求值，便可以直接求值函数位置的表达式并准备调用了。
               (lambda ()
@@ -796,10 +795,10 @@
 (defun make-233-arithmetic-wrapper (f)
   "实现一个 CL 中的函数 F 的包装函数。"
   (check-type f function)
-  (lambda (x y k)
-    (check-type x <value-num>)
-    (check-type y <value-num>)
-    (let ((rv (funcall f (value-num-n x) (value-num-n y))))
+  (lambda (&rest args)
+    (let* ((ns (butlast args))
+           (k (first (last args)))
+           (rv (apply f (mapcar #'value-num-n ns))))
       (lambda ()
         (apply-continuation k
                             (if (numberp rv)
@@ -812,7 +811,8 @@
   (let ((built-ins (list (cons '= (make-233-arithmetic-wrapper #'=))
                          (cons '> (make-233-arithmetic-wrapper #'>))
                          (cons 'mod (make-233-arithmetic-wrapper #'mod))
-                         (cons '>= (make-233-arithmetic-wrapper #'>=))))
+                         (cons '>= (make-233-arithmetic-wrapper #'>=))
+                         (cons 'evenp (make-233-arithmetic-wrapper #'evenp))))
         (env (make-empty-env)))
     (dolist (pair built-ins)
       (destructuring-bind (name . fun) pair
