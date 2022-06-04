@@ -831,7 +831,9 @@
                          (cons '> (make-233-arithmetic-wrapper #'>))
                          (cons 'mod (make-233-arithmetic-wrapper #'mod))
                          (cons '>= (make-233-arithmetic-wrapper #'>=))
-                         (cons 'evenp (make-233-arithmetic-wrapper #'evenp))))
+                         (cons 'evenp (make-233-arithmetic-wrapper #'evenp))
+                         (cons '<= (make-233-arithmetic-wrapper #'<=))
+                         (cons '/ (make-233-arithmetic-wrapper #'/))))
         (env (make-empty-env)))
     (dolist (pair built-ins)
       (destructuring-bind (name . fun) pair
