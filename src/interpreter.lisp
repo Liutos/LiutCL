@@ -600,9 +600,7 @@
     (<test-cont>
      (with-slots (else env saved-cont store then) cont
        (lambda ()
-         (interpret/k (if (value-bool-val v) then else) env store saved-cont))))
-    (function                           ; TODO: 这个分支应该可以删除了？
-     (funcall cont v))))
+         (interpret/k (if (value-bool-val v) then else) env store saved-cont))))))
 
 (defun make-arg2-cont (fun env rest-args store cont vs)
   (make-instance '<arg2-cont>
