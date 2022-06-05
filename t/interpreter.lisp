@@ -27,12 +27,14 @@
                              store))))
   (let* ((env (make-empty-env))
          (store (make-empty-store))
+         (fun (make-instance '<value-fun>
+                             :args '(x)
+                             :body (make-instance '<core-plus>
+                                                  :l (make-instance '<core-id> :s 'x)
+                                                  :r (make-instance '<core-num> :n 1))
+                             :env env))
          (binding (make-instance '<binding>
-                                 :location (put-store store (make-instance '<value-fun>
-                                                                           :args '(x)
-                                                                           :body (make-instance '<core-plus>
-                                                                                                :l (make-instance '<core-id> :s 'x)
-                                                                                                :r (make-instance '<core-num> :n 1))))
+                                 :location (put-store store fun)
                                  :name 'add1)))
     (is (value-equal-p
          (make-instance '<value-num> :n 233)
@@ -44,7 +46,8 @@
          (binding (make-instance '<binding>
                                  :location (put-store store (make-instance '<value-fun>
                                                                            :args '(x)
-                                                                           :body (make-instance '<core-id> :s 'x)))
+                                                                           :body (make-instance '<core-id> :s 'x)
+                                                                           :env env))
                                  :name 'add1)))
     (signals wrong-type
       (interpret-concrete '(+ 232 add1)

@@ -228,8 +228,10 @@
     :initarg :body
     :type <core>)
    (env
+    :accessor value-fun-env
     :documentation "函数对象被创建时的环境。"
     :initarg :env
+    :initform (error "参数 :ENV 不能为空。") ; 一种模拟字段必填效果的方法。
     :type env))
   (:documentation "被实现语言中的函数类型。"))
 
@@ -563,7 +565,8 @@
          (<value-fun>
           (let ((body (slot-value v 'body))
                 (names (slot-value v 'args))
-                (new-env env))
+                ;; 这里不能用当前的环境来扩展，不然就变成动态作用域了。要基于函数被定义时的环境来添上形参。
+                (new-env (value-fun-env v)))
             (assert (= (length names) (length args)) nil "形参和实参的数量必须相等：~D != ~D" (length names) (length args))
             ;; TODO: 这里用 mapcar 只为了副作用怪怪的。
             (mapcar #'(lambda (name arg-val)
@@ -886,7 +889,9 @@
                  (binding (make-instance '<binding>
                                          :location location
                                          :name name)))
-            (setf env (extend-env binding env))))))
+            (setf env (extend-env binding env))
+            ;; 为了可以在递归函数的词法环境中找到自身函数名的定义，必须在闭包中保存被自身扩展后的词法环境。
+            (setf (value-fun-env fun) env)))))
     (trampoline
      (interpret/k (parse-concrete-syntax '(main))
                   env
