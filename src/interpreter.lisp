@@ -836,10 +836,14 @@
                           :test (parse-concrete-syntax test)
                           :then (parse-concrete-syntax then))))
         ((and (listp expr) (eq (first expr) 'defun))
-         (destructuring-bind (_ name parameters body) expr
+         (destructuring-bind (_ name parameters &rest body) expr
            (declare (ignorable _))
            (make-instance '<core-defun>
-                          :body (parse-concrete-syntax body)
+                          ;; 不管三七二十一，用一个 call/cc 来定义函数 return，来支持提前返回。
+                          :body (make-instance '<core-call/cc>
+                                               :body (make-instance '<core-progn>
+                                                                    :forms (mapcar #'parse-concrete-syntax body))
+                                               :var (make-instance '<core-id> :s 'return))
                           :name name
                           :parameters parameters)))
         ((and (listp expr) (eq (first expr) 'or))
