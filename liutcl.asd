@@ -26,6 +26,7 @@
                     (let ((names '(:interpret
                                    :load-source-file
                                    :arithmetic
-                                   :macro)))
+                                   :macro
+                                   :progn)))
                       (dolist (name names)
                         (uiop:symbol-call :fiveam :run! (uiop:find-symbol* name :com.liutos.liutcl.interpreter.test))))))

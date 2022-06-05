@@ -206,6 +206,16 @@
     (with-slots (else test then) object
       (format stream "(if ~A ~A ~A)" test then else))))
 ;;; if 语法相关 end
+
+;;; 顺序求值语法相关 begin
+(define-core-variant <core-progn>
+    ((forms
+      :documentation "要顺序求值的一系列表达式。"
+      :initarg :forms
+      :reader core-progn-forms
+      :type list))
+  (:documentation "progn 语句的抽象语法树。"))
+;;; 顺序求值语法相关 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -517,6 +527,25 @@
       :type <cont>))
   (:documentation "表示求值了 print 语法的参数后要做的动作的续延。"))
 
+(define-cont-variant <progn-cont>
+    ((forms
+      :documentation "剩余要求值的表达式列表。"
+      :initarg :forms
+      :type list)
+     (saved-cont
+      :documentation "求值完所有表达式之后，要将最后一个表达式的值传入的续延。"
+      :initarg :saved-cont
+      :type <cont>)
+     (saved-env
+      :documentation "接下来求值 FORMS 中的表达式时要用到的环境。"
+      :initarg :saved-env
+      :type env)
+     (store
+      :documentation "全局内存对象的引用。"
+      :initarg :store
+      :type store))
+  (:documentation "表示求值了 progn 语句的第一个表达式之后要做的计算。"))
+
 (define-cont-variant <rhs-cont>
     ((lhs
       :initarg :lhs
@@ -596,6 +625,18 @@
           (format t "~D~%" (value-num-n v))))
        (lambda ()
          (apply-continuation cont v))))
+    (<progn-cont>
+     (with-slots (forms saved-cont saved-env store) cont
+       (cond ((null forms)
+              (apply-continuation saved-cont v))
+             (t
+              ;; 如果 v 不是最后一个表达式的值，那么是不会使用的。
+              (interpret/k (first forms) saved-env store
+                           (make-instance '<progn-cont>
+                                          :forms (rest forms)
+                                          :saved-cont saved-cont
+                                          :saved-env saved-env
+                                          :store store))))))
     (<rhs-cont>
      (with-slots (cont lhs) cont
        (lambda ()
@@ -705,7 +746,17 @@
     (<core-print>
      (with-slots (arg) ast
        (lambda ()
-         (interpret/k arg env store (make-print-cont cont)))))))
+         (interpret/k arg env store (make-print-cont cont)))))
+    (<core-progn>
+     (with-slots (forms) ast
+       (assert (> (length forms) 0))
+       (lambda ()
+         (interpret/k (first forms) env store
+                      (make-instance '<progn-cont>
+                                     :forms (rest forms)
+                                     :saved-cont cont
+                                     :saved-env env
+                                     :store store)))))))
 
 ;;; 具体语法相关 begin
 (defun expand-or-to-if (expr)
@@ -752,9 +803,9 @@
              expr
            (declare (ignorable _))      ; TODO: CL 一处值得改进的地方，即无法用下划线来便捷地表达“不使用的变量”这一意图。
            (assert (= (length parameters) 1) nil "仅支持一个参数：~S" parameters)
-           (assert (= (length body) 1) nil "仅支持一个表达式：~S" body)
+           (assert (> (length body) 0) nil "至少要包含一个表达式：~S" body)
            (make-instance '<core-lambda>
-                          :body (parse-concrete-syntax (first body))
+                          :body (make-instance '<core-progn> :forms (mapcar #'parse-concrete-syntax body))
                           :par (first parameters))))
         ((and (listp expr) (eq (first expr) '+))
          (destructuring-bind (_ lhs rhs)

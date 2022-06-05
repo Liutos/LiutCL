@@ -119,3 +119,16 @@
        (make-instance '<value-num> :n 233)
        (let ((store (make-empty-store)))
          (interpret-concrete '(cond ((> 1 2) 666) ((> 2 1) 233)) (make-prelude-env store) store)))))
+
+(test progn
+  "测试函数体内多个语句顺序求值的特性。"
+  (let* (v
+         (out (with-output-to-string (*standard-output*)
+                (let ((store (make-empty-store)))
+                  (setf v (interpret-concrete '((lambda (x) (print x) 1) 233) (make-prelude-env store) store))))))
+    (is (string=
+         (concatenate 'string "233" (list #\Newline))
+         out))
+    (is (value-equal-p
+         (make-instance '<value-num> :n 1)
+         v))))
