@@ -216,6 +216,21 @@
       :type list))
   (:documentation "progn 语句的抽象语法树。"))
 ;;; 顺序求值语法相关 end
+
+;;; 赋值语法相关 begin
+(define-core-variant <core-setf>
+    ((val-expr
+      :documentation "右值表达式。"
+      :initarg :val-expr
+      :reader core-setf-val-expr
+      :type <core>)
+     (var
+      :documentation "被赋值的变量的名字。"
+      :initarg :var
+      :reader core-setf-var
+      :type symbol))
+  (:documentation "赋值语句。"))
+;;; 赋值语法相关 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -405,7 +420,7 @@
 (defun make-empty-store ()
   (make-hash-table))
 
-(defparameter *next-location* 0
+(defparameter *next-location* 0         ; TODO: 修复 *next-location* 会不断变大的问题。
   "下一个可用的位置。")
 
 (defun put-store (store new-value)
@@ -414,6 +429,15 @@
     (setf (gethash location store) new-value)
     (incf *next-location*)
     location))
+
+(defun update-store (store location new-value)
+  "将存储 STORE 中一个已有的位置 LOCATION 上的值替换为 NEW-VALUE。"
+  (check-type store store)
+  (check-type location integer)
+  (check-type new-value <value>)
+  (let ((foundp (nth-value 1 (gethash location store))))
+    (assert foundp nil "位置 ~D 必须已经在内存 ~A 中被定义了才行" location store)
+    (setf (gethash location store) new-value)))
 ;;; 存储相关 end
 
 ;;; 续延相关 begin
@@ -555,6 +579,25 @@
       :type <cont>))
   (:documentation "表示求值了加法运算的右操作数后要做的计算的续延。"))
 
+(define-cont-variant <setf-cont>
+    ((location
+      :documentation "右值表达式计算后要写入的内存位置。"
+      :initarg :location
+      :type integer)
+     (saved-cont
+      :documentation "赋值结束后要进行的计算。"
+      :initarg :saved-cont
+      :type <cont>)
+     (store
+      :documentation "全局内存对象的引用。"
+      :initarg :store
+      :type store)
+     (var
+      :documentation "要赋值的变量名。"
+      :initarg :var
+      :type symbol))
+  (:documentation "表示计算完右值表达式后要进行的计算。"))
+
 (defun apply-continuation (cont v)
   "将值 V 传给续延 CONT。"
   (declare (type (or continuation <cont>) cont))
@@ -641,6 +684,11 @@
      (with-slots (cont lhs) cont
        (lambda ()
          (apply-continuation cont (num+ lhs v)))))
+    (<setf-cont>
+     (with-slots (location saved-cont store var) cont
+       (update-store store location v)
+       (lambda ()
+         (apply-continuation saved-cont v))))
     (<test-cont>
      (with-slots (else env saved-cont store then) cont
        (lambda ()
@@ -756,7 +804,18 @@
                                      :forms (rest forms)
                                      :saved-cont cont
                                      :saved-env env
-                                     :store store)))))))
+                                     :store store)))))
+    (<core-setf>
+     (let* ((val-expr (core-setf-val-expr ast))
+            (var (core-setf-var ast))
+            (location (lookup-env var env)))
+       (lambda ()
+         (interpret/k val-expr env store
+                      (make-instance '<setf-cont>
+                                     :location location
+                                     :saved-cont cont
+                                     :store store
+                                     :var var)))))))
 
 ;;; 具体语法相关 begin
 (defun expand-or-to-if (expr)
@@ -852,6 +911,14 @@
            (parse-concrete-syntax expanded)))
         ((and (listp expr) (eq (first expr) 'cond))
          (parse-concrete-syntax (expand-cond-to-if expr)))
+        ((and (listp expr) (eq (first expr) 'setf))
+         (destructuring-bind (_ var val-expr) expr
+           (declare (ignorable _))
+           (assert (symbolp var) nil "暂时仅支持给变量赋值：~A" var)
+           (make-instance '<core-setf>
+                          :val-expr (parse-concrete-syntax val-expr)
+                          :var var)))
+        ;; 特殊操作符都需要在此之前进行判断。
         ((listp expr)
          (destructuring-bind (fun . args)
              expr

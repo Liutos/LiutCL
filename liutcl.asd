@@ -27,6 +27,7 @@
                                    :load-source-file
                                    :arithmetic
                                    :macro
-                                   :progn)))
+                                   :progn
+                                   :assignment)))
                       (dolist (name names)
                         (uiop:symbol-call :fiveam :run! (uiop:find-symbol* name :com.liutos.liutcl.interpreter.test))))))

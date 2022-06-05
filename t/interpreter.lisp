@@ -132,3 +132,10 @@
     (is (value-equal-p
          (make-instance '<value-num> :n 1)
          v))))
+
+(test assignment
+  "测试语言的赋值特性。"
+  (is (value-equal-p
+       (make-instance '<value-num> :n 233)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '((lambda (x) (setf x 233) x) 1) (make-prelude-env store) store)))))
