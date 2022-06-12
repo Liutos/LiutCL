@@ -868,6 +868,18 @@
                     ,then
                     ,(expand-cond-to-if (cons 'cond forms)))))))))
 
+(defun parse-defun-syntax (expr)
+  "解析一个 defun 语法的函数名、参数列表，以及函数体部分，生成一个 <core-defun> 类的实例对象。"
+  (destructuring-bind (name parameters &rest body) expr
+    (make-instance '<core-defun>
+                   ;; 不管三七二十一，用一个 call/cc 来定义函数 return，来支持提前返回。
+                   :body (make-instance '<core-call/cc>
+                                        :body (make-instance '<core-progn>
+                                                             :forms (mapcar #'parse-concrete-syntax body))
+                                        :var (make-instance '<core-id> :s 'return))
+                   :name name
+                   :parameters parameters)))
+
 (defun parse-concrete-syntax (expr)
   "解析作为具体语法的S表达式 EXPR，返回对象的抽象语法 <CORE> 类的实例对象。"
   (cond ((and (listp expr) (eq (first expr) 'lambda))
@@ -908,16 +920,7 @@
                           :test (parse-concrete-syntax test)
                           :then (parse-concrete-syntax then))))
         ((and (listp expr) (eq (first expr) 'defun))
-         (destructuring-bind (_ name parameters &rest body) expr
-           (declare (ignorable _))
-           (make-instance '<core-defun>
-                          ;; 不管三七二十一，用一个 call/cc 来定义函数 return，来支持提前返回。
-                          :body (make-instance '<core-call/cc>
-                                               :body (make-instance '<core-progn>
-                                                                    :forms (mapcar #'parse-concrete-syntax body))
-                                               :var (make-instance '<core-id> :s 'return))
-                          :name name
-                          :parameters parameters)))
+         (parse-defun-syntax (rest expr)))
         ((and (listp expr) (eq (first expr) 'or))
          ;; 将 OR 语句作为宏来实现，展开为上面已经支持的 IF 语句。
          (let ((expanded (expand-or-to-if expr)))
@@ -935,18 +938,7 @@
          (destructuring-bind (_ &rest forms) expr
            (declare (ignorable _))
            (make-instance '<core-labels>
-                          :definitions
-                          (mapcar #'(lambda (form)
-                                      (destructuring-bind (name parameters &rest body) form
-                                        (make-instance '<core-defun>
-                                                       ;; 不管三七二十一，用一个 call/cc 来定义函数 return，来支持提前返回。
-                                                       :body (make-instance '<core-call/cc>
-                                                                            :body (make-instance '<core-progn>
-                                                                                                 :forms (mapcar #'parse-concrete-syntax body))
-                                                                            :var (make-instance '<core-id> :s 'return))
-                                                       :name name
-                                                       :parameters parameters)))
-                                  forms))))
+                          :definitions (mapcar #'parse-defun-syntax forms))))
         ;; 特殊操作符都需要在此之前进行判断。
         ((listp expr)
          (destructuring-bind (fun . args)
