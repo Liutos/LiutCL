@@ -231,6 +231,19 @@
       :type symbol))
   (:documentation "赋值语句。"))
 ;;; 赋值语法相关 end
+
+;;; 相互递归的函数定义语法 begin
+(define-core-variant <core-labels>
+    ((definitions
+      :documentation "一系列相互递归的函数的定义。"
+      :initarg :definitions)))
+
+(defmethod initialize-instance :after ((instance <core-labels>) &rest initargs &key definitions &allow-other-keys)
+  (declare (ignorable initargs instance))
+  (check-type definitions list)
+  (dolist (definition definitions)
+    (check-type definition <core-defun>)))
+;;; 相互递归的函数定义语法 end
 ;;; 语法相关 end
 
 ;;; 语言值类型 begin
@@ -918,6 +931,22 @@
            (make-instance '<core-setf>
                           :val-expr (parse-concrete-syntax val-expr)
                           :var var)))
+        ((and (listp expr) (eq (first expr) 'labels))
+         (destructuring-bind (_ &rest forms) expr
+           (declare (ignorable _))
+           (make-instance '<core-labels>
+                          :definitions
+                          (mapcar #'(lambda (form)
+                                      (destructuring-bind (name parameters &rest body) form
+                                        (make-instance '<core-defun>
+                                                       ;; 不管三七二十一，用一个 call/cc 来定义函数 return，来支持提前返回。
+                                                       :body (make-instance '<core-call/cc>
+                                                                            :body (make-instance '<core-progn>
+                                                                                                 :forms (mapcar #'parse-concrete-syntax body))
+                                                                            :var (make-instance '<core-id> :s 'return))
+                                                       :name name
+                                                       :parameters parameters)))
+                                  forms))))
         ;; 特殊操作符都需要在此之前进行判断。
         ((listp expr)
          (destructuring-bind (fun . args)
@@ -958,7 +987,8 @@
                          (cons '>= (make-233-arithmetic-wrapper #'>=))
                          (cons 'evenp (make-233-arithmetic-wrapper #'evenp))
                          (cons '<= (make-233-arithmetic-wrapper #'<=))
-                         (cons '/ (make-233-arithmetic-wrapper #'/))))
+                         (cons '/ (make-233-arithmetic-wrapper #'/))
+                         (cons '- (make-233-arithmetic-wrapper #'-))))
         (env (make-empty-env)))
     (dolist (pair built-ins)
       (destructuring-bind (name . fun) pair
@@ -1001,19 +1031,42 @@
          (exprs (read-expressions stream)))
     (dolist (expr exprs)
       (let ((ast (parse-concrete-syntax expr)))
-        (assert (typep ast '<core-defun>) nil "顶层语句只能是 DEFUN：~A" ast)
-        (with-slots (body name parameters) ast
-          (let* ((fun (make-instance '<value-fun>
-                                     :args parameters
-                                     :body body
-                                     :env env))
-                 (location (put-store store fun))
-                 (binding (make-instance '<binding>
-                                         :location location
-                                         :name name)))
-            (setf env (extend-env binding env))
-            ;; 为了可以在递归函数的词法环境中找到自身函数名的定义，必须在闭包中保存被自身扩展后的词法环境。
-            (setf (value-fun-env fun) env)))))
+        (assert (or (typep ast '<core-defun>) (typep ast '<core-labels>)) nil "顶层语句只能是 DEFUN 或 LABELS：~A" ast)
+        (etypecase ast
+          (<core-defun>
+           (with-slots (body name parameters) ast
+             (let* ((fun (make-instance '<value-fun>
+                                        :args parameters
+                                        :body body
+                                        :env env))
+                    (location (put-store store fun))
+                    (binding (make-instance '<binding>
+                                            :location location
+                                            :name name)))
+               (setf env (extend-env binding env))
+               ;; 为了可以在递归函数的词法环境中找到自身函数名的定义，必须在闭包中保存被自身扩展后的词法环境。
+               (setf (value-fun-env fun) env))))
+          (<core-labels>
+           (with-slots (definitions) ast
+             (let* ((fns (mapcar #'(lambda (definition)
+                                     (with-slots (body parameters) definition
+                                       (make-instance '<value-fun>
+                                                      :args parameters
+                                                      :body body
+                                                      :env env)))
+                                 definitions))
+                    (names (mapcar #'(lambda (definition)
+                                       (slot-value definition 'name))
+                                   definitions)))
+               (mapcar #'(lambda (fn name)
+                           (let* ((location (put-store store fn))
+                                  (binding (make-instance '<binding>
+                                                          :location location
+                                                          :name name)))
+                             (setf env (extend-env binding env))))
+                       fns names)
+               (dolist (fn fns)
+                 (setf (value-fun-env fn) env))))))))
     (trampoline
      (interpret/k (parse-concrete-syntax '(main))
                   env
