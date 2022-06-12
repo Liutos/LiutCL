@@ -28,6 +28,7 @@
                                    :arithmetic
                                    :macro
                                    :progn
-                                   :assignment)))
+                                   :assignment
+                                   :mutual-recursion)))
                       (dolist (name names)
                         (uiop:symbol-call :fiveam :run! (uiop:find-symbol* name :com.liutos.liutcl.interpreter.test))))))

@@ -139,3 +139,28 @@
        (make-instance '<value-num> :n 233)
        (let ((store (make-empty-store)))
          (interpret-concrete '((lambda (x) (setf x 233) x) 1) (make-prelude-env store) store)))))
+
+(test mutual-recursion
+  "测试定义相互递归的函数。"
+  (is (string=
+       (concatenate 'string "true" (list #\Newline) "false" (list #\Newline))
+       (with-output-to-string (*standard-output*)
+         (with-input-from-string (s "(labels
+    (my-evenp (n)
+              (if (= n 0)
+                  true
+                  (if (= n 1)
+                      false
+                      (my-oddp (- n 1)))))
+  (my-oddp (n)
+           (if (= n 0)
+               false
+               (if (= n 1)
+                   true
+                   (my-evenp (- n 1))))))
+
+(defun main ()
+  (print (my-evenp 2))
+  (print (my-evenp 3)))
+")
+           (com.liutos.liutcl.interpreter:load-source-file s))))))
