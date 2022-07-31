@@ -164,3 +164,13 @@
   (print (my-evenp 3)))
 ")
            (com.liutos.liutcl.interpreter:load-source-file s))))))
+
+(test let-form
+  "测试 LET 语法定义局部变量。"
+  (is (value-equal-p
+       (make-instance '<value-num> :n 233)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '(let ((x 1))
+                               (setf x 233)
+                               x)
+                             (make-prelude-env store) store)))))

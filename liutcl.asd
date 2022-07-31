@@ -24,6 +24,7 @@
    (:file "package"))
   :perform (test-op (o c)
                     (let ((names '(:interpret
+                                   :let-form
                                    :load-source-file
                                    :arithmetic
                                    :macro

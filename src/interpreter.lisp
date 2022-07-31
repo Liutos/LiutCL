@@ -868,6 +868,14 @@
                     ,then
                     ,(expand-cond-to-if (cons 'cond forms)))))))))
 
+(defun expand-let-to-lambda (expr)
+  "将 LET 语句视为 LAMBDA 语法的宏进行展开。"
+  (destructuring-bind (bindings &rest body) (rest expr)
+    ;; 对 rest 部分做解构，是因为 first 部分固定为符号 let。
+    (let ((vals (mapcar #'cadr bindings))
+          (vars (mapcar #'car bindings)))
+      `((lambda ,vars ,@body) ,@vals))))
+
 (defun parse-defun-syntax (expr)
   "解析一个 defun 语法的函数名、参数列表，以及函数体部分，生成一个 <core-defun> 类的实例对象。"
   (destructuring-bind (name parameters &rest body) expr
@@ -921,6 +929,9 @@
                           :then (parse-concrete-syntax then))))
         ((and (listp expr) (eq (first expr) 'defun))
          (parse-defun-syntax (rest expr)))
+        ((and (listp expr) (eq (first expr) 'let))
+         ;; 将每一个绑定的 car 部分提取为形参列表，将 cadr 部分提取为实参列表。
+         (parse-concrete-syntax (expand-let-to-lambda expr)))
         ((and (listp expr) (eq (first expr) 'or))
          ;; 将 OR 语句作为宏来实现，展开为上面已经支持的 IF 语句。
          (let ((expanded (expand-or-to-if expr)))
