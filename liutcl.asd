@@ -11,7 +11,8 @@
   :depends-on ()
   :pathname "src/"
   :components
-  ((:file "interpreter")))
+  ((:file "interpreter")
+   (:file "package")))
 
 (defsystem #:liutcl/test
   :author "Liutos <mat.liutos@gmail.com>"

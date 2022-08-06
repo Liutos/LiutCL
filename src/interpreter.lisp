@@ -1,10 +1,3 @@
-(in-package #:cl)
-
-(defpackage #:com.liutos.liutcl.interpreter
-  (:export #:load-source-file
-           #:trampoline)
-  (:use #:cl))
-
 (in-package #:com.liutos.liutcl.interpreter)
 
 ;;; 下列代码来自：https://ambrevar.xyz/modern-common-lisp/index.html?utm_source=pocket_mylist#orgf68c5ba
