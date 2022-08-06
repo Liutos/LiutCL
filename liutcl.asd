@@ -11,7 +11,10 @@
   :depends-on ()
   :pathname "src/"
   :components
-  ((:file "interpreter")
+  ((:file "core-syntax"
+          :depends-on ("package"))
+   (:file "interpreter"
+          :depends-on ("package"))
    (:file "package")))
 
 (defsystem #:liutcl/test
