@@ -4,7 +4,8 @@
   "为了避免修改太多代码，对COM.LIUTOS.LIUTCL.INTERPRETER::INTERPRET做一层封装。"
   (let ((store (or store (make-empty-store))))
     (trampoline
-     (com.liutos.liutcl.interpreter::interpret/k expr env store (com.liutos.liutcl.interpreter::make-end-cont)))))
+     (com.liutos.liutcl.interpreter::interpret/k expr env store (com.liutos.liutcl.interpreter::make-end-cont)
+                                                 (make-empty-env)))))
 
 (defun interpret-concrete (expr env &optional store)
   (interpret (com.liutos.liutcl.interpreter::parse-concrete-syntax expr)
@@ -174,3 +175,18 @@
                                (setf x 233)
                                x)
                              (make-prelude-env store) store)))))
+
+(test dynamic-scope
+  "测试动态作用域特性。"
+  (is (string=
+       (format nil "233~%")
+       (with-output-to-string (*standard-output*)
+         (with-input-from-string (s "(defvar *x* 1)
+
+(defun foo ()
+  (print *x*))
+
+(defun main ()
+  (let ((*x* 233))
+    (foo)))")
+           (com.liutos.liutcl.interpreter:load-source-file s))))))

@@ -27,7 +27,8 @@
   ((:file "interpreter" :depends-on ("package"))
    (:file "package"))
   :perform (test-op (o c)
-                    (let ((names '(:interpret
+                    (let ((names '(:dynamic-scope
+                                   :interpret
                                    :let-form
                                    :load-source-file
                                    :arithmetic

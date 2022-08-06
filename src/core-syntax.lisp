@@ -111,6 +111,7 @@
 (defclass <core-num> (<core>)
   ((n
     :initarg :n
+    :reader core-num-n
     :type integer))
   (:documentation "核心语言中表示数值字面量的语法结构。"))
 
@@ -237,4 +238,17 @@
   (dolist (definition definitions)
     (check-type definition <core-defun>)))
 ;;; 相互递归的函数定义语法 end
+
+;;; 动态作用域变量定义语法 begin
+(define-core-variant <core-defvar>
+    ((val
+      :documentation "变量初值的表达式。"
+      :initarg :val
+      :type <core>)
+     (var
+      :documentation "动态作用域变量名。"
+      :initarg :var
+      :type symbol))
+  (:documentation "定义动态作用域变量。"))
+;;; 动态作用域变量定义语法 end
 ;;; 语法相关 end

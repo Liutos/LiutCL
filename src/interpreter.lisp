@@ -243,7 +243,11 @@
          ,@assertions))))
 
 (define-cont-variant <arg2-cont>
-    ((fun
+    ((denv
+      :documentation "求值参数之前的动态作用域环境。"
+      :initarg :denv
+      :type env)
+     (fun
       :documentation "求值完所有参数表达式后要求的函数位置上的表达式。"
       :initarg :fun
       :type <core>)
@@ -272,6 +276,10 @@
     ((args
       :documentation "全部求值后的参数列表。"
       :initarg :args)
+     (denv
+      :documentation "求值参数之前的动态作用域环境。"
+      :initarg :denv
+      :type env)
      (env
       :initarg :env
       :type env)
@@ -284,7 +292,11 @@
   (:documentation "表示求值了函数位置的值之后要做的计算的续延。"))
 
 (define-cont-variant <test-cont>
-    ((saved-cont
+    ((denv
+      :documentation "求值参数之前的动态作用域环境。"
+      :initarg :denv
+      :type env)
+     (saved-cont
       :initarg :saved-cont
       :type <cont>)
      (else
@@ -305,6 +317,10 @@
     ((r
       :initarg :r
       :type <core>)
+     (denv
+      :documentation "求值参数之前的动态作用域环境。"
+      :initarg :denv
+      :type env)
      (env
       :initarg :env
       :type env)
@@ -323,7 +339,11 @@
   (:documentation "表示求值了 print 语法的参数后要做的动作的续延。"))
 
 (define-cont-variant <progn-cont>
-    ((forms
+    ((denv
+      :documentation "求值参数之前的动态作用域环境。"
+      :initarg :denv
+      :type env)
+     (forms
       :documentation "剩余要求值的表达式列表。"
       :initarg :forms
       :type list)
@@ -375,13 +395,13 @@
   (declare (type <value> v))
   (etypecase cont
     (<arg2-cont>
-     (with-slots (cont fun env rest-args store vs) cont
+     (with-slots (cont fun env rest-args store vs denv) cont
        ;; 如果还有剩余的参数表达式，就将当前获得的值“压栈”，并继续求值下一个表达式。
        ;; 否则，代表所有参数都求值完毕，可以求值函数位置上的表达式了。
        (cond ((null rest-args)
               (lambda ()
                 (interpret/k fun env store
-                             (make-fun-cont (cons v vs) env store cont))))
+                             (make-fun-cont (cons v vs) env store cont denv) denv)))
              (t
               (let ((next-arg (first rest-args))
                     (rest-args (rest rest-args)))
@@ -394,11 +414,13 @@
                                                rest-args
                                                store
                                                cont
-                                               (cons v vs)))))))))
+                                               (cons v vs)
+                                               denv)
+                               denv)))))))
     (<end-cont>
      (lambda () v))
     (<fun-cont>
-     (with-slots (args cont env store) cont
+     (with-slots (args cont denv env store) cont
        (etypecase v
          (<value-cont>
           (with-slots (cont) v
@@ -409,7 +431,8 @@
           (let ((body (slot-value v 'body))
                 (names (slot-value v 'args))
                 ;; 这里不能用当前的环境来扩展，不然就变成动态作用域了。要基于函数被定义时的环境来添上形参。
-                (new-env (value-fun-env v)))
+                (new-env (value-fun-env v))
+                (new-denv denv))
             (assert (= (length names) (length args)) nil "形参和实参的数量必须相等：~D != ~D" (length names) (length args))
             ;; TODO: 这里用 mapcar 只为了副作用怪怪的。
             (mapcar #'(lambda (name arg-val)
@@ -417,19 +440,22 @@
                                (binding (make-instance '<binding>
                                                        :location location
                                                        :name name)))
-                          (setf new-env (extend-env binding new-env))))
+                          (if (is-dynamic name)
+                              (setf new-denv (extend-env binding new-denv))
+                              (setf new-env (extend-env binding new-env)))))
                     names (nreverse args)) ; args 是用 cons 构造的，次序与形参列表相反。
             (lambda ()
               (interpret/k body
                            new-env
                            store
-                           cont))))
+                           cont
+                           new-denv))))
          (<value-primitive>
           (apply (value-primitive-f v) `(,@(nreverse args) ,cont))))))
     (<lhs-cont>
-     (with-slots (cont env r store) cont
+     (with-slots (cont denv env r store) cont
        (lambda ()
-         (interpret/k r env store (make-rhs-cont v cont)))))
+         (interpret/k r env store (make-rhs-cont v cont) denv))))
     (<print-cont>
      (with-slots (cont) cont
        (etypecase v
@@ -440,17 +466,19 @@
        (lambda ()
          (apply-continuation cont v))))
     (<progn-cont>
-     (with-slots (forms saved-cont saved-env store) cont
+     (with-slots (denv forms saved-cont saved-env store) cont
        (cond ((null forms)
               (apply-continuation saved-cont v))
              (t
               ;; 如果 v 不是最后一个表达式的值，那么是不会使用的。
               (interpret/k (first forms) saved-env store
                            (make-instance '<progn-cont>
+                                          :denv denv
                                           :forms (rest forms)
                                           :saved-cont saved-cont
                                           :saved-env saved-env
-                                          :store store))))))
+                                          :store store)
+                           denv)))))
     (<rhs-cont>
      (with-slots (cont lhs) cont
        (lambda ()
@@ -461,13 +489,14 @@
        (lambda ()
          (apply-continuation saved-cont v))))
     (<test-cont>
-     (with-slots (else env saved-cont store then) cont
+     (with-slots (denv else env saved-cont store then) cont
        (lambda ()
-         (interpret/k (if (value-bool-val v) then else) env store saved-cont))))))
+         (interpret/k (if (value-bool-val v) then else) env store saved-cont denv))))))
 
-(defun make-arg2-cont (fun env rest-args store cont vs)
+(defun make-arg2-cont (fun env rest-args store cont vs denv)
   (make-instance '<arg2-cont>
                  :cont cont
+                 :denv denv
                  :env env
                  :fun fun
                  :rest-args rest-args
@@ -477,17 +506,18 @@
 (defun make-end-cont ()
   (make-instance '<end-cont>))
 
-(defun make-fun-cont (args env store cont)
+(defun make-fun-cont (args env store cont denv)
   "创建一个表示求值了函数位置的值之后要做的计算的续延。"
   (make-instance '<fun-cont>
                  :args args
                  :cont cont
+                 :denv denv
                  :env env
                  :store store))
 
-(defun make-lhs-cont (r env store cont)
+(defun make-lhs-cont (r env store cont denv)
   "创建一个表示求值了加法运算的左操作数后要做的计算的续延。"
-  (make-instance '<lhs-cont> :cont cont :env env :r r :store store))
+  (make-instance '<lhs-cont> :cont cont :denv denv :env env :r r :store store))
 
 (defun make-print-cont (cont)
   (make-instance '<print-cont> :cont cont))
@@ -497,8 +527,16 @@
   (make-instance '<rhs-cont> :cont cont :lhs lhs))
 ;;; 续延相关 end
 
-(defun interpret/k (ast env store cont)
-  "CPS版本的interpret解释器，其中CONT表示“接下来的运算”。"
+(defun is-dynamic (var)
+  "判定一个变量是否为动态作用域的。"
+  (check-type var symbol)
+  (and *dynamic-variables*
+       (nth-value 1 (gethash var *dynamic-variables*))))
+
+(defun interpret/k (ast env store cont denv)
+  "CPS版本的interpret解释器，其中CONT表示“接下来的运算”。
+
+参数 DENV 表示存储着动态作用域变量的值的环境。"
   (declare (type <core> ast))
   (declare (type env env))
   (declare (type store store))
@@ -510,12 +548,12 @@
               ;; 既然没有参数要求值，便可以直接求值函数位置的表达式并准备调用了。
               (lambda ()
                 (interpret/k fun env store
-                             (make-fun-cont nil env store cont))))
+                             (make-fun-cont nil env store cont denv) denv)))
              (t
               (let ((next-arg (first args))    ; 第一个要被求值的参数表达式。
                     (rest-args (rest args)))   ; 剩下的待求值的参数表达式组成的列表。
                 (lambda ()
-                  (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil))))))))
+                  (interpret/k next-arg env store (make-arg2-cont fun env rest-args store cont nil denv) denv)))))))
     (<core-bool>
      (with-slots (id) ast
        (let (bv rv)                    ; rv 表示要传入给续延的值，bv 表示根据字面量映射出来的 nil 或 t。
@@ -533,23 +571,28 @@
                                       :name (core-id-s var)))
               (env (extend-env binding env)))
          (lambda ()
-           (interpret/k body env store cont)))))
+           (interpret/k body env store cont denv)))))
     (<core-defun>
      (error "<CORE-DEFUN> 不允许出现在运行时"))
     (<core-id>
      (with-slots (s) ast
        (lambda ()
-         (apply-continuation cont (fetch-store store (lookup-env s env))))))
+         (let ((location (if (is-dynamic s)
+                             (lookup-env s denv)
+                             (lookup-env s env))))
+           (apply-continuation cont (fetch-store store location))))))
     (<core-if>
      (with-slots (else test then) ast
        (lambda ()
          (interpret/k test env store
                       (make-instance '<test-cont>
+                                     :denv denv
                                      :else else
                                      :env env
                                      :saved-cont cont
                                      :store store
-                                     :then then)))))
+                                     :then then)
+                      denv))))
     (<core-lambda>
      (with-slots (body par) ast
        (lambda ()
@@ -561,21 +604,23 @@
     (<core-plus>
      (with-slots (l r) ast
        (lambda ()
-         (interpret/k l env store (make-lhs-cont r env store cont)))))
+         (interpret/k l env store (make-lhs-cont r env store cont denv) denv))))
     (<core-print>
      (with-slots (arg) ast
        (lambda ()
-         (interpret/k arg env store (make-print-cont cont)))))
+         (interpret/k arg env store (make-print-cont cont) denv))))
     (<core-progn>
      (with-slots (forms) ast
        (assert (> (length forms) 0))
        (lambda ()
          (interpret/k (first forms) env store
                       (make-instance '<progn-cont>
+                                     :denv denv
                                      :forms (rest forms)
                                      :saved-cont cont
                                      :saved-env env
-                                     :store store)))))
+                                     :store store)
+                      denv))))
     (<core-setf>
      (let* ((val-expr (core-setf-val-expr ast))
             (var (core-setf-var ast))
@@ -586,7 +631,8 @@
                                      :location location
                                      :saved-cont cont
                                      :store store
-                                     :var var)))))))
+                                     :var var)
+                      denv))))))
 
 ;;; 具体语法相关 begin
 (defun expand-or-to-if (expr)
@@ -634,6 +680,10 @@
           (vars (mapcar #'car bindings)))
       `((lambda ,vars ,@body) ,@vals))))
 
+(defun is-x-list (expr x)
+  "检查 EXPR 是否为一个以 X 为 car 的列表。"
+  (and (listp expr) (eq (first expr) x)))
+
 (defun parse-defun-syntax (expr)
   "解析一个 defun 语法的函数名、参数列表，以及函数体部分，生成一个 <core-defun> 类的实例对象。"
   (destructuring-bind (name parameters &rest body) expr
@@ -645,6 +695,22 @@
                                         :var (make-instance '<core-id> :s 'return))
                    :name name
                    :parameters parameters)))
+
+(defun parse-defvar-syntax (expr)
+  "解析一个 defvar 语法的变量名和初值表达式，生成一个 <core-defvar> 类的实例对象。"
+  (destructuring-bind (var val) (rest expr)
+    (assert (symbolp var) nil "变量名必须为一个符号，实际为：~S" var)
+    (let ((s (symbol-name var)))
+      (when (or (char/= (char s 0) #\*)
+                (char/= (char s (1- (length s))) #\*))
+        (error "变量名必须以星号包裹，实际为：~A" s)))
+
+    (unless (atom val)
+      (error "初值必须为一个原子类型，实际为：~S" val))
+
+    (make-instance '<core-defvar>
+                   :val (parse-concrete-syntax val)
+                   :var var)))
 
 (defun parse-concrete-syntax (expr)
   "解析作为具体语法的S表达式 EXPR，返回对象的抽象语法 <CORE> 类的实例对象。"
@@ -708,6 +774,8 @@
            (declare (ignorable _))
            (make-instance '<core-labels>
                           :definitions (mapcar #'parse-defun-syntax forms))))
+        ((is-x-list expr 'defvar)
+         (parse-defvar-syntax expr))
         ;; 特殊操作符都需要在此之前进行判断。
         ((listp expr)
          (destructuring-bind (fun . args)
@@ -783,16 +851,23 @@
 
         (push expr exprs)))))
 
+(defvar *dynamic-variables* nil
+  "记录着当前解释器中属于动态作用域的变量的哈希表。")
+
 (defun load-source-file (stream)
   "读取文件流 STREAM 中的代码并调用其中定义的 MAIN 函数。"
   (assert (input-stream-p stream) nil "STREAM 必须为一个输入流")
-  (let* ((store (make-empty-store))
+  (let* ((*dynamic-variables* (make-hash-table))
+         (store (make-empty-store))
          (prelude (make-prelude-env store))
+         (denv (make-empty-env))
          (env prelude)
          (exprs (read-expressions stream)))
     (dolist (expr exprs)
       (let ((ast (parse-concrete-syntax expr)))
-        (assert (or (typep ast '<core-defun>) (typep ast '<core-labels>)) nil "顶层语句只能是 DEFUN 或 LABELS：~A" ast)
+        (assert (or (typep ast '<core-defun>)
+                    (typep ast '<core-defvar>)
+                    (typep ast '<core-labels>)) nil "顶层语句只能是 DEFUN 或 LABELS：~A" ast)
         (etypecase ast
           (<core-defun>
            (with-slots (body name parameters) ast
@@ -807,6 +882,18 @@
                (setf env (extend-env binding env))
                ;; 为了可以在递归函数的词法环境中找到自身函数名的定义，必须在闭包中保存被自身扩展后的词法环境。
                (setf (value-fun-env fun) env))))
+          (<core-defvar>
+           (with-slots (val var) ast
+             (let* ((v (etypecase val
+                         ;; TODO: 暂时只处理数值字面量。
+                         (<core-num> (make-instance '<value-num>
+                                                    :n (core-num-n val)))))
+                    (location (put-store store v))
+                    (binding (make-instance '<binding>
+                                            :location location
+                                            :name var)))
+               (setf denv (extend-env binding denv))
+               (setf (gethash var *dynamic-variables*) t))))
           (<core-labels>
            (with-slots (definitions) ast
              (let* ((fns (mapcar #'(lambda (definition)
@@ -832,5 +919,6 @@
      (interpret/k (parse-concrete-syntax '(main))
                   env
                   store
-                  (make-end-cont)))))
+                  (make-end-cont)
+                  denv))))
 ;;; 运行脚本相关 end
