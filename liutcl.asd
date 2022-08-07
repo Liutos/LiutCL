@@ -35,6 +35,7 @@
                                    :load-source-file
                                    :arithmetic
                                    :macro
+                                   :palindromic
                                    :progn
                                    :assignment
                                    :mutual-recursion)))

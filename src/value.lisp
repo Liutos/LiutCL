@@ -103,4 +103,17 @@
 (defmethod value-equal-p ((x <value-primitive>) (y <value-primitive>))
   (eq (value-primitive-f x) (value-primitive-f y)))
 ;;; 原生函数类型 end
+
+;;; 字符串类型 begin
+(defclass <value-str> (<value>)
+  ((content
+    :documentation "字符串的底层字符数据。"
+    :initarg :content
+    :reader value-str-content
+    :type string))
+  (:documentation "233-lisp 中的字符串类型。"))
+
+(defmethod value-equal-p ((x <value-str>) (y <value-str>))
+  (string= (value-str-content x) (value-str-content y)))
+;;; 字符串类型 end
 ;;; 语言值类型 end

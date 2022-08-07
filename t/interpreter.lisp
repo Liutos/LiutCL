@@ -190,3 +190,17 @@
   (let ((*x* 233))
     (foo)))")
            (com.liutos.liutcl.interpreter:load-source-file s))))))
+
+(test palindromic
+  "测试一个判断回文数的函数。"
+  (is (string=
+       (format nil "true~%false~%")
+       (with-output-to-string (*standard-output*)
+         (with-input-from-string (s "(defun palindromicp (number)
+  (let ((str (itoa number)))
+    (string= str (reverse str))))
+
+(defun main ()
+  (print (palindromicp 232))
+  (print (palindromicp 233)))")
+           (com.liutos.liutcl.interpreter:load-source-file s))))))
