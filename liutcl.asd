@@ -14,8 +14,10 @@
   ((:file "core-syntax"
           :depends-on ("package"))
    (:file "interpreter"
-          :depends-on ("package"))
-   (:file "package")))
+          :depends-on ("core-syntax" "package" "value"))
+   (:file "package")
+   (:file "value"
+          :depends-on ("package"))))
 
 (defsystem #:liutcl/test
   :author "Liutos <mat.liutos@gmail.com>"
