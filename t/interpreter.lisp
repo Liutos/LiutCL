@@ -204,3 +204,11 @@
   (print (palindromicp 232))
   (print (palindromicp 233)))")
            (com.liutos.liutcl.interpreter:load-source-file s))))))
+
+(test start-repl
+  "测试 REPL 运作是否正常。"
+  (is (string=
+       (format nil "233-USER> 233~%233-USER> ")
+       (with-output-to-string (*standard-output*)
+         (with-input-from-string (*standard-input* "(print 233)")
+           (com.liutos.liutcl.interpreter:start-repl))))))

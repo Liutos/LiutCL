@@ -38,6 +38,7 @@
                                    :palindromic
                                    :progn
                                    :assignment
-                                   :mutual-recursion)))
+                                   :mutual-recursion
+                                   :start-repl)))
                       (dolist (name names)
                         (uiop:symbol-call :fiveam :run! (uiop:find-symbol* name :com.liutos.liutcl.interpreter.test))))))
