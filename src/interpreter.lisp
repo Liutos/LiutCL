@@ -774,6 +774,63 @@
 (defvar *dynamic-variables* nil
   "记录着当前解释器中属于动态作用域的变量的哈希表。")
 
+(defun add-definition-to-env (expr env denv store)
+  "使表达式 EXPR 的定义在相应的环境 ENV 或 DENV 中生效。
+
+STORE 为 ENV 和 DENV 共同使用的存储容器。"
+  (let ((ast (parse-concrete-syntax expr)))
+    (assert (or (typep ast '<core-defun>)
+                (typep ast '<core-defvar>)
+                (typep ast '<core-labels>)) nil "顶层语句只能是 DEFUN 或 LABELS：~A" ast)
+    (etypecase ast
+      (<core-defun>
+       (with-slots (body name parameters) ast
+         (let* ((fun (make-instance '<value-fun>
+                                    :args parameters
+                                    :body body
+                                    :env env))
+                (location (put-store store fun))
+                (binding (make-instance '<binding>
+                                        :location location
+                                        :name name)))
+           (setf env (extend-env binding env))
+           ;; 为了可以在递归函数的词法环境中找到自身函数名的定义，必须在闭包中保存被自身扩展后的词法环境。
+           (setf (value-fun-env fun) env))))
+      (<core-defvar>
+       (with-slots (val var) ast
+         (let* ((v (etypecase val
+                     ;; TODO: 暂时只处理数值字面量。
+                     (<core-num> (make-instance '<value-num>
+                                                :n (core-num-n val)))))
+                (location (put-store store v))
+                (binding (make-instance '<binding>
+                                        :location location
+                                        :name var)))
+           (setf denv (extend-env binding denv))
+           (setf (gethash var *dynamic-variables*) t))))
+      (<core-labels>
+       (with-slots (definitions) ast
+         (let* ((fns (mapcar #'(lambda (definition)
+                                 (with-slots (body parameters) definition
+                                   (make-instance '<value-fun>
+                                                  :args parameters
+                                                  :body body
+                                                  :env env)))
+                             definitions))
+                (names (mapcar #'(lambda (definition)
+                                   (slot-value definition 'name))
+                               definitions)))
+           (mapcar #'(lambda (fn name)
+                       (let* ((location (put-store store fn))
+                              (binding (make-instance '<binding>
+                                                      :location location
+                                                      :name name)))
+                         (setf env (extend-env binding env))))
+                   fns names)
+           (dolist (fn fns)
+             (setf (value-fun-env fn) env)))))))
+  (values env denv))
+
 (defun load-source-file (stream)
   "读取文件流 STREAM 中的代码并调用其中定义的 MAIN 函数。"
   (assert (input-stream-p stream) nil "STREAM 必须为一个输入流")
@@ -784,57 +841,8 @@
          (env prelude)
          (exprs (read-expressions stream)))
     (dolist (expr exprs)
-      (let ((ast (parse-concrete-syntax expr)))
-        (assert (or (typep ast '<core-defun>)
-                    (typep ast '<core-defvar>)
-                    (typep ast '<core-labels>)) nil "顶层语句只能是 DEFUN 或 LABELS：~A" ast)
-        (etypecase ast
-          (<core-defun>
-           (with-slots (body name parameters) ast
-             (let* ((fun (make-instance '<value-fun>
-                                        :args parameters
-                                        :body body
-                                        :env env))
-                    (location (put-store store fun))
-                    (binding (make-instance '<binding>
-                                            :location location
-                                            :name name)))
-               (setf env (extend-env binding env))
-               ;; 为了可以在递归函数的词法环境中找到自身函数名的定义，必须在闭包中保存被自身扩展后的词法环境。
-               (setf (value-fun-env fun) env))))
-          (<core-defvar>
-           (with-slots (val var) ast
-             (let* ((v (etypecase val
-                         ;; TODO: 暂时只处理数值字面量。
-                         (<core-num> (make-instance '<value-num>
-                                                    :n (core-num-n val)))))
-                    (location (put-store store v))
-                    (binding (make-instance '<binding>
-                                            :location location
-                                            :name var)))
-               (setf denv (extend-env binding denv))
-               (setf (gethash var *dynamic-variables*) t))))
-          (<core-labels>
-           (with-slots (definitions) ast
-             (let* ((fns (mapcar #'(lambda (definition)
-                                     (with-slots (body parameters) definition
-                                       (make-instance '<value-fun>
-                                                      :args parameters
-                                                      :body body
-                                                      :env env)))
-                                 definitions))
-                    (names (mapcar #'(lambda (definition)
-                                       (slot-value definition 'name))
-                                   definitions)))
-               (mapcar #'(lambda (fn name)
-                           (let* ((location (put-store store fn))
-                                  (binding (make-instance '<binding>
-                                                          :location location
-                                                          :name name)))
-                             (setf env (extend-env binding env))))
-                       fns names)
-               (dolist (fn fns)
-                 (setf (value-fun-env fn) env))))))))
+      (setf (values env denv)
+            (add-definition-to-env expr env denv store)))
     (trampoline
      (interpret/k (parse-concrete-syntax '(main))
                   env
