@@ -6,18 +6,26 @@ exec ros -Q -- $0 "$@"
 (progn ;;init forms
   (ros:ensure-asdf)
   ;;#+quicklisp(ql:quickload '() :silent t)
+  (ql:quickload 'clingon :silent t)
   (ql:quickload 'liutcl :silent t))
 
 (defpackage :ros.script.liutcl.3843902411
   (:use :cl))
 (in-package :ros.script.liutcl.3843902411)
 
-(defun main (&rest argv)
-  (declare (ignorable argv))
-  (when (/= (length argv) 1)
-    (format t "使用方法：liutcl.ros FILE~%")
-    (return-from main))
+(defun liutcl/handler (cmd)
+  "调起 REPL 或解释执行给定的脚本。"
+  (let ((args (clingon:command-arguments cmd)))
+    (if args
+        (with-open-file (s (first args))
+          (com.liutos.liutcl.interpreter:load-source-file s))
+        (com.liutos.liutcl.interpreter:start-repl))))
 
-  (with-open-file (s (first argv))
-    (com.liutos.liutcl.interpreter:load-source-file s)))
+(defun main (&rest argv)
+  (let ((app (clingon:make-command
+              :description "233-lisp 解释器"
+              :handler #'liutcl/handler
+              :name "liutcl"
+              :usage "[options] [FILE]")))
+    (clingon:run app argv)))
 ;;; vim: set ft=lisp lisp:
