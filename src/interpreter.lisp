@@ -874,6 +874,7 @@ STORE 为 ENV 和 DENV 共同使用的存储容器。"
                (interpret/k ast
                             env
                             store
-                            (make-end-cont)
+                            (make-print-cont
+                             (make-end-cont))
                             denv))))))))
 ;;; 运行脚本相关 end
