@@ -65,7 +65,9 @@
   (is (string=
        (concatenate 'string "233" (list #\Newline))
        (with-output-to-string (*standard-output*)
-         (interpret-concrete '(print 233) (make-empty-env)))))
+         (let* ((store (make-empty-store))
+                (env (make-prelude-env store)))
+           (interpret-concrete '(print 233) env store)))))
   (is (value-equal-p
        (make-instance '<value-num> :n 233)
        (interpret-concrete '(call/cc (k) (+ 1 (k 233))) (make-empty-env))))
@@ -75,7 +77,9 @@
   (is (string=
        (concatenate 'string "false" (list #\Newline))
        (with-output-to-string (*standard-output*)
-         (interpret-concrete '(print false) (make-empty-env)))))
+         (let* ((store (make-empty-store))
+                (env (make-prelude-env store)))
+           (interpret-concrete '(print false) env store)))))
   (is (value-equal-p
        (make-instance '<value-bool> :val t)
        (let ((store (make-empty-store)))

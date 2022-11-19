@@ -504,10 +504,6 @@
      (with-slots (l r) ast
        (lambda ()
          (interpret/k l env store (make-lhs-cont r env store cont denv) denv))))
-    (<core-print>
-     (with-slots (arg) ast
-       (lambda ()
-         (interpret/k arg env store (make-print-cont cont) denv))))
     (<core-progn>
      (with-slots (forms) ast
        (assert (> (length forms) 0))
@@ -636,12 +632,6 @@
            (make-instance '<core-call/cc>
                           :body (parse-concrete-syntax body)
                           :var (make-instance '<core-id> :s (first vars)))))
-        ((and (listp expr) (eq (first expr) 'print))
-         (destructuring-bind (_ arg)
-             expr
-           (declare (ignorable _))
-           (make-instance '<core-print>
-                          :arg (parse-concrete-syntax arg))))
         ((and (listp expr) (eq (first expr) 'if))
          (destructuring-bind (_ test then else)
              expr

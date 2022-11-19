@@ -1,6 +1,6 @@
+;;; 内置函数相关
 (in-package #:com.liutos.liutcl.interpreter)
 
-;;; 内置函数相关 begin
 (defun make-233-arithmetic-wrapper (f)
   "实现一个 CL 中的函数 F 的包装函数。"
   (check-type f function)
@@ -23,6 +23,19 @@
   (apply-continuation k (make-instance '<value-bool>
                                        :val (string= (value-str-content s1) (value-str-content s2)))))
 
+(defun %233-print (v k)
+  "将值 V 打印到标准输出流中。"
+  (check-type v <value>)
+  (check-type k <cont>)
+  (etypecase v
+    (<value-bool>
+     (format t "~A~%" (if (value-bool-val v) "true" "false")))
+    (<value-num>
+     (format t "~D~%" (value-num-n v)))
+    (<value-str>
+     (format t "~A~%" (value-str-content v))))
+  (apply-continuation k v))
+
 (defun %233-reverse-string (str k)      ; TODO: 暂时没想好怎么给 233-lisp 的内置函数起名字，先用 %233- 作为统一前缀。
   "前后倒置一个 233-lisp 中的字符串。"
   (check-type str <value-str>)
@@ -44,6 +57,7 @@
                          (cons '- (make-233-arithmetic-wrapper #'-))
                          (cons 'itoa (make-233-arithmetic-wrapper #'(lambda (n)
                                                                       (format nil "~D" n))))
+                         (cons 'print #'%233-print)
                          (cons 'reverse #'%233-reverse-string)
                          (cons 'string= #'%233-check-is-string-equal)))
         (env (make-empty-env)))
@@ -54,4 +68,3 @@
                (binding (make-instance '<binding> :location location :name name)))
           (setf env (extend-env binding env)))))
     env))
-;;; 内置函数相关 end

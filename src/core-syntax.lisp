@@ -146,19 +146,6 @@
     (error ":R必须为一个<CORE>类型，但传入了~S" r)))
 ;;; <core-plus> end
 
-;;; (print ...) 语法相关 begin
-(define-core-variant <core-print>
-    ((arg
-      :documentation "要打印的数字。"
-      :initarg :arg
-      :type <core>)))
-
-(defmethod print-object ((object <core-print>) stream)
-  (print-unreadable-object (object stream)
-    (with-slots (arg) object
-      (format stream "(print ~A)" arg))))
-;;; (print ...) 语法相关 end
-
 ;;; call/cc 语法相关 begin
 (define-core-variant <core-call/cc>
     ((body
