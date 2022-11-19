@@ -12,9 +12,13 @@
   :pathname "src/"
   :components
   ((:file "core-syntax"
-          :depends-on ("package"))
+    :depends-on ("package"))
+   (:file "init"
+    :depends-on ("interpreter" "package"))
    (:file "interpreter"
-          :depends-on ("core-syntax" "package" "value"))
+    :depends-on ("core-syntax" "package" "value"))
+   (:file "main"
+    :depends-on ("init" "interpreter" "package"))
    (:file "package")
    (:file "value"
           :depends-on ("package"))))
