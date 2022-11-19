@@ -361,7 +361,9 @@
          (<value-bool>
           (format t "~A~%" (if (value-bool-val v) "true" "false")))
          (<value-num>
-          (format t "~D~%" (value-num-n v))))
+          (format t "~D~%" (value-num-n v)))
+         (<value-str>
+          (format t "~S~%" (value-str-content v))))
        (lambda ()
          (apply-continuation cont v))))
     (<progn-cont>
