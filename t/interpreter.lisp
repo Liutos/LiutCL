@@ -210,5 +210,5 @@
   (is (string=
        (format nil "233-USER> 233~%233-USER> ")
        (with-output-to-string (*standard-output*)
-         (with-input-from-string (*standard-input* "(print 233)")
+         (with-input-from-string (*standard-input* "233")
            (com.liutos.liutcl.interpreter:start-repl))))))
