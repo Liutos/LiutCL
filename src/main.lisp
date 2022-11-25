@@ -110,7 +110,7 @@ STORE 为 ENV 和 DENV 共同使用的存储容器。"
                   (typep ast '<core-defvar>)
                   (typep ast '<core-labels>))
               (setf (values env denv)
-                    (add-definition-to-env expr env denv store))
+                    (add-definition-to-env ast env denv store))
               (trampoline
                (interpret/k ast
                             env
