@@ -667,6 +667,9 @@
                           :definitions (mapcar #'parse-defun-syntax forms))))
         ((is-x-list expr 'defvar)
          (parse-defvar-syntax expr))
+        ((is-x-list expr 'progn)
+         (make-instance '<core-progn>
+                        :forms (mapcar #'parse-concrete-syntax (rest expr))))
         ;; 特殊操作符都需要在此之前进行判断。
         ((listp expr)
          (destructuring-bind (fun . args)
