@@ -26,24 +26,8 @@
          (interpret-concrete 'foo
                              (extend-env binding env)
                              store))))
-  (let* ((env (make-empty-env))
-         (store (make-empty-store))
-         (fun (make-instance '<value-fun>
-                             :args '(x)
-                             :body (make-instance '<core-plus>
-                                                  :l (make-instance '<core-id> :s 'x)
-                                                  :r (make-instance '<core-num> :n 1))
-                             :env env))
-         (binding (make-instance '<binding>
-                                 :location (put-store store fun)
-                                 :name 'add1)))
-    (is (value-equal-p
-         (make-instance '<value-num> :n 233)
-         (interpret-concrete '(add1 232)
-                             (extend-env binding env)
-                             store))))
-  (let* ((env (make-empty-env))
-         (store (make-empty-store))
+  (let* ((store (make-empty-store))
+         (env (make-prelude-env store))
          (binding (make-instance '<binding>
                                  :location (put-store store (make-instance '<value-fun>
                                                                            :args '(x)
@@ -54,14 +38,18 @@
       (interpret-concrete '(+ 232 add1)
                           (extend-env binding env)
                           store)))
-  (is (value-equal-p
-       (make-instance '<value-num> :n 233)
-       (interpret-concrete '((lambda (x) (+ x 1)) 232)
-                           (make-empty-env))))
-  (is (value-equal-p
+  (let ((store (make-empty-store)))
+    (is (value-equal-p
+         (make-instance '<value-num> :n 233)
+         (interpret-concrete '((lambda (x) (+ x 1)) 232)
+                             (make-prelude-env store)
+                             store))))
+  (let ((store (make-empty-store)))
+    (is (value-equal-p
          (make-instance '<value-num> :n 3)
          (interpret-concrete '((lambda (x) ((lambda (y) (+ x y)) 2)) 1)
-                             (make-empty-env))))
+                             (make-prelude-env store)
+                             store))))
   (is (string=
        (concatenate 'string "233" (list #\Newline))
        (with-output-to-string (*standard-output*)
@@ -108,7 +96,11 @@
   (is (value-equal-p
        (make-instance '<value-num> :n 1)
        (let ((store (make-empty-store)))
-         (interpret-concrete '(mod 10 3) (make-prelude-env store) store)))))
+         (interpret-concrete '(mod 10 3) (make-prelude-env store) store))))
+  (is (value-equal-p
+       (make-instance '<value-num> :n 233)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '(let ((f +)) (f 116 117)) (make-prelude-env store) store)))))
 
 (test macro
   "测试语言内置的宏。"

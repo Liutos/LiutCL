@@ -127,25 +127,6 @@
       (princ n stream))))
 ;;; <core-num> end
 
-;;; <core-plus> begin
-(defclass <core-plus> (<core>)
-  ((l
-    :initarg :l
-    :type <core>)
-   (r
-    :initarg :r
-    :type <core>))
-  (:documentation "核心语言中表示加法运算的语法结构。"))
-
-(defmethod initialize-instance :after ((instance <core-plus>) &rest initargs &key l r &allow-other-keys)
-  "检查传入的左右操作数是否为语法结构类型。"
-  (declare (ignorable initargs instance))
-  (unless (typep l '<core>)
-    (error ":L必须为一个<CORE>类型，但传入了~S" l))
-  (unless (typep r '<core>)
-    (error ":R必须为一个<CORE>类型，但传入了~S" r)))
-;;; <core-plus> end
-
 ;;; call/cc 语法相关 begin
 (define-core-variant <core-call/cc>
     ((body

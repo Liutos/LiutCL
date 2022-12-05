@@ -6,14 +6,18 @@
   (check-type f function)
   (lambda (&rest args)
     (let* ((ns (butlast args))
-           (k (first (last args)))
-           (rv (apply f (mapcar #'value-num-n ns))))
-      (lambda ()
-        (apply-continuation k
-                            (etypecase rv
-                              (boolean (make-instance '<value-bool> :val rv))
-                              (number (make-instance '<value-num> :n rv))
-                              (string (make-instance '<value-str> :content rv))))))))
+           (k (first (last args))))
+      (dolist (n ns)
+        (unless (typep n '<value-num>)
+          (error 'wrong-type :actual (type-of n) :expected '<value-num>)))
+
+      (let ((rv (apply f (mapcar #'value-num-n ns))))
+        (lambda ()
+          (apply-continuation k
+                              (etypecase rv
+                                (boolean (make-instance '<value-bool> :val rv))
+                                (number (make-instance '<value-num> :n rv))
+                                (string (make-instance '<value-str> :content rv)))))))))
 
 (defun %233-check-is-string-equal (s1 s2 k)
   "检查两个 233-lisp 中的字符串是否相同。"
@@ -55,6 +59,7 @@
                          (cons '<= (make-233-arithmetic-wrapper #'<=))
                          (cons '/ (make-233-arithmetic-wrapper #'/))
                          (cons '- (make-233-arithmetic-wrapper #'-))
+                         (cons '+ (make-233-arithmetic-wrapper #'+))
                          (cons 'itoa (make-233-arithmetic-wrapper #'(lambda (n)
                                                                       (format nil "~D" n))))
                          (cons 'print #'%233-print)

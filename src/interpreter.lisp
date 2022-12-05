@@ -502,10 +502,6 @@
      (with-slots (n) ast
        (lambda ()
          (apply-continuation cont (make-instance '<value-num> :n n)))))
-    (<core-plus>
-     (with-slots (l r) ast
-       (lambda ()
-         (interpret/k l env store (make-lhs-cont r env store cont denv) denv))))
     (<core-progn>
      (with-slots (forms) ast
        (assert (> (length forms) 0))
@@ -620,13 +616,6 @@
            (make-instance '<core-lambda>
                           :body (make-instance '<core-progn> :forms (mapcar #'parse-concrete-syntax body))
                           :par (first parameters))))
-        ((and (listp expr) (eq (first expr) '+))
-         (destructuring-bind (_ lhs rhs)
-             expr
-           (declare (ignorable _))
-           (make-instance '<core-plus>
-                          :l (parse-concrete-syntax lhs)
-                          :r (parse-concrete-syntax rhs))))
         ((and (listp expr) (symbolp (first expr)) (string= (first expr) 'call/cc))
          (destructuring-bind (_ vars body)
              expr
