@@ -565,6 +565,26 @@
                     ,then
                     ,(expand-cond-to-if (cons 'cond forms)))))))))
 
+(defun expand-dotimes-to-call/cc (expr)
+  "将 DOTIMES 语句 EXPR 编译为等价的 CALL/CC 语句。"
+  (assert (eq (first expr) 'dotimes))
+  (destructuring-bind ((var count-form) &rest statements)
+      (rest expr)
+    (let ((a (gensym))
+          (count-form-result (gensym))
+          (next (gensym)))
+      `(let ((,count-form-result ,count-form)) ; 由于目前 LET 只支持一个绑定，因此这里要写多个 LET。
+         (let ((,next 0))               ; 由于 233-lisp 中尚未支持 NIL，因此这里填个 0。
+           (let ((,var (call/cc (k)
+                                (progn
+                                  (setf ,next k)
+                                  0))))     ; 计数循环从 0 开始。
+             (if (< ,var ,count-form-result)
+                 (progn
+                   ,@statements
+                   (,next (+ ,var 1)))
+                 0)))))))                  ; 由于目前没有 NIL，因此返回一个数字 0 来代替。
+
 (defun expand-let-to-lambda (expr)
   "将 LET 语句视为 LAMBDA 语法的宏进行展开。"
   (destructuring-bind (bindings &rest body) (rest expr)
@@ -639,6 +659,10 @@
         ((and (listp expr) (eq (first expr) 'or))
          ;; 将 OR 语句作为宏来实现，展开为上面已经支持的 IF 语句。
          (let ((expanded (expand-or-to-if expr)))
+           (parse-concrete-syntax expanded)))
+        ((is-x-list expr 'dotimes)
+         ;; 将 DOTIMES 语句作为宏来实现，展开为上面已经支持的 CALL/CC 语句。
+         (let ((expanded (expand-dotimes-to-call/cc expr)))
            (parse-concrete-syntax expanded)))
         ((and (listp expr) (eq (first expr) 'cond))
          (parse-concrete-syntax (expand-cond-to-if expr)))

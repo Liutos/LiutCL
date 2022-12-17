@@ -60,6 +60,7 @@
                          (cons '/ (make-233-arithmetic-wrapper #'/))
                          (cons '- (make-233-arithmetic-wrapper #'-))
                          (cons '+ (make-233-arithmetic-wrapper #'+))
+                         (cons '< (make-233-arithmetic-wrapper #'<))
                          (cons 'itoa (make-233-arithmetic-wrapper #'(lambda (n)
                                                                       (format nil "~D" n))))
                          (cons 'print #'%233-print)
