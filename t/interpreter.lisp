@@ -100,7 +100,11 @@
   (is (value-equal-p
        (make-instance '<value-num> :n 233)
        (let ((store (make-empty-store)))
-         (interpret-concrete '(let ((f +)) (f 116 117)) (make-prelude-env store) store)))))
+         (interpret-concrete '(let ((f +)) (f 116 117)) (make-prelude-env store) store))))
+  (is (value-equal-p
+       (make-instance '<value-num> :n 666)
+       (let ((store (make-empty-store)))
+         (interpret-concrete '(* 2 333) (make-prelude-env store) store)))))
 
 (test macro
   "测试语言内置的宏。"
